@@ -4,6 +4,7 @@ import org.eclipse.rdf4j.model.Statement;
 
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -13,6 +14,10 @@ public abstract class PlanNode<T> {
 
   public <T2, TO> PlanNode<T> antiJoin(PlanNode<T2> right, Function<T, T2> leftKey) {
     return new AntiJoinNode<>(this, right, leftKey);
+  }
+
+  public static <T> PlanNode<T> empty() {
+    return new CollectionNode<>(Collections.emptySet());
   }
 
   public PlanNode<T> filter(Predicate<T> predicate) {

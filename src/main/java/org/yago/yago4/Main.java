@@ -4,21 +4,21 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.eclipse.rdf4j.model.IRI;
-import org.eclipse.rdf4j.model.Resource;
-import org.eclipse.rdf4j.model.Statement;
-import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
+import org.eclipse.rdf4j.model.vocabulary.RDF;
+import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.JavaStreamEvaluator;
 import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.NTriplesReader;
 import org.yago.yago4.converter.utils.Pair;
 
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Main {
   private static final ValueFactory valueFactory = SimpleValueFactory.getInstance();
@@ -27,10 +27,15 @@ public class Main {
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
   private static final String SCHEMA_PREFIX = "http://schema.org/";
 
-  private static final IRI RDF_TYPE = valueFactory.createIRI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type");
   private static final IRI WIKIBASE_ITEM = valueFactory.createIRI("http://wikiba.se/ontology#Item");
-  private static final IRI WDT_P31 = valueFactory.createIRI(WDT_PREFIX + "P31");
-  private static final IRI WDT_P279 = valueFactory.createIRI(WDT_PREFIX + "P279");
+  private static final IRI WDT_P31 = valueFactory.createIRI(WDT_PREFIX, "P31");
+  private static final IRI WDT_P279 = valueFactory.createIRI(WDT_PREFIX, "P279");
+  private static final IRI SCHEMA_THING = valueFactory.createIRI(SCHEMA_PREFIX, "Thing");
+  private static final IRI SCHEMA_GEO_COORDINATES = valueFactory.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
+  private static final IRI SCHEMA_LATITUDE = valueFactory.createIRI(SCHEMA_PREFIX, "latitude");
+  private static final IRI SCHEMA_LONGITUDE = valueFactory.createIRI(SCHEMA_PREFIX, "longitude");
+
+  private static final Pattern WKT_COORDINATES_PATTERN = Pattern.compile("^POINT\\(([0-9.]+) +([0-9.]+)\\)$", Pattern.CASE_INSENSITIVE);
 
   private static final List<String> WD_BAD_TYPES = Arrays.asList(
           "Q17379835", //Wikimedia page outside the main knowledge tree
@@ -197,7 +202,7 @@ public class Main {
     var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31));
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279));
 
-    var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF_TYPE))
+    var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
 
@@ -213,10 +218,75 @@ public class Main {
             valueFactory.createIRI(SCHEMA_PREFIX + v)
     ))).transitiveClosure(wikidataSubClassOf, Pair::getKey, Statement::getObject, (e, t) -> new Pair<>(t.getSubject(), e.getValue()));
 
-    var typeMapping = wikidataInstanceOf
+    var yagoTypes = wikidataInstanceOf
             .join(schemaThings, Statement::getSubject, t -> t, (t1, t2) -> t1)
-            .join(classMapping, Statement::getObject, Pair::getKey, (t1, t2) -> valueFactory.createStatement(t1.getSubject(), RDF_TYPE, t2.getValue()));
+            .join(classMapping, Statement::getObject, Pair::getKey, (t1, t2) -> valueFactory.createStatement(t1.getSubject(), RDF.TYPE, t2.getValue()))
+            .union(schemaThings.map(s -> valueFactory.createStatement(s, RDF.TYPE, SCHEMA_THING)));
 
-    (new JavaStreamEvaluator(valueFactory)).evaluateToNTriples(typeMapping, outputFile);
+    var yagoFacts = yagoTypes.union(propertiesFromSchema(partitionedStatements));
+
+    (new JavaStreamEvaluator(valueFactory)).evaluateToNTriples(yagoFacts, outputFile);
+  }
+
+  private static PlanNode<Statement> propertiesFromSchema(PartitionedStatements partitionedStatements) {
+    var schema = ShaclSchema.getSchema();
+    return schema.getPropertyShapes().map(propertyShape -> {
+      IRI yagoProperty = propertyShape.getProperty();
+
+      var triples = propertyShape.getWikidataProperties().stream()
+              .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
+              .reduce(PlanNode::union).orElseGet(PlanNode::empty)
+              .map(triple -> valueFactory.createStatement(triple.getSubject(), yagoProperty, triple.getObject()));
+
+      // Datatype filter
+      if (propertyShape.getDatatypes().isPresent()) {
+        Set<IRI> dts = propertyShape.getDatatypes().get();
+
+        //We map IRIs to xsd:anyUri
+        if (dts.contains(XMLSchema.ANYURI)) {
+          triples = triples.map(t -> {
+            if (t.getObject() instanceof IRI) {
+              return valueFactory.createStatement(t.getSubject(), t.getPredicate(), valueFactory.createLiteral(t.getObject().stringValue(), XMLSchema.ANYURI));
+            } else {
+              return t;
+            }
+          });
+        }
+        //TODO: time and quantity values
+        triples = triples.filter(t -> t.getObject() instanceof Literal && dts.contains(((Literal) t.getObject()).getDatatype()));
+      }
+
+      // Type filter
+      if (propertyShape.getNodeShape().isPresent()) {
+        ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
+        Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
+        if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
+          triples = triples.flatMap(t -> {
+            //TODO: precision
+            Matcher matcher = WKT_COORDINATES_PATTERN.matcher(t.getObject().stringValue());
+            if (!matcher.matches()) {
+              return Stream.empty();
+            }
+            double longitude = Float.parseFloat(matcher.group(1));
+            double latitude = Float.parseFloat(matcher.group(2));
+            IRI geo = valueFactory.createIRI("geo:" + latitude + "," + longitude);
+            return Stream.of(
+                    valueFactory.createStatement(t.getSubject(), t.getPredicate(), geo),
+                    valueFactory.createStatement(geo, RDF.TYPE, SCHEMA_GEO_COORDINATES),
+                    valueFactory.createStatement(geo, SCHEMA_LATITUDE, valueFactory.createLiteral(latitude)),
+                    valueFactory.createStatement(geo, SCHEMA_LONGITUDE, valueFactory.createLiteral(longitude))
+            );
+          });
+        }
+      }
+
+      //Regex
+      if (propertyShape.getPattern().isPresent()) {
+        Pattern pattern = propertyShape.getPattern().get();
+        triples = triples.filter(t -> pattern.matcher(t.getObject().stringValue()).matches());
+      }
+
+      return triples;
+    }).reduce(PlanNode::union).get();
   }
 }

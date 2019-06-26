@@ -6,6 +6,7 @@ import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.RDFBinaryFormat;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,7 +24,13 @@ final class PartitionedStatements {
   }
 
   public PlanNode<Statement> getForKey(String key) {
-    return PlanNode.readBinaryRDF(dir.resolve(key));
+    Path file = dir.resolve(key);
+    if (Files.exists(file)) {
+      return PlanNode.readBinaryRDF(dir.resolve(key));
+    } else {
+      System.out.println("No file found for key " + key);
+      return PlanNode.empty();
+    }
   }
 
   public static final class Writer implements AutoCloseable {

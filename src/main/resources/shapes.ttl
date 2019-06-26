@@ -1,0 +1,776 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix schema: <http://schema.org/> .
+@prefix wdt: <http://www.wikidata.org/prop/direct/> .
+@prefix wd: <http://www.wikidata.org/entity/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+@prefix ys: <http://yago-knowledge.org/schema#> .
+
+ys:
+	rdfs:label "Yago 4 shapes declaration"@en .
+
+
+ys:Thing a sh:NodeShape ;
+    sh:targetClass schema:Thing ;
+    sh:property [
+        sh:path schema:alternateName ;
+        sh:datatype rdf:langString ;
+        ys:wikidataProperty skos:altLabel ;
+    ] ;
+    sh:property [
+        sh:path schema:description ;
+        sh:datatype rdf:langString ;
+        sh:uniqueLang true ;
+        ys:wikidataProperty schema:description ;
+    ] ;
+    sh:property [
+        sh:path schema:name ;
+        sh:datatype rdf:langString ;
+        sh:uniqueLang true ;
+        ys:wikidataProperty skos:prefLabel ;
+    ] ;
+    sh:property [
+        sh:path schema:url ;
+        sh:datatype xsd:anyURI ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P856 ;
+    ] .
+
+ys:Brand a sh:NodeShape ;
+    sh:targetClass schema:Brand .
+
+ys:CreativeWork a sh:NodeShape ;
+    sh:targetClass schema:CreativeWork ;
+    sh:property [
+        sh:path schema:award ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P166 ;
+    ] ;
+    sh:property [
+        sh:path schema:author ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P50 ;
+    ] ;
+    sh:property [
+        sh:path schema:citation ;
+        sh:node ys:CreativeWork ;
+        ys:wikidataProperty wdt:P2860 ;
+    ] ;
+    sh:property [
+        sh:path schema:contentLocation ;
+        sh:node ys:Place ;
+        ys:wikidataProperty wdt:P840 ;
+    ] ;
+    sh:property [
+        sh:path schema:creator ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P170 ;
+    ] ;
+    sh:property [
+        sh:path schema:datePublished ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P577 ;
+    ] ;
+    sh:property [
+        sh:path schema:editor ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P98 ;
+    ] ;
+    sh:property [
+        sh:path schema:exampleOfWork ;
+        sh:node ys:CreativeWork ;
+        ys:wikidataProperty wdt:P629 ;
+    ] ;
+    sh:property [
+        sh:path schema:encodingFormat ;
+        sh:datatype xsd:string ;
+        sh:pattern "^(application|audio|example|font|image|message|model|multipart|text|video)/[a-zA-Z0-9-+.]+$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P1163 ;
+    ] ;
+    sh:property [
+        sh:path schema:genre ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P136 ;
+    ] ;
+    sh:property [
+        sh:path schema:hasPart ;
+        sh:node ys:CreativeWork ;
+        ys:wikidataProperty wdt:P527 ;
+    ] ;
+    sh:property [
+        sh:path schema:inLanguage ;
+        sh:node ys:Language ;
+        ys:wikidataProperty wdt:P407 ;
+    ] ;
+    sh:property [
+        sh:path schema:isBasedOn ;
+        sh:node ys:CreativeWork ;
+        ys:wikidataProperty wdt:P144 ;
+    ] ;
+    sh:property [
+        sh:path schema:isPartOf ;
+        sh:node ys:CreativeWork ;
+        ys:wikidataProperty wdt:P361 ; # TODO: map with P195 (collection?)
+    ] ;
+    sh:property [
+        sh:path schema:license ;
+        sh:node ys:CreativeWork ;
+        ys:wikidataProperty wdt:P275 ;
+    ] ;
+    sh:property [
+        sh:path schema:locationCreated ;
+        sh:node ys:Place ;
+        ys:wikidataProperty wdt:P1071 ;
+    ] ;
+    sh:property [
+        sh:path schema:material ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P186 ;
+    ] ;
+    sh:property [
+        sh:path schema:producer ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P162 ;
+    ] ;
+    sh:property [
+        sh:path schema:provider ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P176 ;
+    ] ;
+    sh:property [
+        sh:path schema:publisher ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P123 ;
+    ] ;
+    sh:property [
+        sh:path schema:sponsor ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P859 ;
+    ] ;
+    sh:property [
+        sh:path schema:workExample ;
+        sh:node ys:CreativeWork ;
+        ys:wikidataProperty wdt:P747 ;
+    ] .
+
+
+ys:Article a sh:NodeShape ;
+    sh:targetClass schema:Article ;
+    sh:property [
+        sh:path schema:pagination ;
+        sh:datatype xsd:string ;
+        ys:wikidataProperty wdt:P304 ;
+    ] .
+
+
+ys:Book a sh:NodeShape ;
+    sh:targetClass schema:Book ;
+    sh:property [
+        sh:path schema:illustrator ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P110 ;
+    ] ;
+    sh:property [ #TODO: pattern
+        sh:path schema:isbn ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P212 , wdt:P957 ;
+    ] .
+
+
+
+ys:CreativeWorkSeason a sh:NodeShape ;
+    sh:targetClass schema:CreativeWorkSeason ;
+    sh:property [
+        sh:path schema:numberOfEpisodes ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P1113 ;
+    ] ;
+    sh:property [
+        sh:path schema:productionCompany ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P272 ;
+    ] .
+
+
+ys:CreativeWorkSeries a sh:NodeShape ;
+    sh:targetClass schema:CreativeWorkSeries ;
+    sh:property [
+        sh:path schema:issn ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9]{4}-[0-9]{3}[0-9X]$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P236 ;
+    ] .
+
+
+ys:MovieSeries a sh:NodeShape ;
+    sh:targetClass schema:MovieSeries ;
+    sh:property [
+        sh:path schema:director ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:productionCompany ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P272 ;
+    ] .
+
+
+ys:RadioSeries a sh:NodeShape ;
+    sh:targetClass schema:MovieSeries ;
+    sh:property [
+        sh:path schema:director ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:numberOfEpisodes ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P1113 ;
+    ] ;
+    sh:property [
+        sh:path schema:numberOfSeasons ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P2437 ;
+    ] ;
+    sh:property [
+        sh:path schema:productionCompany ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P272 ;
+    ] .
+
+
+ys:TVSeries a sh:NodeShape ;
+    sh:targetClass schema:TVSeries ;
+    sh:property [
+        sh:path schema:director ;
+        sh:node ys:Person ;
+    ] ;
+    sh:property [
+        sh:path schema:numberOfEpisodes ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P1113 ;
+    ] ;
+    sh:property [
+        sh:path schema:numberOfSeasons ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P2437 ;
+    ] ;
+    sh:property [
+        sh:path schema:productionCompany ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P272 ;
+    ] .
+
+ys:VideoGameSeries a sh:NodeShape ;
+    sh:targetClass schema:VideoGameSeries ;
+    sh:property [
+        sh:path schema:director ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:numberOfEpisodes ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P1113 ;
+    ] ;
+    sh:property [
+        sh:path schema:numberOfSeasons ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P2437 ;
+    ] ;
+    sh:property [
+        sh:path schema:productionCompany ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P272 ;
+    ] .
+
+
+ys:Episode a sh:NodeShape ;
+    sh:targetClass schema:Episode ;
+    sh:property [
+        sh:path schema:director ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:productionCompany ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P272 ;
+    ] .
+
+
+ys:MusicComposition a sh:NodeShape ;
+    sh:targetClass schema:MusicComposition ;
+    sh:property [
+        sh:path schema:iswcCode ;
+        sh:datatype xsd:string ;
+        sh:pattern "^T-[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P1827 ;
+    ] .
+
+
+ys:MusicAlbum a sh:NodeShape ;
+   sh:targetClass schema:MusicAlbum ;
+   sh:property [
+       sh:path schema:byArtist ;
+       sh:node ys:MusicGroup ;
+       ys:wikidataProperty wdt:P175 ;
+   ] .
+
+
+ys:Movie a sh:NodeShape ;
+    sh:targetClass schema:Movie ;
+    sh:property [
+        sh:path schema:director ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:productionCompany ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P272 ;
+    ] .
+
+
+ys:PublicationIssue a sh:NodeShape ;
+    sh:targetClass schema:PublicationIssue ;
+    sh:property [
+        sh:path schema:pagination ;
+        sh:datatype xsd:string ;
+        ys:wikidataProperty wdt:P304 ;
+    ] ;
+    sh:property [
+        sh:path schema:issueNumber ;
+        sh:datatype xsd:string ;
+        ys:wikidataProperty wdt:P433 ;
+    ] .
+
+
+ys:PublicationVolume a sh:NodeShape ;
+    sh:targetClass schema:PublicationVolume ;
+    sh:property [
+        sh:path schema:pagination ;
+        sh:datatype xsd:string ;
+        ys:wikidataProperty wdt:P304 ;
+    ] ;
+    sh:property [
+        sh:path schema:volumeNumber ;
+        sh:datatype xsd:string ;
+        ys:wikidataProperty wdt:P478 ;
+    ] .
+
+
+ys:VideoGame a sh:NodeShape ;
+    sh:targetClass schema:VideoGame ;
+    sh:property [
+        sh:path schema:director ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P57 ;
+    ] .
+
+
+ys:Event a sh:NodeShape ;
+    sh:targetClass schema:Event ;
+    sh:property [
+        sh:path schema:location ;
+        sh:node ys:Place ;
+        ys:wikidataProperty wdt:P276 ;
+    ] ;
+    sh:property [
+        sh:path schema:startDate ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P580 ;
+    ] ;
+    sh:property [
+        sh:path schema:end ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P582 ;
+    ] ;
+    sh:property [
+        sh:path schema:sponsor ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P859 ;
+    ] .
+
+
+ys:GeoCoordinates a sh:NodeShape ;
+    sh:targetClass schema:GeoCoordinates ;
+    sh:property [
+        sh:path schema:latitude ;
+        sh:datatype xsd:double ;
+    ] ;
+    sh:property [
+        sh:path schema:longitude ;
+        sh:datatype xsd:double ;
+    ] .
+
+
+ys:Language a sh:NodeShape ;
+    sh:targetClass schema:Language .
+
+
+ys:Organization a sh:NodeShape ;
+    sh:targetClass schema:Organization ;
+    sh:property [
+        sh:path schema:award ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P166 ;
+    ] ;
+    sh:property [
+        sh:path schema:brand ;
+        sh:node ys:Brand ;
+        ys:wikidataProperty wdt:P1716 ;
+    ] ;
+    sh:property [
+        sh:path schema:dissolutionDate ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P576 ;
+    ] ;
+    sh:property [
+        sh:path schema:duns ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9]{9}$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P2771 ;
+    ] ;
+    sh:property [
+        sh:path schema:founder ;
+        sh:node ys:Person ;
+        ys:wikidataProperty wdt:P112 ;
+    ] ;
+    sh:property [
+        sh:path schema:foundingDate ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P571 ;
+    ] ;
+    sh:property [
+        sh:path schema:foundingLocation ;
+        sh:node ys:Place ;
+        ys:wikidataProperty wdt:P740 ;
+    ] ;
+    sh:property [
+        sh:path schema:leiCode ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[0-9A-Z]{18}[0-9]{2}$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P1278 ;
+    ] ;
+    sh:property [
+        sh:path schema:location ;
+        sh:node ys:Place ;
+        ys:wikidataProperty wdt:P276 ;
+    ] ;
+    sh:property [
+        sh:path schema:parentOrganization ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P749 ;
+    ] ;
+    sh:property [
+        sh:path schema:sponsor ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:wikidataProperty wdt:P859 ;
+    ] ;
+    sh:property [
+        sh:path schema:subOrganization ;
+        sh:node ys:Organization ;
+        ys:wikidataProperty wdt:P355 ;
+    ] .
+
+
+ys:Airline a sh:NodeShape ;
+    sh:targetClass schema:Airline ;
+    sh:property [
+        sh:path schema:iataCode ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[A-Z0-9]{2}$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P229 ;
+    ] ;
+    sh:property [
+        sh:path schema:icaoCode ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[A-Z]{3}$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P230 ;
+    ] .
+
+
+ys:MusicGroup a sh:NodeShape ;
+    sh:targetClass schema:MusicGroup ;
+    sh:property [
+        sh:path schema:genre ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P136 ;
+    ] .
+
+
+ys:Person a sh:NodeShape ;
+    sh:targetClass schema:Person ;
+    sh:property [
+        sh:path schema:award ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P166 ;
+    ] ;
+    sh:property [
+        sh:path schema:birthDate ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P569 ;
+    ] ;
+    sh:property [
+        sh:path schema:birthPlace ;
+        sh:node ys:Place ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P19 ;
+    ] ;
+    sh:property [
+        sh:path schema:children ;
+        sh:node ys:Person ;
+       ys:wikidataProperty wdt:P40 ;
+    ] ;
+    sh:property [
+        sh:path schema:deathDate ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P570 ;
+    ] ;
+    sh:property [
+        sh:path schema:deathPlace ;
+        sh:node ys:Place ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P20 ;
+    ] ;
+    sh:property [
+        sh:path schema:familyName ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P734 ;
+    ] ;
+    sh:property [
+        sh:path schema:givenName ;
+        sh:node ys:Thing ;
+        ys:wikidataProperty wdt:P735 ;
+    ] ;
+    sh:property [
+        sh:path schema:gender ;
+        sh:node ys:Thing ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P21 ;
+    ] ;
+    sh:property [
+        sh:path schema:parent ;
+        sh:node ys:Person ;
+        sh:maxCount 2 ;
+        ys:wikidataProperty wdt:P22 , wdt:P25 ;
+    ] . #TODO: height, weight netWorth, spouse, worksFor, nationality
+
+
+ys:Place a sh:NodeShape ;
+    sh:targetClass schema:Place ;
+    sh:property [
+        sh:path schema:containedInPlace ;
+        sh:node ys:Place ;
+        ys:wikidataProperty wdt:P131 ;
+    ] ;
+    sh:property [
+        sh:path schema:geo ;
+        sh:node ys:GeoCoordinates ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P625 ;
+    ] . #TODO: address,
+
+
+ys:City a sh:NodeShape ;
+    sh:targetClass schema:City ;
+    sh:property [
+        sh:path schema:iataCode ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[A-Z]{3}$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P238 ;
+    ] .
+
+
+ys:Airport a sh:NodeShape ;
+    sh:targetClass schema:Airport ;
+    sh:property [
+        sh:path schema:iataCode ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[A-Z]{3}$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P238 ;
+    ] ;
+    sh:property [
+        sh:path schema:icaoCode ;
+        sh:datatype xsd:string ;
+        sh:pattern "^([A-Z]{2}|[CKY][A-Z0-9])[A-Z0-9]{2}$" ;
+        sh:maxCount 1 ;
+        ys:wikidataProperty wdt:P239 ;
+    ] .
