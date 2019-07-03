@@ -1,5 +1,9 @@
 package org.yago.yago4;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.RemovalListener;
 import org.eclipse.rdf4j.model.Statement;
 import org.yago.yago4.converter.EvaluationException;
 import org.yago.yago4.converter.plan.PlanNode;
@@ -8,8 +12,7 @@ import org.yago.yago4.converter.utils.RDFBinaryFormat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 final class PartitionedStatements {
@@ -36,9 +39,23 @@ final class PartitionedStatements {
   public static final class Writer implements AutoCloseable {
     private final Path dir;
     private final Function<Statement, String> computeKey;
-    private final Map<String, RDFBinaryFormat.Writer> writers = new ConcurrentHashMap<>();
+    private final LoadingCache<String, RDFBinaryFormat.Writer> writers = CacheBuilder.newBuilder()
+            .maximumSize(1000)
+            .removalListener((RemovalListener<String, RDFBinaryFormat.Writer>) removal -> removal.getValue().close())
+            .build(new CacheLoader<>() {
+              @Override
+              public RDFBinaryFormat.Writer load(String key) {
+                try {
+                  Path path = dir.resolve(key);
+                  Files.createDirectories(path.getParent());
+                  return new RDFBinaryFormat.Writer(path, true);
+                } catch (IOException e) {
+                  throw new EvaluationException(e);
+                }
+              }
+            });
 
-    Writer(Path dir, Function<Statement, String> computeKey) {
+    private Writer(Path dir, Function<Statement, String> computeKey) {
       this.dir = dir;
       this.computeKey = computeKey;
     }
@@ -46,22 +63,15 @@ final class PartitionedStatements {
     public void write(Statement statement) {
       try {
         String key = computeKey.apply(statement);
-        writers.computeIfAbsent(key, p -> {
-          try {
-            return new RDFBinaryFormat.Writer(dir.resolve(key));
-          } catch (IOException e) {
-            throw new EvaluationException(e);
-          }
-        }).write(statement);
-      } catch (IOException e) {
+        writers.get(key).write(statement);
+      } catch (IOException | ExecutionException e) {
         throw new EvaluationException(e);
       }
     }
 
     @Override
     public void close() {
-      writers.values().forEach(RDFBinaryFormat.Writer::close);
-      writers.clear();
+      writers.invalidateAll();
     }
   }
 }

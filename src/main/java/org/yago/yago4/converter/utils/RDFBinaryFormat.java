@@ -6,6 +6,7 @@ import org.yago.yago4.converter.EvaluationException;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -24,7 +25,7 @@ public class RDFBinaryFormat implements Serializable {
   }
 
   public static void write(Stream<Statement> stream, Path filePath) {
-    try (Writer writer = new Writer(filePath)) {
+    try (Writer writer = new Writer(filePath, false)) {
       stream.forEach(Statement -> {
         try {
           writer.write(Statement);
@@ -132,8 +133,10 @@ public class RDFBinaryFormat implements Serializable {
   public static final class Writer implements AutoCloseable {
     private final DataOutputStream outputStream;
 
-    public Writer(Path filePath) throws IOException {
-      outputStream = new DataOutputStream(new BufferedOutputStream(Files.newOutputStream(filePath)));
+    public Writer(Path filePath, boolean append) throws IOException {
+      outputStream = new DataOutputStream(new BufferedOutputStream(
+              append ? Files.newOutputStream(filePath, StandardOpenOption.APPEND, StandardOpenOption.CREATE) : Files.newOutputStream(filePath)
+      ));
     }
 
     public synchronized void write(Statement Statement) throws IOException {

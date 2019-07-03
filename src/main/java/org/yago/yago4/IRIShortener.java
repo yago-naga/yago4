@@ -18,6 +18,7 @@ public class IRIShortener {
     IRI_FOR_PREFIXES.put("skos", "http://www.w3.org/2004/02/skos/core#");
     IRI_FOR_PREFIXES.put("schema", "http://schema.org/");
     IRI_FOR_PREFIXES.put("prov", "http://www.w3.org/ns/prov#");
+    IRI_FOR_PREFIXES.put("cc", "http://creativecommons.org/ns#");
     IRI_FOR_PREFIXES.put("geo", "http://www.opengis.net/ont/geosparql#");
     IRI_FOR_PREFIXES.put("wikibase", "http://wikiba.se/ontology#");
     IRI_FOR_PREFIXES.put("wdata", "http://www.wikidata.org/Special:EntityData/");

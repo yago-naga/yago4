@@ -196,7 +196,7 @@ public class Main {
   }
 
   private static String keyForIri(IRI iri) {
-    return IRIShortener.shortened(iri).replace('/', '-');
+    return IRIShortener.shortened(iri).replace('/', '-').replace(':', '/');
   }
 
   private static void buildYago(PartitionedStatements partitionedStatements, Path outputFile) {
