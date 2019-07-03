@@ -1,0 +1,45 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix schema: <http://schema.org/> .
+@prefix wdt: <http://www.wikidata.org/prop/direct/> .
+@prefix wd: <http://www.wikidata.org/entity/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ys: <http://yago-knowledge.org/schema#> .
+
+@prefix yss: <http://yago-knowledge.org/shapes-shapes#> .
+
+yss:NodeShape a sh:NodeShape ;
+    sh:targetClass sh:NodeShape ;
+    sh:closed true ;
+    sh:property [
+        sh:path sh:targetClass ;
+        sh:class rdfs:Class ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path ys:fromClass ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path sh:property ;
+        sh:node yss:PropertyShape ;
+    ] .
+
+yss:PropertyShape a sh:NodeShape ;
+    sh:targetClass sh:PropertyShape ;
+    # sh:closed true ;
+    sh:property [
+        sh:path sh:path ;
+        sh:class rdf:Property ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path sh:node ;
+        sh:maxCount 1 ;
+
+    ] .

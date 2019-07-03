@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class TestJavaStreamEvaluator {
+class TestJavaStreamEvaluator {
 
   private static final JavaStreamEvaluator evaluator = new JavaStreamEvaluator(SimpleValueFactory.getInstance());
 

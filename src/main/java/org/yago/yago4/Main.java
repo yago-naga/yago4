@@ -1,5 +1,7 @@
 package org.yago.yago4;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
@@ -11,8 +13,9 @@ import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.JavaStreamEvaluator;
 import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.NTriplesReader;
-import org.yago.yago4.converter.utils.Pair;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
@@ -22,19 +25,19 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Main {
-  private static final ValueFactory valueFactory = SimpleValueFactory.getInstance();
+  private static final ValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
 
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
   private static final String SCHEMA_PREFIX = "http://schema.org/";
 
-  private static final IRI WIKIBASE_ITEM = valueFactory.createIRI("http://wikiba.se/ontology#Item");
-  private static final IRI WDT_P31 = valueFactory.createIRI(WDT_PREFIX, "P31");
-  private static final IRI WDT_P279 = valueFactory.createIRI(WDT_PREFIX, "P279");
-  private static final IRI SCHEMA_THING = valueFactory.createIRI(SCHEMA_PREFIX, "Thing");
-  private static final IRI SCHEMA_GEO_COORDINATES = valueFactory.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
-  private static final IRI SCHEMA_LATITUDE = valueFactory.createIRI(SCHEMA_PREFIX, "latitude");
-  private static final IRI SCHEMA_LONGITUDE = valueFactory.createIRI(SCHEMA_PREFIX, "longitude");
+  private static final IRI WIKIBASE_ITEM = VALUE_FACTORY.createIRI("http://wikiba.se/ontology#Item");
+  private static final IRI WDT_P31 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P31");
+  private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
+  private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
+  private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
+  private static final IRI SCHEMA_LATITUDE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "latitude");
+  private static final IRI SCHEMA_LONGITUDE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "longitude");
 
   private static final Pattern WKT_COORDINATES_PATTERN = Pattern.compile("^POINT\\(([0-9.]+) +([0-9.]+)\\)$", Pattern.CASE_INSENSITIVE);
 
@@ -46,115 +49,6 @@ public class Main {
           "Q17524420", //aspect of history
           "Q18340514" //article about events in a specific year or time period
   );
-
-  private static final HashMap<String, List<String>> WD_TO_SCHEMA_TYPES = new HashMap<>();
-
-  static {
-    WD_TO_SCHEMA_TYPES.put("Q5", Collections.singletonList("Person")); //human
-    WD_TO_SCHEMA_TYPES.put("Q165", Arrays.asList("Place", "Landform", "BodyOfWater", "SeaBodyOfWater"));
-    WD_TO_SCHEMA_TYPES.put("Q515", Arrays.asList("Place", "AdministrativeArea", "City"));
-    WD_TO_SCHEMA_TYPES.put("Q532", Collections.singletonList("Place")); //village
-    WD_TO_SCHEMA_TYPES.put("Q571", Arrays.asList("CreativeWork", "Book"));
-    WD_TO_SCHEMA_TYPES.put("Q1004", Arrays.asList("CreativeWork", "ComicStory")); //in bib: extension
-    WD_TO_SCHEMA_TYPES.put("Q1420", Arrays.asList("Product", "Vehicle", "Car"));
-    WD_TO_SCHEMA_TYPES.put("Q3914", Arrays.asList("Organization", "EducationalOrganization", "School"));
-    WD_TO_SCHEMA_TYPES.put("Q3918", Arrays.asList("Organization", "EducationalOrganization", "CollegeOrUniversity"));
-    WD_TO_SCHEMA_TYPES.put("Q3947", Arrays.asList("Place", "Accommodation", "House"));
-    WD_TO_SCHEMA_TYPES.put("Q4006", Arrays.asList("CreativeWork", "Map"));
-    WD_TO_SCHEMA_TYPES.put("Q4022", Arrays.asList("Place", "Landform", "BodyOfWater", "RiverBodyOfWater")); //river
-    WD_TO_SCHEMA_TYPES.put("Q5107", Arrays.asList("Place", "Landform", "Continent"));
-    WD_TO_SCHEMA_TYPES.put("Q5638", Arrays.asList("Product", "Vehicle", "BusOrCoach")); //Bus, in auto:
-    WD_TO_SCHEMA_TYPES.put("Q6256", Arrays.asList("Place", "AdministrativeArea", "Country"));
-    WD_TO_SCHEMA_TYPES.put("Q7889", Arrays.asList("CreativeWork", "Game", "SoftwareApplication", "VideoGame"));
-    WD_TO_SCHEMA_TYPES.put("Q8502", Arrays.asList("Place", "Landform", "Mountain")); //mountain
-    WD_TO_SCHEMA_TYPES.put("Q9826", Arrays.asList("Organization", "EducationalOrganization", "HighSchool")); //TODO: Us only
-    WD_TO_SCHEMA_TYPES.put("Q9842", Arrays.asList("Organization", "EducationalOrganization", "ElementarySchool"));
-    WD_TO_SCHEMA_TYPES.put("Q11032", Arrays.asList("CreativeWork", "Periodical", "Newspaper"));
-    WD_TO_SCHEMA_TYPES.put("Q11410", Arrays.asList("CreativeWork", "Game"));
-    WD_TO_SCHEMA_TYPES.put("Q11424", Arrays.asList("CreativeWork", "Movie")); //film
-    WD_TO_SCHEMA_TYPES.put("Q11707", Arrays.asList("Place", "Organization", "LocalBusiness", "FoodEstablishment", "Restaurant"));
-    WD_TO_SCHEMA_TYPES.put("Q12280", Arrays.asList("Place", "CivicStructure", "Bridge"));
-    WD_TO_SCHEMA_TYPES.put("Q16917", Arrays.asList("Place", "CivicStructure", "Hospital"));
-    WD_TO_SCHEMA_TYPES.put("Q16970", Arrays.asList("Place", "CivicStructure", "PlaceOfWorship", "Church"));
-    WD_TO_SCHEMA_TYPES.put("Q22698", Arrays.asList("Place", "CivicStructure", "Park"));
-    WD_TO_SCHEMA_TYPES.put("Q23397", Arrays.asList("Place", "LakeBodyOfWater")); //lake
-    WD_TO_SCHEMA_TYPES.put("Q24354", Arrays.asList("Place", "CivicStructure", "PerformingArtsTheater"));
-    WD_TO_SCHEMA_TYPES.put("Q30022", Arrays.asList("Place", "Organization", "LocalBusiness", "FoodEstablishment", "CafeOrCoffeeShop"));
-    WD_TO_SCHEMA_TYPES.put("Q30849", Arrays.asList("CreativeWork", "Blog"));
-    WD_TO_SCHEMA_TYPES.put("Q33506", Arrays.asList("Place", "CivicStructure", "Museum"));
-    WD_TO_SCHEMA_TYPES.put("Q34770", Collections.singletonList("Language"));
-    WD_TO_SCHEMA_TYPES.put("Q35127", Arrays.asList("CreativeWork", "WebSite"));
-    WD_TO_SCHEMA_TYPES.put("Q39614", Arrays.asList("Place", "CivicStructure", "Cemetery"));
-    WD_TO_SCHEMA_TYPES.put("Q40080", Arrays.asList("Place", "CivicStructure", "Beach"));
-    WD_TO_SCHEMA_TYPES.put("Q41253", Arrays.asList("Place", "CivicStructure", "Organization", "LocalBusiness", "EntertainmentBusiness", "MovieTheater"));
-    WD_TO_SCHEMA_TYPES.put("Q41298", Arrays.asList("CreativeWork", "CreativeWorkSeries", "Periodical"));
-    WD_TO_SCHEMA_TYPES.put("Q43229", Collections.singletonList("Organization"));
-    WD_TO_SCHEMA_TYPES.put("Q43501", Arrays.asList("Place", "CivicStructure", "Zoo"));
-    WD_TO_SCHEMA_TYPES.put("Q46970", Arrays.asList("Organization", "Airline"));
-    WD_TO_SCHEMA_TYPES.put("Q55488", Arrays.asList("Place", "CivicStructure", "TrainStation"));
-    WD_TO_SCHEMA_TYPES.put("Q56061", Arrays.asList("Place", "AdministrativeArea"));
-    WD_TO_SCHEMA_TYPES.put("Q79007", Collections.singletonList("Place")); //street
-    WD_TO_SCHEMA_TYPES.put("Q79913", Arrays.asList("Organization", "NGO"));
-    WD_TO_SCHEMA_TYPES.put("Q95074", Collections.singletonList("Person")); //fictional character
-    WD_TO_SCHEMA_TYPES.put("Q107390", Arrays.asList("Place", "AdministrativeArea", "State"));
-    WD_TO_SCHEMA_TYPES.put("Q125191", Arrays.asList("CreativeWork", "VisualArtwork", "Photograph"));
-    WD_TO_SCHEMA_TYPES.put("Q132241", Arrays.asList("Event", "Festival"));
-    WD_TO_SCHEMA_TYPES.put("Q149566", Arrays.asList("Organization", "EducationalOrganization", "MiddleSchool")); //TODO: US only
-    WD_TO_SCHEMA_TYPES.put("Q157570", Arrays.asList("Place", "CivicStructure", "Crematorium"));
-    WD_TO_SCHEMA_TYPES.put("Q166142", Arrays.asList("CreativeWork", "SoftwareApplication"));
-    WD_TO_SCHEMA_TYPES.put("Q191067", Arrays.asList("CreativeWork", "Article"));
-    WD_TO_SCHEMA_TYPES.put("Q207628", Arrays.asList("CreativeWork", "MusicComposition"));
-    WD_TO_SCHEMA_TYPES.put("Q215380", Arrays.asList("Organization", "PerformingGroup", "MusicGroup"));
-    WD_TO_SCHEMA_TYPES.put("Q215627", Collections.singletonList("Person")); //person
-    WD_TO_SCHEMA_TYPES.put("Q219239", Arrays.asList("CreativeWork", "Recipe"));
-    WD_TO_SCHEMA_TYPES.put("Q277759", Arrays.asList("CreativeWork", "CreativeWorkSeries", "BookSeries"));
-    WD_TO_SCHEMA_TYPES.put("Q431289", Collections.singletonList("Brand"));
-    WD_TO_SCHEMA_TYPES.put("Q482994", Arrays.asList("CreativeWork", "MusicPlaylist", "MusicAlbum")); //album
-    WD_TO_SCHEMA_TYPES.put("Q483110", Arrays.asList("Place", "CivicStructure", "StadiumOrArena"));
-    WD_TO_SCHEMA_TYPES.put("Q486972", Collections.singletonList("Place")); //human settlement
-    WD_TO_SCHEMA_TYPES.put("Q494829", Arrays.asList("Place", "CivicStructure", "BusStation"));
-    WD_TO_SCHEMA_TYPES.put("Q543654", Arrays.asList("Place", "CivicStructure", "GovernmentBuilding", "CityHall"));
-    WD_TO_SCHEMA_TYPES.put("Q629206", Collections.singletonList("ComputerLanguage"));
-    WD_TO_SCHEMA_TYPES.put("Q860861", Arrays.asList("CreativeWork", "VisualArtwork", "Sculpture"));
-    WD_TO_SCHEMA_TYPES.put("Q861951", Arrays.asList("Place", "CivicStructure", "PoliceStation"));
-    WD_TO_SCHEMA_TYPES.put("Q928830", Arrays.asList("Place", "CivicStructure", "SubwayStation"));
-    WD_TO_SCHEMA_TYPES.put("Q953806", Arrays.asList("Place", "CivicStructure", "BusStop"));
-    WD_TO_SCHEMA_TYPES.put("Q2659904", Arrays.asList("Organization", "GovernmentOrganization"));
-    WD_TO_SCHEMA_TYPES.put("Q1137809", Arrays.asList("Place", "CivicStructure", "GovernmentBuilding", "Courthouse"));
-    WD_TO_SCHEMA_TYPES.put("Q1195942", Arrays.asList("Place", "CivicStructure", "FireStation"));
-    WD_TO_SCHEMA_TYPES.put("Q1248784", Arrays.asList("Place", "CivicStructure", "Airport"));
-    WD_TO_SCHEMA_TYPES.put("Q1370598", Arrays.asList("Place", "CivicStructure", "PlaceOfWorship"));
-    WD_TO_SCHEMA_TYPES.put("Q1656682", Collections.singletonList("Event"));
-    WD_TO_SCHEMA_TYPES.put("Q1980247", Arrays.asList("CreativeWork", "Chapter"));
-    WD_TO_SCHEMA_TYPES.put("Q1983062", Arrays.asList("CreativeWork", "Episode"));
-    WD_TO_SCHEMA_TYPES.put("Q2281788", Arrays.asList("Place", "CivicStructure", "Aquarium"));
-    WD_TO_SCHEMA_TYPES.put("Q2393314", Arrays.asList("Organization", "PerformingGroup", "DanceGroup"));
-    WD_TO_SCHEMA_TYPES.put("Q2416217", Arrays.asList("Organization", "PerformingGroup", "TheaterGroup"));
-    WD_TO_SCHEMA_TYPES.put("Q3305213", Arrays.asList("CreativeWork", "VisualArtwork", "Painting"));
-    WD_TO_SCHEMA_TYPES.put("Q3331189", Collections.singletonList("CreativeWork")); //Edition
-    WD_TO_SCHEMA_TYPES.put("Q3464665", Arrays.asList("CreativeWork", "CreativeWorkSeason", "TVSeason")); //TV season
-    WD_TO_SCHEMA_TYPES.put("Q3917681", Arrays.asList("Place", "CivicStructure", "GovernmentBuilding", "Embassy"));
-    WD_TO_SCHEMA_TYPES.put("Q4438121", Arrays.asList("Organization", "SportsOrganization"));
-    WD_TO_SCHEMA_TYPES.put("Q4502142", Arrays.asList("CreativeWork", "VisualArtwork"));
-    WD_TO_SCHEMA_TYPES.put("Q4830453", Arrays.asList("Organization", "Corporation"));
-    WD_TO_SCHEMA_TYPES.put("Q5398426", Arrays.asList("CreativeWork", "CreativeWorkSeries", "TVSeries"));
-    WD_TO_SCHEMA_TYPES.put("Q5707594", Arrays.asList("CreativeWork", "Article", "NewsArticle"));
-    WD_TO_SCHEMA_TYPES.put("Q7058673", Arrays.asList("CreativeWork", "CreativeWorkSeries", "VideoGameSeries"));
-    WD_TO_SCHEMA_TYPES.put("Q7138926", Arrays.asList("Place", "CivicStructure", "GovernmentBuilding", "LegislativeBuilding"));
-    WD_TO_SCHEMA_TYPES.put("Q8719053", Arrays.asList("Place", "CivicStructure", "MusicVenue"));
-    WD_TO_SCHEMA_TYPES.put("Q12973014", Arrays.asList("Organization", "SportsOrganization", "SportsTeam"));
-    WD_TO_SCHEMA_TYPES.put("Q13100073", Collections.singletonList("Place")); //Chinese village TODO
-    WD_TO_SCHEMA_TYPES.put("Q13442814", Arrays.asList("CreativeWork", "Article", "ScholarlyArticle")); //scientific article
-    WD_TO_SCHEMA_TYPES.put("Q14406742", Arrays.asList("CreativeWork", "CreativeWorkSeries", " Periodical", "ComicSeries"));
-    WD_TO_SCHEMA_TYPES.put("Q14623351", Arrays.asList("CreativeWork", "CreativeWorkSeries", "RadioSeries"));
-    WD_TO_SCHEMA_TYPES.put("Q16831714", Arrays.asList("Place", "CivicStructure", "GovernmentBuilding"));
-    WD_TO_SCHEMA_TYPES.put("Q17537576", Collections.singletonList("CreativeWork")); //creative work
-    WD_TO_SCHEMA_TYPES.put("Q18674739", Arrays.asList("Place", "CivicStructure", "EventVenue"));
-    //WD_TO_SCHEMA_TYPES.put("Q1137809", Arrays.asList("Place", "CivicStructure", "GovernmentBuilding", "DefenceEstablishment"));
-    WD_TO_SCHEMA_TYPES.put("Q19816504", Arrays.asList("CreativeWork", "PublicationVolume"));
-    WD_TO_SCHEMA_TYPES.put("Q20950067", Arrays.asList("Organization", "EducationalOrganization", "ElementarySchool")); //TODO: US only
-    WD_TO_SCHEMA_TYPES.put("Q27108230", Arrays.asList("Place", "CivicStructure", "Organization", "LocalBusiness", "LodgingBusiness", "Campground"));
-  }
 
   public static void main(String[] args) throws ParseException {
     Options options = new Options();
@@ -189,7 +83,7 @@ public class Main {
   }
 
   private static void doPartition(PartitionedStatements partitionedStatements, Path wdDump) {
-    NTriplesReader reader = new NTriplesReader(valueFactory);
+    NTriplesReader reader = new NTriplesReader(VALUE_FACTORY);
     try (PartitionedStatements.Writer writer = partitionedStatements.getWriter(t -> keyForIri(t.getPredicate()))) {
       reader.read(wdDump).parallel().forEach(writer::write);
     }
@@ -200,6 +94,18 @@ public class Main {
   }
 
   private static void buildYago(PartitionedStatements partitionedStatements, Path outputFile) {
+    var classInstances = classesFromSchema(partitionedStatements);
+    var yagoClasses = classInstances.entrySet().stream().map(e -> {
+      var yagoClass = e.getKey();
+      return e.getValue().map(i -> VALUE_FACTORY.createStatement(i, RDF.TYPE, yagoClass));
+    }).reduce(PlanNode::union).get();
+
+    var yagoFacts = yagoClasses.union(propertiesFromSchema(partitionedStatements, classInstances));
+
+    (new JavaStreamEvaluator(VALUE_FACTORY)).evaluateToNTriples(yagoFacts, outputFile);
+  }
+
+  private static Map<Resource, PlanNode<Resource>> classesFromSchema(PartitionedStatements partitionedStatements) {
     var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31));
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279));
 
@@ -207,87 +113,131 @@ public class Main {
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
 
-    var badWikidataClasses = PlanNode.fromCollection(WD_BAD_TYPES).map(t -> (Resource) valueFactory.createIRI(WD_PREFIX + t))
+    var badWikidataClasses = PlanNode.fromCollection(WD_BAD_TYPES).map(t -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX + t))
             .transitiveClosure(wikidataSubClassOf, Function.identity(), t -> (Resource) t.getObject(), (e, t) -> t.getSubject());
 
     var badWikidataItems = wikidataInstanceOf.join(badWikidataClasses, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1.getSubject());
 
-    var schemaThings = wikidataItems.antiJoin(badWikidataItems, Function.identity());
+    var schemaThings = wikidataItems.antiJoin(badWikidataItems, Function.identity()).cache();
 
-    var classMapping = PlanNode.fromCollection(WD_TO_SCHEMA_TYPES.entrySet()).flatMap(e -> e.getValue().stream().map(v -> new Pair<>(
-            (Resource) valueFactory.createIRI(WD_PREFIX + e.getKey()),
-            valueFactory.createIRI(SCHEMA_PREFIX + v)
-    ))).transitiveClosure(wikidataSubClassOf, Pair::getKey, Statement::getObject, (e, t) -> new Pair<>(t.getSubject(), e.getValue()));
+    Map<Resource, PlanNode<Resource>> instancesSet = new HashMap<>();
+    instancesSet.put(SCHEMA_THING, schemaThings);
 
-    var yagoTypes = wikidataInstanceOf
-            .join(schemaThings, Statement::getSubject, Function.identity(), (t1, t2) -> t1)
-            .join(classMapping, Statement::getObject, Pair::getKey, (t1, t2) -> valueFactory.createStatement(t1.getSubject(), RDF.TYPE, t2.getValue()))
-            .union(schemaThings.map(s -> valueFactory.createStatement(s, RDF.TYPE, SCHEMA_THING)));
+    Multimap<Resource, Resource> classMapping = HashMultimap.create();
+    ShaclSchema.getSchema().getNodeShapes().forEach(nodeShape ->
+            nodeShape.getClasses().forEach(yagoClass ->
+                    nodeShape.getFromClasses().forEach(sourceClass -> classMapping.put(yagoClass, sourceClass))));
 
-    var yagoFacts = yagoTypes.union(propertiesFromSchema(partitionedStatements));
+    for (Map.Entry<Resource, Collection<Resource>> entry : classMapping.asMap().entrySet()) {
+        Resource yagoClass = entry.getKey();
+        var sourceClasses = PlanNode.fromCollection(entry.getValue())
+                .transitiveClosure(wikidataSubClassOf, Function.identity(), s -> (Resource) s.getObject(), (e, t) -> t.getSubject());
+      var mappedInstance = wikidataInstanceOf
+              .join(sourceClasses, s -> (Resource) s.getObject(), Function.identity(), (t1, t2) -> t1.getSubject())
+              .join(schemaThings, Function.identity(), Function.identity(), (t1, t2) -> t1)
+              .cache();
+      instancesSet.put(yagoClass, mappedInstance);
+      }
 
-    (new JavaStreamEvaluator(valueFactory)).evaluateToNTriples(yagoFacts, outputFile);
+      return instancesSet;
+    }
+
+  private static PlanNode<Statement> propertiesFromSchema(PartitionedStatements partitionedStatements, Map<Resource, PlanNode<Resource>> classInstances) {
+      return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
+        IRI yagoProperty = propertyShape.getProperty();
+
+        var triples = propertyShape.getFromProperties()
+                .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
+                .reduce(PlanNode::union).orElseGet(PlanNode::empty)
+                .map(triple -> VALUE_FACTORY.createStatement(triple.getSubject(), yagoProperty, triple.getObject()));
+
+        // Datatype filter
+        if (propertyShape.getDatatypes().isPresent()) {
+          Set<IRI> dts = propertyShape.getDatatypes().get();
+
+          //We map IRIs to xsd:anyUri
+          if (dts.contains(XMLSchema.ANYURI)) {
+            triples = triples.flatMap(t -> {
+              Value object = t.getObject();
+              if (object instanceof IRI || (object instanceof Literal && XMLSchema.ANYURI.equals(((Literal) object).getDatatype()))) {
+                return normalizeUri(object.stringValue())
+                        .map(o -> VALUE_FACTORY.createStatement(t.getSubject(), t.getPredicate(), VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI)));
+              } else {
+                return Stream.of(t);
+              }
+            });
+          }
+          //TODO: time and quantity values
+          triples = triples.filter(t -> t.getObject() instanceof Literal && dts.contains(((Literal) t.getObject()).getDatatype()));
+        }
+
+        // Range type filter
+        if (propertyShape.getNodeShape().isPresent()) {
+          ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
+          Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
+          if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
+            triples = triples.flatMap(t -> {
+              //TODO: precision
+              Matcher matcher = WKT_COORDINATES_PATTERN.matcher(t.getObject().stringValue());
+              if (!matcher.matches()) {
+                return Stream.of(t);
+              }
+              double longitude = Float.parseFloat(matcher.group(1));
+              double latitude = Float.parseFloat(matcher.group(2));
+              IRI geo = VALUE_FACTORY.createIRI("geo:" + latitude + "," + longitude);
+              return Stream.of(
+                      VALUE_FACTORY.createStatement(t.getSubject(), t.getPredicate(), geo),
+                      VALUE_FACTORY.createStatement(geo, RDF.TYPE, SCHEMA_GEO_COORDINATES),
+                      VALUE_FACTORY.createStatement(geo, SCHEMA_LATITUDE, VALUE_FACTORY.createLiteral(latitude)),
+                      VALUE_FACTORY.createStatement(geo, SCHEMA_LONGITUDE, VALUE_FACTORY.createLiteral(longitude))
+              );
+            });
+          } else {
+            var rangeExtension = getInstancesOfShape(nodeShape, classInstances);
+            triples = triples
+                    .filter(t -> t.getObject() instanceof Resource)
+                    .join(rangeExtension, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1);
+          }
+        }
+
+        //Regex
+        if (propertyShape.getPattern().isPresent()) {
+          Pattern pattern = propertyShape.getPattern().get();
+          triples = triples.filter(t -> pattern.matcher(t.getObject().stringValue()).matches());
+        }
+
+        // Domain type filter
+        var domainExtension = propertyShape.getParentShapes().stream()
+                .flatMap(Collection::stream)
+                .map(shape -> getInstancesOfShape(shape, classInstances))
+                .reduce(PlanNode::union).get();
+        triples = triples
+                .join(domainExtension, Statement::getSubject, Function.identity(), (t1, t2) -> t1);
+
+        return triples;
+      }).reduce(PlanNode::union).get();
+    }
+
+  private static PlanNode<Resource> getInstancesOfShape(ShaclSchema.NodeShape nodeShape, Map<Resource, PlanNode<Resource>> classInstances) {
+    return nodeShape.getClasses()
+            .map(cls -> {
+              if (!classInstances.containsKey(cls)) {
+                System.err.println("No instances found for class " + cls);
+              }
+              return classInstances.getOrDefault(cls, PlanNode.empty());
+            })
+            .reduce(PlanNode::union).get();
   }
 
-  private static PlanNode<Statement> propertiesFromSchema(PartitionedStatements partitionedStatements) {
-    var schema = ShaclSchema.getSchema();
-    return schema.getPropertyShapes().map(propertyShape -> {
-      IRI yagoProperty = propertyShape.getProperty();
-
-      var triples = propertyShape.getWikidataProperties().stream()
-              .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
-              .reduce(PlanNode::union).orElseGet(PlanNode::empty)
-              .map(triple -> valueFactory.createStatement(triple.getSubject(), yagoProperty, triple.getObject()));
-
-      // Datatype filter
-      if (propertyShape.getDatatypes().isPresent()) {
-        Set<IRI> dts = propertyShape.getDatatypes().get();
-
-        //We map IRIs to xsd:anyUri
-        if (dts.contains(XMLSchema.ANYURI)) {
-          triples = triples.map(t -> {
-            if (t.getObject() instanceof IRI) {
-              return valueFactory.createStatement(t.getSubject(), t.getPredicate(), valueFactory.createLiteral(t.getObject().stringValue(), XMLSchema.ANYURI));
-            } else {
-              return t;
-            }
-          });
+    private static Stream<String> normalizeUri(String uri) {
+      try {
+        URI parsedURI = new URI(uri).normalize();
+        if ((parsedURI.getScheme().equals("http") || parsedURI.getScheme().equals("https")) && parsedURI.getPath().isEmpty()) {
+          parsedURI = parsedURI.resolve("/"); //We make sure there is always a path
         }
-        //TODO: time and quantity values
-        triples = triples.filter(t -> t.getObject() instanceof Literal && dts.contains(((Literal) t.getObject()).getDatatype()));
+        return Stream.of(parsedURI.toString());
+      } catch (URISyntaxException e) {
+        return Stream.empty();
       }
-
-      // Type filter
-      if (propertyShape.getNodeShape().isPresent()) {
-        ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
-        Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
-        if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
-          triples = triples.flatMap(t -> {
-            //TODO: precision
-            Matcher matcher = WKT_COORDINATES_PATTERN.matcher(t.getObject().stringValue());
-            if (!matcher.matches()) {
-              return Stream.empty();
-            }
-            double longitude = Float.parseFloat(matcher.group(1));
-            double latitude = Float.parseFloat(matcher.group(2));
-            IRI geo = valueFactory.createIRI("geo:" + latitude + "," + longitude);
-            return Stream.of(
-                    valueFactory.createStatement(t.getSubject(), t.getPredicate(), geo),
-                    valueFactory.createStatement(geo, RDF.TYPE, SCHEMA_GEO_COORDINATES),
-                    valueFactory.createStatement(geo, SCHEMA_LATITUDE, valueFactory.createLiteral(latitude)),
-                    valueFactory.createStatement(geo, SCHEMA_LONGITUDE, valueFactory.createLiteral(longitude))
-            );
-          });
-        }
-      }
-
-      //Regex
-      if (propertyShape.getPattern().isPresent()) {
-        Pattern pattern = propertyShape.getPattern().get();
-        triples = triples.filter(t -> pattern.matcher(t.getObject().stringValue()).matches());
-      }
-
-      return triples;
-    }).reduce(PlanNode::union).get();
-  }
+    }
 }
