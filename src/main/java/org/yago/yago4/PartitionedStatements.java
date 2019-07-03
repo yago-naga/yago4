@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 final class PartitionedStatements {
@@ -41,6 +42,7 @@ final class PartitionedStatements {
     private final Function<Statement, String> computeKey;
     private final LoadingCache<String, RDFBinaryFormat.Writer> writers = CacheBuilder.newBuilder()
             .maximumSize(1000)
+            .refreshAfterWrite(15, TimeUnit.MINUTES)
             .removalListener((RemovalListener<String, RDFBinaryFormat.Writer>) removal -> removal.getValue().close())
             .build(new CacheLoader<>() {
               @Override
