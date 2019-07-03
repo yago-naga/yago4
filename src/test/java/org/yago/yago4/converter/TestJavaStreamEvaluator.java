@@ -7,6 +7,7 @@ import org.yago.yago4.converter.utils.Pair;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -76,5 +77,24 @@ public class TestJavaStreamEvaluator {
             evaluator.evaluateToList(PlanNode.fromCollection(Arrays.asList(1, 2))
                     .union(PlanNode.fromCollection(Arrays.asList(9, 10))))
     );
+  }
+
+  @Test
+  void testCache() {
+    AtomicInteger counter = new AtomicInteger(0);
+    var cached = PlanNode.fromCollection(Arrays.asList(0, 0)).map(t -> t + counter.addAndGet(1)).cache();
+    assertEquals(
+            Arrays.asList(1, 2, 1, 2),
+            evaluator.evaluateToList(cached.union(cached))
+    );
+  }
+
+  @Test
+  void testNoCache() {
+    AtomicInteger counter = new AtomicInteger(0);
+    var stream = PlanNode.fromCollection(Arrays.asList(0, 0)).map(t -> t + counter.addAndGet(1));
+    var results = evaluator.evaluateToList(stream.union(stream));
+    results.sort(Integer::compareTo);
+    assertEquals(Arrays.asList(1, 2, 3, 4), results);
   }
 }

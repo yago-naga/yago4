@@ -12,8 +12,12 @@ import java.util.stream.Stream;
 
 public abstract class PlanNode<T> {
 
-  public <T2, TO> PlanNode<T> antiJoin(PlanNode<T2> right, Function<T, T2> leftKey) {
+  public <T2> PlanNode<T> antiJoin(PlanNode<T2> right, Function<T, T2> leftKey) {
     return new AntiJoinNode<>(this, right, leftKey);
+  }
+
+  public PlanNode<T> cache() {
+    return new CacheNode<>(this);
   }
 
   public static <T> PlanNode<T> empty() {
