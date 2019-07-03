@@ -74,6 +74,13 @@ public class ShaclSchema {
     ).distinct().map(PropertyShape::new);
   }
 
+  public Stream<Resource> getSuperClasses(Resource subClass) {
+    return Stream.concat(
+            Stream.of(subClass),
+            Models.getPropertyResources(model, subClass, RDFS.SUBCLASSOF).stream().flatMap(this::getSuperClasses)
+    );
+  }
+
   public interface NodeShape {
     String getName();
 
