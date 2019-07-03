@@ -11,14 +11,11 @@ import org.yago.yago4.converter.utils.NTriplesWriter;
 import org.yago.yago4.converter.utils.RDFBinaryFormat;
 import org.yago.yago4.converter.utils.stream.StreamHashMapJoinSpliterator;
 import org.yago.yago4.converter.utils.stream.StreamHashSetAntiJoinSpliterator;
+import org.yago.yago4.converter.utils.stream.StreamHashSetJoinSpliterator;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -71,12 +68,10 @@ public class JavaStreamEvaluator {
   }
 
   private <T1, T2> Stream<T1> toStream(AntiJoinNode<T1, T2> plan) {
-    return StreamSupport.stream(new StreamHashSetAntiJoinSpliterator<>(
-                    toStream(plan.getLeftParent()).spliterator(),
-                    toSet(plan.getRightParent()),
-                    plan.getLeftKey()),
-            true
-    );
+    return toStream(new StreamHashSetAntiJoinSpliterator<>(
+            toStream(plan.getLeftParent()).spliterator(),
+            toSet(plan.getRightParent()),
+            plan.getLeftKey()));
   }
 
   private <T> Stream<T> toStream(FilterNode<T> plan) {
@@ -88,15 +83,20 @@ public class JavaStreamEvaluator {
   }
 
   private <T1, T2, TO, K> Stream<TO> toStream(JoinNode<T1, T2, TO, K> plan) {
-    Multimap<K, T2> right = Multimaps.synchronizedMultimap(ArrayListMultimap.create());
     Function<T2, K> rightKey = plan.getRightKey();
-    toStream(plan.getRightParent()).forEach(t -> right.put(rightKey.apply(t), t));
-
-    return join(toStream(plan.getLeftParent()), right, plan.getLeftKey(), plan.getMergeFunction());
-  }
-
-  private <T1, T2, TO, K> Stream<TO> join(Stream<T1> left, Multimap<K, T2> right, Function<T1, K> leftKey, BiFunction<T1, T2, TO> merge) {
-    return StreamSupport.stream(new StreamHashMapJoinSpliterator<>(left.spliterator(), right, leftKey, merge), true); //TODO: closure?
+    if (rightKey == Function.identity()) {
+      return toStream(new StreamHashSetJoinSpliterator<>(
+              toStream(plan.getLeftParent()).spliterator(),
+              toSet(plan.getRightParent()),
+              (Function<T1, T2>) plan.getLeftKey(),
+              plan.getMergeFunction()));
+    } else {
+      return toStream(new StreamHashMapJoinSpliterator<>(
+              toStream(plan.getLeftParent()).spliterator(),
+              toMultimap(toStream(plan.getRightParent()), rightKey),
+              plan.getLeftKey(),
+              plan.getMergeFunction()));
+    }
   }
 
   private <T> Stream<T> toStream(CollectionNode<T> plan) {
@@ -119,6 +119,13 @@ public class JavaStreamEvaluator {
     return Stream.concat(toStream(plan.getLeftParent()), toStream(plan.getRightParent()));
   }
 
+  private <T> boolean isAlreadyASet(PlanNode<T> plan) {
+    return plan instanceof FilterNode && isAlreadyASet(((FilterNode<T>) plan).getParent()) ||
+            plan instanceof CollectionNode ||
+            plan instanceof TransitiveClosureNode ||
+            plan instanceof UnionNode && (isAlreadyASet(((UnionNode<T>) plan).getLeftParent()) || isAlreadyASet(((UnionNode<T>) plan).getRightParent()));
+  }
+
   private <T> Set<T> toSet(PlanNode<T> plan) {
     if (plan instanceof FilterNode) {
       return toSet((FilterNode<T>) plan);
@@ -133,14 +140,8 @@ public class JavaStreamEvaluator {
     }
   }
 
-  private <T> boolean isAlreadySet(PlanNode<T> plan) {
-    return plan instanceof FilterNode && isAlreadySet(((FilterNode<T>) plan).getParent()) ||
-            plan instanceof CollectionNode ||
-            plan instanceof TransitiveClosureNode;
-  }
-
   private <T> Set<T> toSet(FilterNode<T> plan) {
-    if (isAlreadySet(plan.getParent())) {
+    if (isAlreadyASet(plan.getParent())) {
       Set<T> elements = toSet(plan.getParent());
       elements.removeIf(plan.getPredicate());
       return elements;
@@ -159,34 +160,60 @@ public class JavaStreamEvaluator {
   }
 
   private <T1, T2, K> Set<T1> toSet(TransitiveClosureNode<T1, T2, K> plan) {
-    Multimap<K, T2> right = ArrayListMultimap.create();
-    Function<T2, K> rightKey = plan.getRightKey();
-    toStream(plan.getRightParent()).forEachOrdered(t -> right.put(rightKey.apply(t), t)); //TODO: concurrent
-
     Set<T1> closure = toSet(plan.getLeftParent());
 
-    //TODO: avoid list creation
-    List<T1> iteration = new ArrayList<>(closure);
-    while (!iteration.isEmpty()) {
-      iteration = join(iteration.stream(), right, plan.getLeftKey(), plan.getMergeFunction())
-              .filter(t -> !closure.contains(t))
-              .peek(closure::add)
-              .collect(Collectors.toList());
+    Function<T2, K> rightKey = plan.getRightKey();
+    if (rightKey == Function.identity()) {
+      Set<T2> right = toSet(plan.getRightParent());
+      iterate(closure, iteration -> new StreamHashSetJoinSpliterator<>(
+              iteration,
+              right,
+              (Function<T1, T2>) plan.getLeftKey(),
+              plan.getMergeFunction()
+      ));
+    } else {
+      Multimap<K, T2> right = toMultimap(toStream(plan.getRightParent()), rightKey);
+      iterate(closure, iteration -> new StreamHashMapJoinSpliterator<>(
+              iteration,
+              right,
+              plan.getLeftKey(),
+              plan.getMergeFunction()
+      ));
     }
     return closure;
   }
 
   private <T> Set<T> toSet(UnionNode<T> plan) {
-    if (isAlreadySet(plan.getLeftParent())) {
+    if (isAlreadyASet(plan.getLeftParent())) {
       Set<T> elements = toSet(plan.getLeftParent());
       toStream(plan.getRightParent()).forEach(elements::add);
       return elements;
-    } else if (isAlreadySet(plan.getRightParent())) {
+    } else if (isAlreadyASet(plan.getRightParent())) {
       Set<T> elements = toSet(plan.getRightParent());
       toStream(plan.getLeftParent()).forEach(elements::add);
       return elements;
     } else {
       return toStream(plan).collect(Collectors.toCollection(ConcurrentHashMap::newKeySet));
+    }
+  }
+
+  private <T> Stream<T> toStream(Spliterator<T> spliterator) {
+    return StreamSupport.stream(spliterator, true);
+  }
+
+  private <K, V> Multimap<K, V> toMultimap(Stream<V> s, Function<V, K> computeKey) {
+    Multimap<K, V> map = Multimaps.synchronizedMultimap(ArrayListMultimap.create());
+    s.forEach(t -> map.put(computeKey.apply(t), t));
+    return map;
+  }
+
+  private <T> void iterate(Set<T> closure, Function<Spliterator<T>, Spliterator<T>> add) {
+    //TODO: avoid list creation
+    List<T> iteration = new ArrayList<>(closure);
+    while (!iteration.isEmpty()) {
+      iteration = toStream(add.apply(iteration.spliterator()))
+              .filter(closure::add)
+              .collect(Collectors.toList());
     }
   }
 }

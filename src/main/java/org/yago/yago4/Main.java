@@ -15,6 +15,7 @@ import org.yago.yago4.converter.utils.Pair;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -207,11 +208,11 @@ public class Main {
             .map(Statement::getSubject);
 
     var badWikidataClasses = PlanNode.fromCollection(WD_BAD_TYPES).map(t -> (Resource) valueFactory.createIRI(WD_PREFIX + t))
-            .transitiveClosure(wikidataSubClassOf, t -> t, Statement::getObject, (e, t) -> t.getSubject());
+            .transitiveClosure(wikidataSubClassOf, Function.identity(), t -> (Resource) t.getObject(), (e, t) -> t.getSubject());
 
-    var badWikidataItems = wikidataInstanceOf.join(badWikidataClasses, Statement::getObject, t -> t, (t1, t2) -> t1.getSubject());
+    var badWikidataItems = wikidataInstanceOf.join(badWikidataClasses, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1.getSubject());
 
-    var schemaThings = wikidataItems.antiJoin(badWikidataItems, t -> t);
+    var schemaThings = wikidataItems.antiJoin(badWikidataItems, Function.identity());
 
     var classMapping = PlanNode.fromCollection(WD_TO_SCHEMA_TYPES.entrySet()).flatMap(e -> e.getValue().stream().map(v -> new Pair<>(
             (Resource) valueFactory.createIRI(WD_PREFIX + e.getKey()),
@@ -219,7 +220,7 @@ public class Main {
     ))).transitiveClosure(wikidataSubClassOf, Pair::getKey, Statement::getObject, (e, t) -> new Pair<>(t.getSubject(), e.getValue()));
 
     var yagoTypes = wikidataInstanceOf
-            .join(schemaThings, Statement::getSubject, t -> t, (t1, t2) -> t1)
+            .join(schemaThings, Statement::getSubject, Function.identity(), (t1, t2) -> t1)
             .join(classMapping, Statement::getObject, Pair::getKey, (t1, t2) -> valueFactory.createStatement(t1.getSubject(), RDF.TYPE, t2.getValue()))
             .union(schemaThings.map(s -> valueFactory.createStatement(s, RDF.TYPE, SCHEMA_THING)));
 

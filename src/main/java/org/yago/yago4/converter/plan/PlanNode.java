@@ -32,6 +32,9 @@ public abstract class PlanNode<T> {
     return new CollectionNode<>(elements);
   }
 
+  /**
+   * It is strongly recommended to use Function.identity() instead of t -> t because it unlocks some optimizations.
+   */
   public <T2, TO, K> PlanNode<TO> join(PlanNode<T2> right, Function<T, K> leftKey, Function<T2, K> rightKey, BiFunction<T, T2, TO> mergeFunction) {
     return new JoinNode<>(this, right, leftKey, rightKey, mergeFunction);
   }
