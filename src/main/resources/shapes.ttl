@@ -264,6 +264,11 @@ ys:Book a sh:NodeShape ;
 ys:CreativeWorkSeason a sh:NodeShape ;
     sh:targetClass schema:CreativeWorkSeason ;
     sh:property [
+        sh:path schema:actor ;
+        sh:datatype ys:Person ;
+        ys:fromProperty wdt:P161 ;
+    ] ;
+    sh:property [
         sh:path schema:numberOfEpisodes ;
         sh:datatype xsd:integer ;
         sh:maxCount 1 ;
@@ -305,6 +310,11 @@ ys:ComicSeries a sh:NodeShape ;
 ys:MovieSeries a sh:NodeShape ;
     sh:targetClass schema:MovieSeries ;
     sh:property [
+        sh:path schema:actor ;
+        sh:datatype ys:Person ;
+        ys:fromProperty wdt:P161 ;
+    ] ;
+    sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P57 ;
@@ -324,6 +334,11 @@ ys:Periodical a sh:NodeShape ;
 ys:RadioSeries a sh:NodeShape ;
     sh:targetClass schema:MovieSeries ;
     ys:fromClass wd:Q14623351 ;
+    sh:property [
+        sh:path schema:actor ;
+        sh:datatype ys:Person ;
+        ys:fromProperty wdt:P161 ;
+    ] ;
     sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
@@ -351,6 +366,11 @@ ys:RadioSeries a sh:NodeShape ;
 ys:TVSeries a sh:NodeShape ;
     sh:targetClass schema:TVSeries ;
     ys:fromClass wd:Q5398426 ;
+    sh:property [
+        sh:path schema:actor ;
+        sh:datatype ys:Person ;
+        ys:fromProperty wdt:P161 ;
+    ] ;
     sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
@@ -404,6 +424,11 @@ ys:Episode a sh:NodeShape ;
     sh:targetClass schema:Episode ;
     ys:fromClass wd:Q1983062 ;
     sh:property [
+        sh:path schema:actor ;
+        sh:datatype ys:Person ;
+        ys:fromProperty wdt:P161 ;
+    ] ;
+    sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P57 ;
@@ -449,6 +474,11 @@ ys:MusicAlbum a sh:NodeShape ;
 ys:Movie a sh:NodeShape ;
     sh:targetClass schema:Movie ;
     ys:fromClass wd:Q11424 ;
+    sh:property [
+        sh:path schema:actor ;
+        sh:datatype ys:Person ;
+        ys:fromProperty wdt:P161 ;
+    ] ;
     sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
@@ -498,6 +528,11 @@ ys:PublicationVolume a sh:NodeShape ;
 ys:VideoGame a sh:NodeShape ;
     sh:targetClass schema:VideoGame ;
     ys:fromClass wd:Q7889 ;
+    sh:property [
+        sh:path schema:actor ;
+        sh:datatype ys:Person ;
+        ys:fromProperty wdt:P161 ;
+    ] ;
     sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
@@ -663,6 +698,11 @@ ys:Organization a sh:NodeShape ;
         ys:fromProperty wdt:P276 ;
     ] ;
     sh:property [
+        sh:path schema:memberOf ;
+        sh:node ys:Organization ;
+        ys:fromProperty wdt:P463 ;
+    ] ;
+    sh:property [
         sh:path schema:parentOrganization ;
         sh:node ys:Organization ;
         ys:fromProperty wdt:P749 ;
@@ -723,6 +763,11 @@ ys:MusicGroup a sh:NodeShape ;
 ys:Person a sh:NodeShape ;
     sh:targetClass schema:Person ;
     ys:fromClass wd:Q215627 , wd:Q5 ;
+    sh:property [
+        sh:path schema:alumniOf ;
+        sh:node ys:Organization ;
+        ys:fromProperty wdt:P69 ;
+    ] ;
     sh:property [
         sh:path schema:award ;
         sh:node ys:Thing ;
@@ -800,12 +845,31 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P21 ;
     ] ;
     sh:property [
+        sh:path schema:memberOf ;
+        sh:node ys:Organization ;
+        ys:fromProperty wdt:P463 ;
+    ] ;
+    sh:property [
+        sh:path schema:nationality ;
+        sh:node ys:Country ;
+        ys:fromProperty wdt:P27 ;
+    ] ;
+    sh:property [
         sh:path schema:parent ;
         sh:node ys:Person ;
         sh:maxCount 2 ;
         ys:fromProperty wdt:P22 , wdt:P25 ;
-    ] . #TODO: height, weight netWorth, spouse, worksFor, nationality
-
+    ] ;
+    sh:property [
+        sh:path schema:spouse ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P26 ;
+    ] ;
+    sh:property [
+        sh:path schema:worksFor ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P108 ;
+    ] . #TODO: height, weight netWorth
 
 ys:Place a sh:NodeShape ;
     sh:targetClass schema:Place ;
