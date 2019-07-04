@@ -5,9 +5,11 @@ import org.eclipse.rdf4j.model.Statement;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class PlanNode<T> {
@@ -60,7 +62,29 @@ public abstract class PlanNode<T> {
   }
 
   public PlanNode<T> union(PlanNode<T> right) {
-    return new UnionNode<>(this, right);
+    // We balance unions to avoid very deeply nested plans
+    List<PlanNode<T>> children = Stream.concat(unionChildren(this), unionChildren(right)).collect(Collectors.toList());
+    return union(children, 0, children.size());
+  }
+
+  private static <T> Stream<PlanNode<T>> unionChildren(PlanNode<T> node) {
+    if (node instanceof UnionNode) {
+      return Stream.concat(unionChildren(((UnionNode<T>) node).getLeftParent()), unionChildren(((UnionNode<T>) node).getRightParent()));
+    } else {
+      return Stream.of(node);
+    }
+  }
+
+  private static <T> PlanNode<T> union(List<PlanNode<T>> nodes, int start, int end) {
+    switch (end - start) {
+      case 0:
+        return PlanNode.empty();
+      case 1:
+        return nodes.get(start);
+      default:
+        int middle = (end + start) / 2;
+        return new UnionNode<>(union(nodes, start, middle), union(nodes, middle, end));
+    }
   }
 
   @Override
