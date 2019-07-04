@@ -9,13 +9,14 @@ import org.eclipse.rdf4j.model.vocabulary.SKOS;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.EvaluationException;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class YagoValueFactory extends AbstractValueFactory {
+public class YagoValueFactory extends AbstractValueFactory implements Serializable {
   private static final String[] NUMERIC_PREFIXES = new String[]{
           "http://www.wikidata.org/Special:EntityData/",
           "http://www.wikidata.org/entity/",
@@ -180,63 +181,63 @@ public class YagoValueFactory extends AbstractValueFactory {
   private static final int CONSTANT_IRI_KEY = 6;
   private static final int NUMERIC_IRI_KEY = 7;
 
-  Value readBinaryTerm(DataInputStream inputStream) throws IOException {
-    int b = inputStream.readByte();
+  Value readBinaryTerm(DataInput dataInput) throws IOException {
+    int b = dataInput.readByte();
     switch (b) {
       case IRI_KEY:
-        return super.createIRI(inputStream.readUTF());
+        return super.createIRI(dataInput.readUTF());
       case BNODE_KEY:
-        return super.createBNode(inputStream.readUTF());
+        return super.createBNode(dataInput.readUTF());
       case STRING_LITERAL_KEY:
-        return super.createLiteral(inputStream.readUTF());
+        return super.createLiteral(dataInput.readUTF());
       case LANG_STRING_LITERAL_KEY:
-        return super.createLiteral(inputStream.readUTF(), inputStream.readUTF());
+        return super.createLiteral(dataInput.readUTF(), dataInput.readUTF());
       case TYPED_LITERAL_KEY:
-        return super.createLiteral(inputStream.readUTF(), (IRI) readBinaryTerm(inputStream));
+        return super.createLiteral(dataInput.readUTF(), (IRI) readBinaryTerm(dataInput));
       case CONSTANT_IRI_KEY:
-        return CONSTANTS[inputStream.readByte()];
+        return CONSTANTS[dataInput.readByte()];
       case NUMERIC_IRI_KEY:
-        return new NumericIri(inputStream.readByte(), inputStream.readChar(), inputStream.readInt());
+        return new NumericIri(dataInput.readByte(), dataInput.readChar(), dataInput.readInt());
       default:
         throw new EvaluationException("Not expected type byte: " + b);
     }
   }
 
-  static void writeBinaryTerm(Value term, DataOutputStream outputStream) throws IOException {
+  static void writeBinaryTerm(Value term, DataOutput dataOutput) throws IOException {
     if (term instanceof NumericIri) {
       NumericIri iri = (NumericIri) term;
-      outputStream.writeByte(NUMERIC_IRI_KEY);
-      outputStream.writeByte(iri.prefixId);
-      outputStream.writeChar(iri.prefixChar);
-      outputStream.writeInt(iri.id);
+      dataOutput.writeByte(NUMERIC_IRI_KEY);
+      dataOutput.writeByte(iri.prefixId);
+      dataOutput.writeChar(iri.prefixChar);
+      dataOutput.writeInt(iri.id);
     } else if (term instanceof IRI) {
       Integer encoding = CONSTANTS_IDS_FOR_IRI.get(term);
       if (encoding == null) {
-        outputStream.writeByte(IRI_KEY);
-        outputStream.writeUTF(term.stringValue());
+        dataOutput.writeByte(IRI_KEY);
+        dataOutput.writeUTF(term.stringValue());
       } else {
-        outputStream.writeByte(CONSTANT_IRI_KEY);
-        outputStream.writeByte(encoding);
+        dataOutput.writeByte(CONSTANT_IRI_KEY);
+        dataOutput.writeByte(encoding);
       }
     } else if (term instanceof BNode) {
-      outputStream.writeByte(BNODE_KEY);
-      outputStream.writeUTF(term.stringValue());
+      dataOutput.writeByte(BNODE_KEY);
+      dataOutput.writeUTF(term.stringValue());
     } else if (term instanceof Literal) {
       Literal literal = (Literal) term;
       switch (literal.getDatatype().stringValue()) {
         case "http://www.w3.org/2001/XMLSchema#string":
-          outputStream.writeByte(STRING_LITERAL_KEY);
-          outputStream.writeUTF(literal.stringValue());
+          dataOutput.writeByte(STRING_LITERAL_KEY);
+          dataOutput.writeUTF(literal.stringValue());
           break;
         case "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString":
-          outputStream.writeByte(LANG_STRING_LITERAL_KEY);
-          outputStream.writeUTF(literal.stringValue());
-          outputStream.writeUTF(literal.getLanguage().get());
+          dataOutput.writeByte(LANG_STRING_LITERAL_KEY);
+          dataOutput.writeUTF(literal.stringValue());
+          dataOutput.writeUTF(literal.getLanguage().get());
           break;
         default:
-          outputStream.writeByte(TYPED_LITERAL_KEY);
-          outputStream.writeUTF(literal.stringValue());
-          writeBinaryTerm(literal.getDatatype(), outputStream);
+          dataOutput.writeByte(TYPED_LITERAL_KEY);
+          dataOutput.writeUTF(literal.stringValue());
+          writeBinaryTerm(literal.getDatatype(), dataOutput);
           break;
       }
     } else {

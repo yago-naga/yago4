@@ -26,7 +26,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -340,7 +339,7 @@ public class Main {
                     .intersection(bestRanks)
                     .join(partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(PSV_PREFIX, wikidataProperty.getLocalName())))
                             .mapToPair(t -> new Pair<>(t.getSubject(), (Resource) t.getObject()))
-                    ).values().mapToPair(Function.identity())
+                    ).values().mapToPair(t -> t)
     ).reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty);
   }
 

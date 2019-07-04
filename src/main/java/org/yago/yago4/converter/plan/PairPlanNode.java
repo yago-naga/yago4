@@ -4,10 +4,6 @@ import com.google.common.collect.Maps;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,27 +17,27 @@ public abstract class PairPlanNode<K, V> {
     return new UnionPairNode<>(Collections.emptyList());
   }
 
-  public PairPlanNode<K, V> filter(BiPredicate<K, V> predicate) {
+  public PairPlanNode<K, V> filter(SerializableBiPredicate<K, V> predicate) {
     return new FilterPairNode<>(this, predicate);
   }
 
-  public PairPlanNode<K, V> filterKey(Predicate<K> predicate) {
-    return new FilterPairNode<>(this, (k, v) -> predicate.test(k));
+  public PairPlanNode<K, V> filterKey(SerializablePredicate<K> predicate) {
+    return filter((k, v) -> predicate.test(k));
   }
 
-  public PairPlanNode<K, V> filterValue(Predicate<V> predicate) {
-    return new FilterPairNode<>(this, (k, v) -> predicate.test(v));
+  public PairPlanNode<K, V> filterValue(SerializablePredicate<V> predicate) {
+    return filter((k, v) -> predicate.test(v));
   }
 
-  public <KO, VO> PairPlanNode<KO, VO> flatMapPair(BiFunction<K, V, Stream<Map.Entry<KO, VO>>> function) {
+  public <KO, VO> PairPlanNode<KO, VO> flatMapPair(SerializableBiFunction<K, V, Stream<Map.Entry<KO, VO>>> function) {
     return new FlatMapPairNode<>(this, function);
   }
 
-  public <KO> PairPlanNode<KO, V> flatMapKey(Function<K, Stream<KO>> function) {
+  public <KO> PairPlanNode<KO, V> flatMapKey(SerializableFunction<K, Stream<KO>> function) {
     return flatMapPair((k, v) -> function.apply(k).map(k2 -> Maps.immutableEntry(k2, v)));
   }
 
-  public <VO> PairPlanNode<K, VO> flatMapValue(Function<V, Stream<VO>> function) {
+  public <VO> PairPlanNode<K, VO> flatMapValue(SerializableFunction<V, Stream<VO>> function) {
     return flatMapPair((k, v) -> function.apply(v).map(v2 -> Maps.immutableEntry(k, v2)));
   }
 
@@ -57,19 +53,19 @@ public abstract class PairPlanNode<K, V> {
     return new IntersectionPairNode<>(this, right);
   }
 
-  public <TO> PlanNode<TO> map(BiFunction<K, V, TO> function) {
+  public <TO> PlanNode<TO> map(SerializableBiFunction<K, V, TO> function) {
     return new MapFromPairNode<>(this, function);
   }
 
-  public <KO, VO> PairPlanNode<KO, VO> mapPair(BiFunction<K, V, Map.Entry<KO, VO>> function) {
+  public <KO, VO> PairPlanNode<KO, VO> mapPair(SerializableBiFunction<K, V, Map.Entry<KO, VO>> function) {
     return new MapPairNode<>(this, function);
   }
 
-  public <KO> PairPlanNode<KO, V> mapKey(Function<K, KO> function) {
+  public <KO> PairPlanNode<KO, V> mapKey(SerializableFunction<K, KO> function) {
     return mapPair((k, v) -> Maps.immutableEntry(function.apply(k), v));
   }
 
-  public <VO> PairPlanNode<K, VO> mapValue(Function<V, VO> function) {
+  public <VO> PairPlanNode<K, VO> mapValue(SerializableFunction<V, VO> function) {
     return mapPair((k, v) -> Maps.immutableEntry(k, function.apply(v)));
   }
 

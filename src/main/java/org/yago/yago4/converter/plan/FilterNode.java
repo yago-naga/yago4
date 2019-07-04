@@ -1,12 +1,10 @@
 package org.yago.yago4.converter.plan;
 
-import java.util.function.Predicate;
-
 public class FilterNode<T> extends PlanNode<T> {
   private final PlanNode<T> parent;
-  private final Predicate<T> predicate;
+  private final SerializablePredicate<T> predicate;
 
-  FilterNode(PlanNode<T> parent, Predicate<T> predicate) {
+  FilterNode(PlanNode<T> parent, SerializablePredicate<T> predicate) {
     this.parent = parent;
     this.predicate = predicate;
   }
@@ -15,7 +13,7 @@ public class FilterNode<T> extends PlanNode<T> {
     return parent;
   }
 
-  public Predicate<T> getPredicate() {
+  public SerializablePredicate<T> getPredicate() {
     return predicate;
   }
 

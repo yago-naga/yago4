@@ -1,12 +1,10 @@
 package org.yago.yago4.converter.plan;
 
-import java.util.function.Function;
-
 public class MapNode<TI, TO> extends PlanNode<TO> {
   private final PlanNode<TI> parent;
-  private final Function<TI, TO> function;
+  private final SerializableFunction<TI, TO> function;
 
-  MapNode(PlanNode<TI> parent, Function<TI, TO> function) {
+  MapNode(PlanNode<TI> parent, SerializableFunction<TI, TO> function) {
     this.parent = parent;
     this.function = function;
   }
@@ -15,7 +13,7 @@ public class MapNode<TI, TO> extends PlanNode<TO> {
     return parent;
   }
 
-  public Function<TI, TO> getFunction() {
+  public SerializableFunction<TI, TO> getFunction() {
     return function;
   }
 

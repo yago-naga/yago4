@@ -50,16 +50,16 @@ public class NTriplesReader implements Serializable {
     return new BufferedReader(new InputStreamReader(inputStream));
   }
 
-  private Stream<Statement> parseNTriplesLineSafe(String line) {
+  public Stream<Statement> parseNTriplesLineSafe(String line) {
     try {
-      return parseNTriplesLine(line);
+      return parseNTriplesLineUnsafe(line);
     } catch (Exception e) {
       System.err.println(e.getMessage() + ": " + line);
       return Stream.empty();
     }
   }
 
-  private Stream<Statement> parseNTriplesLine(String line) {
+  private Stream<Statement> parseNTriplesLineUnsafe(String line) {
     int i = skipBlanks(line, 0);
     if (i >= line.length() || line.charAt(i) == '#') {
       return Stream.empty();

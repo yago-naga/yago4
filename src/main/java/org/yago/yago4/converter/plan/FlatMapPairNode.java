@@ -1,14 +1,13 @@
 package org.yago.yago4.converter.plan;
 
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 public class FlatMapPairNode<KI, VI, KO, VO> extends PairPlanNode<KO, VO> {
   private final PairPlanNode<KI, VI> parent;
-  private final BiFunction<KI, VI, Stream<Map.Entry<KO, VO>>> function;
+  private final SerializableBiFunction<KI, VI, Stream<Map.Entry<KO, VO>>> function;
 
-  FlatMapPairNode(PairPlanNode<KI, VI> parent, BiFunction<KI, VI, Stream<Map.Entry<KO, VO>>> function) {
+  FlatMapPairNode(PairPlanNode<KI, VI> parent, SerializableBiFunction<KI, VI, Stream<Map.Entry<KO, VO>>> function) {
     this.parent = parent;
     this.function = function;
   }
@@ -17,7 +16,7 @@ public class FlatMapPairNode<KI, VI, KO, VO> extends PairPlanNode<KO, VO> {
     return parent;
   }
 
-  public BiFunction<KI, VI, Stream<Map.Entry<KO, VO>>> getFunction() {
+  public SerializableBiFunction<KI, VI, Stream<Map.Entry<KO, VO>>> getFunction() {
     return function;
   }
 

@@ -1,12 +1,10 @@
 package org.yago.yago4.converter.plan;
 
-import java.util.function.BiPredicate;
-
 public class FilterPairNode<K, V> extends PairPlanNode<K, V> {
   private final PairPlanNode<K, V> parent;
-  private final BiPredicate<K, V> predicate;
+  private final SerializableBiPredicate<K, V> predicate;
 
-  FilterPairNode(PairPlanNode<K, V> parent, BiPredicate<K, V> predicate) {
+  FilterPairNode(PairPlanNode<K, V> parent, SerializableBiPredicate<K, V> predicate) {
     this.parent = parent;
     this.predicate = predicate;
   }
@@ -15,7 +13,7 @@ public class FilterPairNode<K, V> extends PairPlanNode<K, V> {
     return parent;
   }
 
-  public BiPredicate<K, V> getPredicate() {
+  public SerializableBiPredicate<K, V> getPredicate() {
     return predicate;
   }
 

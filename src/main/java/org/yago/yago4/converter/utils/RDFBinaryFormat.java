@@ -18,8 +18,24 @@ import java.util.stream.StreamSupport;
 public class RDFBinaryFormat implements Serializable {
 
   public static Stream<Statement> read(YagoValueFactory valueFactory, Path filePath) {
-    return StreamSupport.stream(() -> new BinaryReaderIterator(valueFactory, filePath), 0, true);
+    try {
+      DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(Files.newInputStream(filePath)));
+      return read(valueFactory, dataInputStream).onClose(() -> {
+        try {
+          dataInputStream.close();
+        } catch (IOException e) {
+          throw new EvaluationException(e);
+        }
+      });
+    } catch (IOException e) {
+      throw new EvaluationException(e);
+    }
   }
+
+  public static Stream<Statement> read(YagoValueFactory valueFactory, DataInput dataInput) {
+    return StreamSupport.stream(new BinaryReaderIterator(valueFactory, dataInput), true);
+  }
+
 
   public static void write(Stream<Statement> stream, Path filePath) {
     try (Writer writer = new Writer(filePath, false)) {
@@ -35,32 +51,27 @@ public class RDFBinaryFormat implements Serializable {
     }
   }
 
-  private static class BinaryReaderIterator implements Spliterator<Statement>, AutoCloseable {
+  private static class BinaryReaderIterator implements Spliterator<Statement> {
     private static final int BATCH_SIZE = 4096;
 
     private final YagoValueFactory valueFactory;
-    private final DataInputStream inputStream;
+    private final DataInput dataInput;
 
-    BinaryReaderIterator(YagoValueFactory valueFactory, Path filePath) {
-      try {
-        this.valueFactory = valueFactory;
-        inputStream = new DataInputStream(new BufferedInputStream(Files.newInputStream(filePath)));
-      } catch (IOException e) {
-        throw new EvaluationException(e);
-      }
+    BinaryReaderIterator(YagoValueFactory valueFactory, DataInput dataInput) {
+      this.valueFactory = valueFactory;
+      this.dataInput = dataInput;
     }
 
     @Override
     public boolean tryAdvance(Consumer<? super Statement> consumer) {
       try {
         consumer.accept(valueFactory.createStatement(
-                (Resource) valueFactory.readBinaryTerm(inputStream),
-                (IRI) valueFactory.readBinaryTerm(inputStream),
-                valueFactory.readBinaryTerm(inputStream)
+                (Resource) valueFactory.readBinaryTerm(dataInput),
+                (IRI) valueFactory.readBinaryTerm(dataInput),
+                valueFactory.readBinaryTerm(dataInput)
         ));
         return true;
       } catch (EOFException e) {
-        close();
         return false;
       } catch (IOException e) {
         throw new EvaluationException(e);
@@ -72,17 +83,15 @@ public class RDFBinaryFormat implements Serializable {
       try {
         while (true) {
           action.accept(valueFactory.createStatement(
-                  (Resource) valueFactory.readBinaryTerm(inputStream),
-                  (IRI) valueFactory.readBinaryTerm(inputStream),
-                  valueFactory.readBinaryTerm(inputStream)
+                  (Resource) valueFactory.readBinaryTerm(dataInput),
+                  (IRI) valueFactory.readBinaryTerm(dataInput),
+                  valueFactory.readBinaryTerm(dataInput)
           ));
         }
       } catch (EOFException e) {
         // End of file
       } catch (IOException e) {
         throw new EvaluationException(e);
-      } finally {
-        close();
       }
     }
 
@@ -93,9 +102,9 @@ public class RDFBinaryFormat implements Serializable {
       for (; i < batch.length; i++) {
         try {
           batch[i] = valueFactory.createStatement(
-                  (Resource) valueFactory.readBinaryTerm(inputStream),
-                  (IRI) valueFactory.readBinaryTerm(inputStream),
-                  valueFactory.readBinaryTerm(inputStream)
+                  (Resource) valueFactory.readBinaryTerm(dataInput),
+                  (IRI) valueFactory.readBinaryTerm(dataInput),
+                  valueFactory.readBinaryTerm(dataInput)
           );
         } catch (EOFException e) {
           break;
@@ -119,15 +128,6 @@ public class RDFBinaryFormat implements Serializable {
     @Override
     public int characteristics() {
       return 0;
-    }
-
-    @Override
-    public void close() {
-      try {
-        inputStream.close();
-      } catch (IOException e) {
-        throw new EvaluationException(e);
-      }
     }
   }
 

@@ -6,8 +6,6 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,11 +19,11 @@ public abstract class PlanNode<T> {
     return new CollectionNode<>(Collections.emptySet());
   }
 
-  public PlanNode<T> filter(Predicate<T> predicate) {
+  public PlanNode<T> filter(SerializablePredicate<T> predicate) {
     return new FilterNode<>(this, predicate);
   }
 
-  public <TO> PlanNode<TO> flatMap(Function<T, Stream<TO>> function) {
+  public <TO> PlanNode<TO> flatMap(SerializableFunction<T, Stream<TO>> function) {
     return new FlatMapNode<>(this, function);
   }
 
@@ -41,11 +39,11 @@ public abstract class PlanNode<T> {
     return new JoinNode<>(this, right);
   }
 
-  public <TO> PlanNode<TO> map(Function<T, TO> function) {
+  public <TO> PlanNode<TO> map(SerializableFunction<T, TO> function) {
     return new MapNode<>(this, function);
   }
 
-  public <KO, VO> PairPlanNode<KO, VO> mapToPair(Function<T, Map.Entry<KO, VO>> function) {
+  public <KO, VO> PairPlanNode<KO, VO> mapToPair(SerializableFunction<T, Map.Entry<KO, VO>> function) {
     return new MapToPairNode<>(this, function);
   }
 

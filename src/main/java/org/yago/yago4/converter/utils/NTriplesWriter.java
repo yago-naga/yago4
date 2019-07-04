@@ -1,7 +1,9 @@
 package org.yago.yago4.converter.utils;
 
+import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.Value;
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
 import org.yago.yago4.converter.EvaluationException;
 
@@ -31,6 +33,18 @@ public class NTriplesWriter {
       });
     } catch (IOException e) {
       throw new EvaluationException(e);
+    }
+  }
+
+  public String toString(Statement statement) {
+    Resource s = statement.getSubject();
+    IRI p = statement.getPredicate();
+    Value o = statement.getObject();
+    Resource c = statement.getContext();
+    if (c == null) {
+      return NTriplesUtil.toNTriplesString(s) + ' ' + NTriplesUtil.toNTriplesString(p) + ' ' + NTriplesUtil.toNTriplesString(o) + " .";
+    } else {
+      return NTriplesUtil.toNTriplesString(s) + ' ' + NTriplesUtil.toNTriplesString(p) + ' ' + NTriplesUtil.toNTriplesString(o) + ' ' + NTriplesUtil.toNTriplesString(c) + " .";
     }
   }
 }

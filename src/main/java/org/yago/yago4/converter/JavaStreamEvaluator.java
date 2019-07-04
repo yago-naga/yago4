@@ -13,9 +13,6 @@ import org.yago.yago4.converter.utils.stream.*;
 
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -110,7 +107,7 @@ public class JavaStreamEvaluator {
   }
 
   private <KI, VI, TO> Stream<TO> toStream(MapFromPairNode<KI, VI, TO> plan) {
-    BiFunction<KI, VI, TO> fn = plan.getFunction();
+    var fn = plan.getFunction();
     return toStream(plan.getParent()).map(e -> fn.apply(e.getKey(), e.getValue()));
   }
 
@@ -170,12 +167,12 @@ public class JavaStreamEvaluator {
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(FilterPairNode<K, V> plan) {
-    BiPredicate<K, V> fn = plan.getPredicate();
+    var fn = plan.getPredicate();
     return toStream(plan.getParent()).filter(e -> fn.test(e.getKey(), e.getValue()));
   }
 
   private <KI, VI, KO, VO> Stream<Map.Entry<KO, VO>> toStream(FlatMapPairNode<KI, VI, KO, VO> plan) {
-    BiFunction<KI, VI, Stream<Map.Entry<KO, VO>>> fn = plan.getFunction();
+    var fn = plan.getFunction();
     return toStream(plan.getParent()).flatMap(t -> fn.apply(t.getKey(), t.getValue()));
   }
 
@@ -200,17 +197,12 @@ public class JavaStreamEvaluator {
   }
 
   private <KI, VI, KO, VO> Stream<Map.Entry<KO, VO>> toStream(MapPairNode<KI, VI, KO, VO> plan) {
-    BiFunction<KI, VI, Map.Entry<KO, VO>> fn = plan.getFunction();
+    var fn = plan.getFunction();
     return toStream(plan.getParent()).map(t -> fn.apply(t.getKey(), t.getValue()));
   }
 
   private <TI, KO, VO> Stream<Map.Entry<KO, VO>> toStream(MapToPairNode<TI, KO, VO> plan) {
-    Function<TI, Map.Entry<KO, VO>> fn = plan.getFunction();
-    if (fn.equals(Function.identity())) {
-      return (Stream<Map.Entry<KO, VO>>) toStream(plan.getParent());
-    } else {
-      return toStream(plan.getParent()).map(plan.getFunction());
-    }
+    return toStream(plan.getParent()).map(plan.getFunction());
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(SubtractPairNode<K, V> plan) {
