@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 final class PartitionedStatements {
+
   private final Path dir;
 
   PartitionedStatements(Path dir) {
@@ -67,7 +68,7 @@ final class PartitionedStatements {
         String key = computeKey.apply(statement);
         writers.get(key).write(statement);
       } catch (IOException | ExecutionException e) {
-        throw new EvaluationException(e);
+        System.err.println(e.getLocalizedMessage());
       }
     }
 
