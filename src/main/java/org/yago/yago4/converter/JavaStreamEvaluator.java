@@ -15,8 +15,8 @@ import org.yago.yago4.converter.utils.stream.StreamHashSetJoinSpliterator;
 
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -26,7 +26,7 @@ public class JavaStreamEvaluator {
   private final YagoValueFactory valueFactory;
   private final NTriplesReader nTriplesReader;
   private final NTriplesWriter nTriplesWriter;
-  private final Map<PlanNode, Set> cache = new ConcurrentHashMap<>();
+  private final Map<PlanNode, Set> cache = new HashMap<>();
 
   public JavaStreamEvaluator(YagoValueFactory valueFactory) {
     this.valueFactory = valueFactory;
@@ -74,10 +74,11 @@ public class JavaStreamEvaluator {
   }
 
   private <T1, T2> Stream<T1> toStream(AntiJoinNode<T1, T2> plan) {
-    return toStream(new StreamHashSetAntiJoinSpliterator<>(
+    return toStream(() -> new StreamHashSetAntiJoinSpliterator<>(
             toStream(plan.getLeftParent()).spliterator(),
             toImmutableSet(plan.getRightParent()),
-            plan.getLeftKey()));
+            plan.getLeftKey()
+    ));
   }
 
   private <T> Stream<T> toStream(FilterNode<T> plan) {
@@ -91,13 +92,13 @@ public class JavaStreamEvaluator {
   private <T1, T2, TO, K> Stream<TO> toStream(JoinNode<T1, T2, TO, K> plan) {
     Function<T2, K> rightKey = plan.getRightKey();
     if (rightKey == Function.identity()) {
-      return toStream(new StreamHashSetJoinSpliterator<>(
+      return toStream(() -> new StreamHashSetJoinSpliterator<>(
               toStream(plan.getLeftParent()).spliterator(),
               toImmutableSet(plan.getRightParent()),
               (Function<T1, T2>) plan.getLeftKey(),
               plan.getMergeFunction()));
     } else {
-      return toStream(new StreamHashMapJoinSpliterator<>(
+      return toStream(() -> new StreamHashMapJoinSpliterator<>(
               toStream(plan.getLeftParent()).spliterator(),
               toMultimap(toStream(plan.getRightParent()), rightKey),
               plan.getLeftKey(),
@@ -160,7 +161,7 @@ public class JavaStreamEvaluator {
     } else if (plan instanceof UnionNode) {
       return toMutableSet((UnionNode<T>) plan);
     } else {
-      return toStream(plan).collect(Collectors.toCollection(ConcurrentHashMap::newKeySet));
+      return toStream(plan).collect(Collectors.toSet());
     }
   }
 
@@ -170,7 +171,7 @@ public class JavaStreamEvaluator {
       elements.removeIf(plan.getPredicate());
       return elements;
     } else {
-      return toStream(plan).collect(Collectors.toCollection(ConcurrentHashMap::newKeySet));
+      return toStream(plan).collect(Collectors.toSet());
     }
   }
 
@@ -179,7 +180,7 @@ public class JavaStreamEvaluator {
     if (elements instanceof Set) {
       return (Set<T>) elements;
     } else {
-      return elements.stream().collect(Collectors.toCollection(ConcurrentHashMap::newKeySet));
+      return new HashSet<>(elements);
     }
   }
 
@@ -217,12 +218,12 @@ public class JavaStreamEvaluator {
       toStream(plan.getLeftParent()).forEach(elements::add);
       return elements;
     } else {
-      return toStream(plan).collect(Collectors.toCollection(ConcurrentHashMap::newKeySet));
+      return toStream(plan).collect(Collectors.toSet());
     }
   }
 
-  private <T> Stream<T> toStream(Spliterator<T> spliterator) {
-    return StreamSupport.stream(spliterator, true);
+  private <T> Stream<T> toStream(Supplier<Spliterator<T>> spliterator) {
+    return StreamSupport.stream(spliterator, 0, true); //TODO: characteristics
   }
 
   private <K, V> Multimap<K, V> toMultimap(Stream<V> s, Function<V, K> computeKey) {
@@ -235,7 +236,7 @@ public class JavaStreamEvaluator {
     //TODO: avoid list creation
     List<T> iteration = new ArrayList<>(closure);
     while (!iteration.isEmpty()) {
-      iteration = toStream(add.apply(iteration.spliterator()))
+      iteration = StreamSupport.stream(add.apply(iteration.spliterator()), true)
               .filter(closure::add)
               .collect(Collectors.toList());
     }
