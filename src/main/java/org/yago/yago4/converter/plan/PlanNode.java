@@ -5,7 +5,6 @@ import org.eclipse.rdf4j.model.Statement;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -62,28 +61,14 @@ public abstract class PlanNode<T> {
   }
 
   public PlanNode<T> union(PlanNode<T> right) {
-    // We balance unions to avoid very deeply nested plans
-    List<PlanNode<T>> children = Stream.concat(unionChildren(this), unionChildren(right)).collect(Collectors.toList());
-    return union(children, 0, children.size());
+    return new UnionNode<>(Stream.concat(unionChildren(this), unionChildren(right)).collect(Collectors.toList()));
   }
 
   private static <T> Stream<PlanNode<T>> unionChildren(PlanNode<T> node) {
     if (node instanceof UnionNode) {
-      return Stream.concat(unionChildren(((UnionNode<T>) node).getLeftParent()), unionChildren(((UnionNode<T>) node).getRightParent()));
+      return ((UnionNode<T>) node).getParents().stream().flatMap(PlanNode::unionChildren);
     } else {
       return Stream.of(node);
-    }
-  }
-
-  private static <T> PlanNode<T> union(List<PlanNode<T>> nodes, int start, int end) {
-    switch (end - start) {
-      case 0:
-        return PlanNode.empty();
-      case 1:
-        return nodes.get(start);
-      default:
-        int middle = (end + start) / 2;
-        return new UnionNode<>(union(nodes, start, middle), union(nodes, middle, end));
     }
   }
 

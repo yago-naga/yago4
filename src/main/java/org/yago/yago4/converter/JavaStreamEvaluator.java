@@ -123,7 +123,7 @@ public class JavaStreamEvaluator {
   }
 
   private <T> Stream<T> toStream(UnionNode<T> plan) {
-    return Stream.concat(toStream(plan.getLeftParent()), toStream(plan.getRightParent()));
+    return plan.getParents().stream().flatMap(this::toStream);
   }
 
   private <T> Set<T> toImmutableSet(PlanNode<T> plan) {
@@ -147,8 +147,7 @@ public class JavaStreamEvaluator {
   private <T> boolean isAlreadyMutableSet(PlanNode<T> plan) {
     return plan instanceof FilterNode && isAlreadyMutableSet(((FilterNode<T>) plan).getParent()) ||
             plan instanceof CollectionNode ||
-            plan instanceof TransitiveClosureNode ||
-            plan instanceof UnionNode && (isAlreadyMutableSet(((UnionNode<T>) plan).getLeftParent()) || isAlreadyMutableSet(((UnionNode<T>) plan).getRightParent()));
+            plan instanceof TransitiveClosureNode;
   }
 
   private <T> Set<T> toMutableSet(PlanNode<T> plan) {
@@ -158,8 +157,6 @@ public class JavaStreamEvaluator {
       return toMutableSet((CollectionNode<T>) plan);
     } else if (plan instanceof TransitiveClosureNode) {
       return toMutableSet((TransitiveClosureNode<T, ?, ?>) plan);
-    } else if (plan instanceof UnionNode) {
-      return toMutableSet((UnionNode<T>) plan);
     } else {
       return toStream(plan).collect(Collectors.toSet());
     }
@@ -206,20 +203,6 @@ public class JavaStreamEvaluator {
       ));
     }
     return closure;
-  }
-
-  private <T> Set<T> toMutableSet(UnionNode<T> plan) {
-    if (isAlreadyMutableSet(plan.getLeftParent())) {
-      Set<T> elements = toMutableSet(plan.getLeftParent());
-      toStream(plan.getRightParent()).forEach(elements::add);
-      return elements;
-    } else if (isAlreadyMutableSet(plan.getRightParent())) {
-      Set<T> elements = toMutableSet(plan.getRightParent());
-      toStream(plan.getLeftParent()).forEach(elements::add);
-      return elements;
-    } else {
-      return toStream(plan).collect(Collectors.toSet());
-    }
   }
 
   private <T> Stream<T> toStream(Supplier<Spliterator<T>> spliterator) {

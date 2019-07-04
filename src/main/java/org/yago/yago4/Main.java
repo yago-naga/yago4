@@ -213,10 +213,12 @@ public class Main {
             );
           });
         } else {
-          var rangeExtension = getInstancesOfShape(nodeShape, classInstances);
-          triples = triples
-                  .filter(t -> t.getObject() instanceof Resource)
-                  .join(rangeExtension, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1);
+          var triplesForRange = triples;
+          triples = nodeShape.getClasses()
+                  .distinct()
+                  .flatMap(cls -> Stream.ofNullable(classInstances.get(cls)))
+                  .map(rangeExtension -> triplesForRange.join(rangeExtension, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1))
+                  .reduce(PlanNode::union).orElseGet(PlanNode::empty);
         }
       }
 
@@ -227,12 +229,14 @@ public class Main {
       }
 
       // Domain type filter
-      var domainExtension = propertyShape.getParentShapes().stream()
+      var triplesForDomain = triples;
+      triples = propertyShape.getParentShapes().stream()
               .flatMap(Collection::stream)
-              .map(shape -> getInstancesOfShape(shape, classInstances))
-              .reduce(PlanNode::union).get();
-      triples = triples
-              .join(domainExtension, Statement::getSubject, Function.identity(), (t1, t2) -> t1);
+              .flatMap(ShaclSchema.NodeShape::getClasses)
+              .distinct()
+              .flatMap(cls -> Stream.ofNullable(classInstances.get(cls)))
+              .map(domainExtension -> triplesForDomain.join(domainExtension, Statement::getSubject, Function.identity(), (t1, t2) -> t1))
+              .reduce(PlanNode::union).orElseGet(PlanNode::empty);
 
       return triples;
     }).reduce(PlanNode::union).get();

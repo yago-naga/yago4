@@ -1,34 +1,25 @@
 package org.yago.yago4.converter.plan;
 
+import java.util.List;
+
 public class UnionNode<T> extends PlanNode<T> {
-  private final PlanNode<T> leftParent;
-  private final PlanNode<T> rightParent;
+  private final List<PlanNode<T>> parents;
 
-  UnionNode(PlanNode<T> leftParent, PlanNode<T> rightParent) {
-    this.leftParent = leftParent;
-    this.rightParent = rightParent;
+  UnionNode(List<PlanNode<T>> parents) {
+    this.parents = parents;
   }
 
-  public PlanNode<T> getLeftParent() {
-    return leftParent;
-  }
-
-  public PlanNode<T> getRightParent() {
-    return rightParent;
+  public List<PlanNode<T>> getParents() {
+    return parents;
   }
 
   @Override
   public boolean equals(Object obj) {
-    if (obj instanceof UnionNode) {
-      UnionNode o = (UnionNode) obj;
-      return leftParent.equals(o.leftParent) && rightParent.equals(o.rightParent) || leftParent.equals(o.rightParent) && rightParent.equals(o.leftParent);
-    } else {
-      return false;
-    }
+    return obj instanceof UnionNode && parents.equals(((UnionNode) obj).parents);
   }
 
   @Override
   public int hashCode() {
-    return leftParent.hashCode() ^ rightParent.hashCode();
+    return parents.hashCode();
   }
 }

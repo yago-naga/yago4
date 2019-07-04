@@ -15,7 +15,7 @@ public class NTriplesWriter {
 
   public void write(Stream<Statement> stream, Path filePath) {
     try (BufferedWriter writer = Files.newBufferedWriter(filePath)) {
-      stream.forEachOrdered(tuple -> {
+      stream.forEachOrdered(tuple -> { //TODO: make it //
         try {
           writer.append(NTriplesUtil.toNTriplesString(tuple.getSubject())).append(' ')
                   .append(NTriplesUtil.toNTriplesString(tuple.getPredicate())).append(' ')
