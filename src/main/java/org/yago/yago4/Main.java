@@ -117,13 +117,13 @@ public class Main {
   private static Map<Resource, PlanNode<Resource>> classesFromSchema(PartitionedStatements partitionedStatements) {
     var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31));
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279));
+    wikidataSubClassOf = wikidataSubClassOf.transitiveClosure(wikidataSubClassOf, Statement::getObject, Statement::getSubject, (t1, t2) -> VALUE_FACTORY.createStatement(t1.getSubject(), WDT_P279, t2.getObject()));
 
     var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
 
-    var badWikidataClasses = PlanNode.fromCollection(WD_BAD_TYPES).map(t -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX + t))
-            .transitiveClosure(wikidataSubClassOf, Function.identity(), t -> (Resource) t.getObject(), (e, t) -> t.getSubject());
+    var badWikidataClasses = joinWithSubClassOfClosure(PlanNode.fromCollection(WD_BAD_TYPES).map(t -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX + t)), wikidataSubClassOf);
 
     var badWikidataItems = wikidataInstanceOf.join(badWikidataClasses, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1.getSubject());
 
@@ -145,8 +145,7 @@ public class Main {
       if (SCHEMA_BLACKLIST.contains(yagoClass)) {
         continue; // We ignore the blacklisted classes
       }
-      var sourceClasses = PlanNode.fromCollection(entry.getValue())
-              .transitiveClosure(wikidataSubClassOf, Function.identity(), s -> (Resource) s.getObject(), (e, t) -> t.getSubject());
+      var sourceClasses = joinWithSubClassOfClosure(PlanNode.fromCollection(entry.getValue()), wikidataSubClassOf);
       var mappedInstance = wikidataInstanceOf
               .join(sourceClasses, s -> (Resource) s.getObject(), Function.identity(), (t1, t2) -> t1.getSubject())
               .join(schemaThings, Function.identity(), Function.identity(), (t1, t2) -> t1)
@@ -155,6 +154,12 @@ public class Main {
     }
 
     return instancesSet;
+  }
+
+  private static PlanNode<Resource> joinWithSubClassOfClosure(PlanNode<Resource> classes, PlanNode<Statement> subClassOf) {
+    return subClassOf
+            .join(classes, t -> (Resource) t.getObject(), Function.identity(), (t, e) -> t.getSubject())
+            .union(classes);
   }
 
   private static PlanNode<Statement> propertiesFromSchema(PartitionedStatements partitionedStatements, Map<Resource, PlanNode<Resource>> classInstances) {
