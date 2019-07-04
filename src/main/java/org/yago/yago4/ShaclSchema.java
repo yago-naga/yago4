@@ -2,7 +2,6 @@ package org.yago.yago4;
 
 import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
-import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.util.Models;
 import org.eclipse.rdf4j.model.util.RDFCollections;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
@@ -11,6 +10,7 @@ import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParser;
 import org.eclipse.rdf4j.rio.Rio;
 import org.eclipse.rdf4j.rio.helpers.StatementCollector;
+import org.yago.yago4.converter.utils.YagoValueFactory;
 
 import java.io.IOException;
 import java.net.URL;
@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 
 public class ShaclSchema {
 
-  private static final ValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
+  private static final ValueFactory VALUE_FACTORY = YagoValueFactory.getInstance();
   private static final IRI SH_DATATYPE = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#datatype");
   private static final IRI SH_MIN_COUNT = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#minCount");
   private static final IRI SH_MAX_COUNT = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#maxCount");
@@ -51,7 +51,7 @@ public class ShaclSchema {
 
   private static Model readSchema() {
     Model model = new LinkedHashModel();
-    RDFParser parser = Rio.createParser(RDFFormat.TURTLE);
+    RDFParser parser = Rio.createParser(RDFFormat.TURTLE, VALUE_FACTORY);
     parser.setRDFHandler(new StatementCollector(model));
     try {
       parser.parse(new URL("https://schema.org/version/latest/schema.ttl").openStream(), "http://schema.org/");

@@ -1,9 +1,9 @@
 package org.yago.yago4.converter;
 
-import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.junit.jupiter.api.Test;
 import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.Pair;
+import org.yago.yago4.converter.utils.YagoValueFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TestJavaStreamEvaluator {
 
-  private static final JavaStreamEvaluator evaluator = new JavaStreamEvaluator(SimpleValueFactory.getInstance());
+  private static final JavaStreamEvaluator evaluator = new JavaStreamEvaluator(YagoValueFactory.getInstance());
 
   @Test
   void testFilter() {

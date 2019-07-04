@@ -7,12 +7,12 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.eclipse.rdf4j.model.*;
-import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.JavaStreamEvaluator;
 import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.NTriplesReader;
+import org.yago.yago4.converter.utils.YagoValueFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -25,8 +25,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Main {
-  private static final ValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
+  private static final YagoValueFactory VALUE_FACTORY = YagoValueFactory.getInstance();
 
+  private static final String RDF_PREFIX = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
+  private static final String XSD_PREFIX = "http://www.w3.org/2001/XMLSchema#";
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
   private static final String SCHEMA_PREFIX = "http://schema.org/";
@@ -193,7 +195,7 @@ public class Main {
             //TODO: precision
             Matcher matcher = WKT_COORDINATES_PATTERN.matcher(t.getObject().stringValue());
             if (!matcher.matches()) {
-              return Stream.of(t);
+              return Stream.empty();
             }
             double longitude = Float.parseFloat(matcher.group(1));
             double latitude = Float.parseFloat(matcher.group(2));

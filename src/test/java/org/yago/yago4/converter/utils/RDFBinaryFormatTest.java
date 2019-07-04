@@ -1,8 +1,6 @@
 package org.yago.yago4.converter.utils;
 
 import org.eclipse.rdf4j.model.Statement;
-import org.eclipse.rdf4j.model.ValueFactory;
-import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -17,9 +15,10 @@ class RDFBinaryFormatTest {
 
   @Test
   void readAndWrite() throws IOException {
-    ValueFactory valueFactory = SimpleValueFactory.getInstance();
+    YagoValueFactory valueFactory = YagoValueFactory.getInstance();
     List<Statement> Statements = List.of(
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/url"), valueFactory.createIRI("http://bar")),
+            valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/url"), valueFactory.createIRI("http://www.wikidata.org/entity/Q12")),
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/parent"), valueFactory.createBNode()),
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/name"), valueFactory.createLiteral("foo")),
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/name"), valueFactory.createLiteral("foo", "en")),

@@ -4,11 +4,11 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import org.eclipse.rdf4j.model.Statement;
-import org.eclipse.rdf4j.model.ValueFactory;
 import org.yago.yago4.converter.plan.*;
 import org.yago.yago4.converter.utils.NTriplesReader;
 import org.yago.yago4.converter.utils.NTriplesWriter;
 import org.yago.yago4.converter.utils.RDFBinaryFormat;
+import org.yago.yago4.converter.utils.YagoValueFactory;
 import org.yago.yago4.converter.utils.stream.StreamHashMapJoinSpliterator;
 import org.yago.yago4.converter.utils.stream.StreamHashSetAntiJoinSpliterator;
 import org.yago.yago4.converter.utils.stream.StreamHashSetJoinSpliterator;
@@ -23,12 +23,12 @@ import java.util.stream.StreamSupport;
 
 public class JavaStreamEvaluator {
 
-  private final ValueFactory valueFactory;
+  private final YagoValueFactory valueFactory;
   private final NTriplesReader nTriplesReader;
   private final NTriplesWriter nTriplesWriter;
   private final Map<PlanNode, Set> cache = new ConcurrentHashMap<>();
 
-  public JavaStreamEvaluator(ValueFactory valueFactory) {
+  public JavaStreamEvaluator(YagoValueFactory valueFactory) {
     this.valueFactory = valueFactory;
     nTriplesReader = new NTriplesReader(valueFactory);
     nTriplesWriter = new NTriplesWriter();

@@ -1,6 +1,8 @@
 package org.yago.yago4.converter.utils;
 
-import org.eclipse.rdf4j.model.*;
+import org.eclipse.rdf4j.model.IRI;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Statement;
 import org.yago.yago4.converter.EvaluationException;
 
 import java.io.*;
@@ -8,19 +10,14 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 public class RDFBinaryFormat implements Serializable {
 
-  private static final int IRI_KEY = 1;
-  private static final int BNODE_KEY = 2;
-  private static final int STRING_LITERAL_KEY = 3;
-  private static final int LANG_STRING_LITERAL_KEY = 4;
-  private static final int TYPED_LITERAL_KEY = 5;
-
-  public static Stream<Statement> read(ValueFactory valueFactory, Path filePath) {
+  public static Stream<Statement> read(YagoValueFactory valueFactory, Path filePath) {
     return StreamSupport.stream(() -> new BinaryReaderIterator(valueFactory, filePath), 0, true);
   }
 
@@ -39,10 +36,12 @@ public class RDFBinaryFormat implements Serializable {
   }
 
   private static class BinaryReaderIterator implements Spliterator<Statement>, AutoCloseable {
-    private final ValueFactory valueFactory;
+    private static final int BATCH_SIZE = 4096;
+
+    private final YagoValueFactory valueFactory;
     private final DataInputStream inputStream;
 
-    BinaryReaderIterator(ValueFactory valueFactory, Path filePath) {
+    BinaryReaderIterator(YagoValueFactory valueFactory, Path filePath) {
       try {
         this.valueFactory = valueFactory;
         inputStream = new DataInputStream(new BufferedInputStream(Files.newInputStream(filePath)));
@@ -55,9 +54,9 @@ public class RDFBinaryFormat implements Serializable {
     public boolean tryAdvance(Consumer<? super Statement> consumer) {
       try {
         consumer.accept(valueFactory.createStatement(
-                (Resource) readTerm(),
-                (IRI) readTerm(),
-                readTerm()
+                (Resource) valueFactory.readBinaryTerm(inputStream),
+                (IRI) valueFactory.readBinaryTerm(inputStream),
+                valueFactory.readBinaryTerm(inputStream)
         ));
         return true;
       } catch (EOFException e) {
@@ -73,9 +72,9 @@ public class RDFBinaryFormat implements Serializable {
       try {
         while (true) {
           action.accept(valueFactory.createStatement(
-                  (Resource) readTerm(),
-                  (IRI) readTerm(),
-                  readTerm()
+                  (Resource) valueFactory.readBinaryTerm(inputStream),
+                  (IRI) valueFactory.readBinaryTerm(inputStream),
+                  valueFactory.readBinaryTerm(inputStream)
           ));
         }
       } catch (EOFException e) {
@@ -87,27 +86,29 @@ public class RDFBinaryFormat implements Serializable {
       }
     }
 
-    private Value readTerm() throws IOException {
-      int b = inputStream.readByte();
-      switch (b) {
-        case IRI_KEY:
-          return valueFactory.createIRI(inputStream.readUTF());
-        case BNODE_KEY:
-          return valueFactory.createBNode(inputStream.readUTF());
-        case STRING_LITERAL_KEY:
-          return valueFactory.createLiteral(inputStream.readUTF());
-        case LANG_STRING_LITERAL_KEY:
-          return valueFactory.createLiteral(inputStream.readUTF(), inputStream.readUTF());
-        case TYPED_LITERAL_KEY:
-          return valueFactory.createLiteral(inputStream.readUTF(), valueFactory.createIRI(inputStream.readUTF()));
-        default:
-          throw new EvaluationException("Not expected type byte: " + b);
-      }
-    }
-
     @Override
     public Spliterator<Statement> trySplit() {
-      return null;
+      Statement[] batch = new Statement[BATCH_SIZE];
+      int i = 0;
+      for (; i < batch.length; i++) {
+        try {
+          batch[i] = valueFactory.createStatement(
+                  (Resource) valueFactory.readBinaryTerm(inputStream),
+                  (IRI) valueFactory.readBinaryTerm(inputStream),
+                  valueFactory.readBinaryTerm(inputStream)
+          );
+        } catch (EOFException e) {
+          break;
+        } catch (IOException e) {
+          throw new EvaluationException(e);
+        }
+      }
+
+      if (i > 0) {
+        return Spliterators.spliterator(batch, 0, i, characteristics());
+      } else {
+        return null;
+      }
     }
 
     @Override
@@ -140,39 +141,9 @@ public class RDFBinaryFormat implements Serializable {
     }
 
     public synchronized void write(Statement Statement) throws IOException {
-      writeTerm(Statement.getSubject());
-      writeTerm(Statement.getPredicate());
-      writeTerm(Statement.getObject());
-    }
-
-    private void writeTerm(Value term) throws IOException {
-      if (term instanceof IRI) {
-        outputStream.writeByte(IRI_KEY);
-        outputStream.writeUTF(term.stringValue());
-      } else if (term instanceof BNode) {
-        outputStream.writeByte(BNODE_KEY);
-        outputStream.writeUTF(term.stringValue());
-      } else if (term instanceof Literal) {
-        Literal literal = (Literal) term;
-        switch (literal.getDatatype().stringValue()) {
-          case "http://www.w3.org/2001/XMLSchema#string":
-            outputStream.writeByte(STRING_LITERAL_KEY);
-            outputStream.writeUTF(literal.stringValue());
-            break;
-          case "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString":
-            outputStream.writeByte(LANG_STRING_LITERAL_KEY);
-            outputStream.writeUTF(literal.stringValue());
-            outputStream.writeUTF(literal.getLanguage().get());
-            break;
-          default:
-            outputStream.writeByte(TYPED_LITERAL_KEY);
-            outputStream.writeUTF(literal.stringValue());
-            outputStream.writeUTF(literal.getDatatype().stringValue());
-            break;
-        }
-      } else {
-        throw new EvaluationException("Unexpected term: " + term);
-      }
+      YagoValueFactory.writeBinaryTerm(Statement.getSubject(), outputStream);
+      YagoValueFactory.writeBinaryTerm(Statement.getPredicate(), outputStream);
+      YagoValueFactory.writeBinaryTerm(Statement.getObject(), outputStream);
     }
 
     @Override
