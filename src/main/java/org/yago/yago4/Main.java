@@ -27,8 +27,6 @@ import java.util.stream.Stream;
 public class Main {
   private static final YagoValueFactory VALUE_FACTORY = YagoValueFactory.getInstance();
 
-  private static final String RDF_PREFIX = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
-  private static final String XSD_PREFIX = "http://www.w3.org/2001/XMLSchema#";
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
   private static final String SCHEMA_PREFIX = "http://schema.org/";
