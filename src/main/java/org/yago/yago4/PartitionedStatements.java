@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 final class PartitionedStatements {
 
@@ -24,11 +25,11 @@ final class PartitionedStatements {
     this.dir = dir;
   }
 
-  public Writer getWriter(Function<Statement, String> computeKey) {
+  Writer getWriter(Function<Statement, String> computeKey) {
     return new Writer(dir, computeKey);
   }
 
-  public PlanNode<Statement> getForKey(String key) {
+  PlanNode<Statement> getForKey(String key) {
     Path file = dir.resolve(key);
     if (Files.exists(file)) {
       return PlanNode.readBinaryRDF(dir.resolve(key));
@@ -63,7 +64,15 @@ final class PartitionedStatements {
       this.computeKey = computeKey;
     }
 
-    public void write(Statement statement) {
+    void writeAll(Stream<Statement> statements) {
+      statements.sequential().forEach(this::write);
+    }
+
+
+    /**
+     * Warning : not thread safe !!!
+     */
+    private void write(Statement statement) {
       try {
         String key = computeKey.apply(statement);
         writers.get(key).write(statement);
@@ -75,6 +84,7 @@ final class PartitionedStatements {
     @Override
     public void close() {
       writers.invalidateAll();
+      writers.cleanUp();
     }
   }
 }

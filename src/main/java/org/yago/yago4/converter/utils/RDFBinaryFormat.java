@@ -23,7 +23,7 @@ public class RDFBinaryFormat implements Serializable {
 
   public static void write(Stream<Statement> stream, Path filePath) {
     try (Writer writer = new Writer(filePath, false)) {
-      stream.forEach(Statement -> {
+      stream.sequential().forEach(Statement -> {
         try {
           writer.write(Statement);
         } catch (IOException e) {
@@ -140,10 +140,13 @@ public class RDFBinaryFormat implements Serializable {
       ));
     }
 
-    public synchronized void write(Statement Statement) throws IOException {
-      YagoValueFactory.writeBinaryTerm(Statement.getSubject(), outputStream);
-      YagoValueFactory.writeBinaryTerm(Statement.getPredicate(), outputStream);
-      YagoValueFactory.writeBinaryTerm(Statement.getObject(), outputStream);
+    /**
+     * Warning : not thread safe !!!
+     */
+    public void write(Statement statement) throws IOException {
+      YagoValueFactory.writeBinaryTerm(statement.getSubject(), outputStream);
+      YagoValueFactory.writeBinaryTerm(statement.getPredicate(), outputStream);
+      YagoValueFactory.writeBinaryTerm(statement.getObject(), outputStream);
     }
 
     @Override

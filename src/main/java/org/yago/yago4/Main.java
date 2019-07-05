@@ -94,7 +94,7 @@ public class Main {
   private static void doPartition(PartitionedStatements partitionedStatements, Path wdDump) {
     NTriplesReader reader = new NTriplesReader(VALUE_FACTORY);
     try (PartitionedStatements.Writer writer = partitionedStatements.getWriter(t -> keyForIri(t.getPredicate()))) {
-      reader.read(wdDump).parallel().forEach(writer::write);
+      writer.writeAll(reader.read(wdDump));
     }
   }
 
