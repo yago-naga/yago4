@@ -10,6 +10,7 @@ import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Literal;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.JavaStreamEvaluator;
@@ -36,12 +37,14 @@ public class Main {
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
   private static final String SCHEMA_PREFIX = "http://schema.org/";
+  private static final String YAGO_RESOURCE_PREFIX = "http://yago-knowledge.org/resource/";
 
   private static final IRI WIKIBASE_ITEM = VALUE_FACTORY.createIRI("http://wikiba.se/ontology#Item");
   private static final IRI WDT_P31 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P31");
   private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
+  private static final IRI SCHEMA_ABOUT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "about");
 
   private static final Pattern WKT_COORDINATES_PATTERN = Pattern.compile("^POINT\\(([0-9.]+) +([0-9.]+)\\)$", Pattern.CASE_INSENSITIVE);
 
@@ -115,30 +118,37 @@ public class Main {
 
     var evaluator = new JavaStreamEvaluator(VALUE_FACTORY);
 
-    var classInstances = classesFromSchema(partitionedStatements);
-    var yagoClasses = classInstances.entrySet().stream().map(e -> {
-      var yagoClass = e.getKey();
-      return e.getValue().map(i -> VALUE_FACTORY.createStatement(i, RDF.TYPE, yagoClass));
-    }).reduce(PlanNode::union).get();
-    evaluator.evaluateToNTriples(yagoClasses, outputDir.resolve("yago-wd-types.nt"));
-
-    evaluator.evaluateToNTriples(
-            propertiesFromSchema(partitionedStatements, classInstances, LABEL_IRIS, null),
-            outputDir.resolve("yago-wd-labels.nt")
-    );
-    evaluator.evaluateToNTriples(
-            propertiesFromSchema(partitionedStatements, classInstances, null, LABEL_IRIS),
-            outputDir.resolve("yago-wd-facts.nt")
-    );
-  }
-
-  private static Map<Resource, PlanNode<Resource>> classesFromSchema(PartitionedStatements partitionedStatements) {
     var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31))
             .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()));
     var wikidataSuperClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279))
             .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()));
     wikidataSuperClassOf = wikidataSuperClassOf.transitiveClosure(wikidataSuperClassOf);
 
+    var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements, wikidataInstanceOf, wikidataSuperClassOf);
+    evaluator.evaluateToNTriples(
+            wikidataToYagoUrisMapping
+                    .map((wd, yago) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, wd)),
+            outputDir.resolve("yago-wd-sameAs.nt")
+    );
+
+    var classInstances = classesFromSchema(wikidataToYagoUrisMapping, wikidataInstanceOf, wikidataSuperClassOf);
+    var yagoClasses = classInstances.entrySet().stream().map(e -> {
+      var yagoClass = e.getKey();
+      return e.getValue().map(i -> VALUE_FACTORY.createStatement(i, RDF.TYPE, yagoClass));
+    }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+    evaluator.evaluateToNTriples(yagoClasses, outputDir.resolve("yago-wd-types.nt"));
+
+    evaluator.evaluateToNTriples(
+            propertiesFromSchema(partitionedStatements, classInstances, wikidataToYagoUrisMapping, LABEL_IRIS, null),
+            outputDir.resolve("yago-wd-labels.nt")
+    );
+    evaluator.evaluateToNTriples(
+            propertiesFromSchema(partitionedStatements, classInstances, wikidataToYagoUrisMapping, null, LABEL_IRIS),
+            outputDir.resolve("yago-wd-facts.nt")
+    );
+  }
+
+  private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataInstanceOf, PairPlanNode<Resource, Resource> wikidataSuperClassOf) {
     var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
@@ -147,7 +157,22 @@ public class Main {
 
     var badWikidataItems = wikidataInstanceOf.intersection(badWikidataClasses).values();
 
-    var schemaThings = wikidataItems.subtract(badWikidataItems).cache();
+    var goodWikidataItems = wikidataItems.subtract(badWikidataItems);
+
+    var mappingFromEnWikipedia = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+            .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
+            .mapToPair(s -> new Pair<>((Resource) s.getObject(), s.getSubject()))
+            .intersection(goodWikidataItems)
+            .mapPair((wikidata, wikipedia) -> new Pair<>(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.stringValue().replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))));
+
+    var mappingOthers = goodWikidataItems
+            .subtract(mappingFromEnWikipedia.keys())
+            .mapToPair(e -> new Pair<>(e, (Resource) VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, ((IRI) e).getLocalName())));
+    return mappingFromEnWikipedia.union(mappingOthers).cache();
+  }
+
+  private static Map<Resource, PlanNode<Resource>> classesFromSchema(PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping, PairPlanNode<Resource, Resource> wikidataInstanceOf, PairPlanNode<Resource, Resource> wikidataSuperClassOf) {
+    var schemaThings = wikidataToYagoUrisMapping.values().cache();
 
     Map<Resource, PlanNode<Resource>> instancesSet = new HashMap<>();
     instancesSet.put(SCHEMA_THING, schemaThings);
@@ -166,9 +191,9 @@ public class Main {
         continue; // We ignore the blacklisted classes
       }
       var sourceClasses = joinWithSuperClassOfClosure(PlanNode.fromCollection(entry.getValue()), wikidataSuperClassOf);
-      var mappedInstance = wikidataInstanceOf
-              .intersection(sourceClasses)
-              .values()
+      var instances = wikidataInstanceOf.intersection(sourceClasses).values();
+
+      var mappedInstance = mapToYago(instances, wikidataToYagoUrisMapping)
               .intersection(schemaThings)
               .cache();
       instancesSet.put(yagoClass, mappedInstance);
@@ -187,6 +212,7 @@ public class Main {
   private static PlanNode<Statement> propertiesFromSchema(
           PartitionedStatements partitionedStatements,
           Map<Resource, PlanNode<Resource>> classInstances,
+          PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping,
           Set<IRI> onlyProperties,
           Set<IRI> excludeProperties
   ) {
@@ -240,6 +266,7 @@ public class Main {
           });
         } else {
           var objectSubjectsForRange = subjectObjects.mapPair((k, v) -> new Pair<>((Resource) v, k));
+          objectSubjectsForRange = mapKeyToYago(objectSubjectsForRange, wikidataToYagoUrisMapping);
           subjectObjects = nodeShape.getClasses()
                   .distinct()
                   .flatMap(cls -> Stream.ofNullable(classInstances.get(cls)))
@@ -257,6 +284,7 @@ public class Main {
 
       // Domain type filter
       var subjectObjectsForDomain = subjectObjects;
+      subjectObjectsForDomain = mapKeyToYago(subjectObjectsForDomain, wikidataToYagoUrisMapping);
       subjectObjects = propertyShape.getParentShapes().stream()
               .flatMap(Collection::stream)
               .flatMap(ShaclSchema.NodeShape::getClasses)
@@ -267,7 +295,19 @@ public class Main {
               .orElseGet(PairPlanNode::empty);
 
       return subjectObjects.map((s, o) -> VALUE_FACTORY.createStatement(s, yagoProperty, o));
-    }).reduce(PlanNode::union).get();
+    }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+  }
+
+  private static PlanNode<Resource> mapToYago(PlanNode<Resource> facts, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+    return facts
+            .join(wikidataToYagoUrisMapping)
+            .values();
+  }
+
+  private static <V> PairPlanNode<Resource, V> mapKeyToYago(PairPlanNode<Resource, V> facts, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+    return facts
+            .join(wikidataToYagoUrisMapping)
+            .mapPair((subject, pair) -> new Pair<>(pair.getValue(), pair.getKey()));
   }
 
   private static Stream<String> normalizeUri(String uri) {
