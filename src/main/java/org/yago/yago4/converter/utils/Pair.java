@@ -28,4 +28,26 @@ public final class Pair<K, V> implements Map.Entry<K, V>, Serializable {
     value = v;
     return old;
   }
+
+  @Override
+  public String toString() {
+    return "(" + key + ", " + value + ")";
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (!(obj instanceof Pair)) {
+      return false;
+    }
+    Pair o = (Pair) obj;
+    return key.equals(o.key) && value.equals(o.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return key.hashCode() ^ value.hashCode();
+  }
 }

@@ -52,6 +52,11 @@ ys:CreativeWork a sh:NodeShape ;
     sh:targetClass schema:CreativeWork ;
     ys:fromClass wd:Q17537576 , wd:Q3331189 ;
     sh:property [
+        sh:path schema:about ;
+        sh:node ys:Thing ;
+        ys:fromProperty wdt:P921 ;
+    ] ;
+    sh:property [
         sh:path schema:award ;
         sh:node ys:Thing ;
         ys:fromProperty wdt:P166 ;
@@ -74,9 +79,26 @@ ys:CreativeWork a sh:NodeShape ;
         ys:fromProperty wdt:P2860 ;
     ] ;
     sh:property [
+        sh:path schema:character ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P674 ;
+    ] ;
+    sh:property [
         sh:path schema:contentLocation ;
         sh:node ys:Place ;
         ys:fromProperty wdt:P840 ;
+    ] ;
+    sh:property [
+        sh:path schema:contributor ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:fromProperty wdt:P767 ;
     ] ;
     sh:property [
         sh:path schema:creator ;
@@ -149,7 +171,7 @@ ys:CreativeWork a sh:NodeShape ;
     sh:property [
         sh:path schema:isPartOf ;
         sh:node ys:CreativeWork ;
-        ys:fromProperty wdt:P361 ; # TODO: map with P195 (collection?)
+        ys:fromProperty wdt:P195 , wdt:P361 , wdt:P1433 ; # TODO: map with P195 (collection?)
     ] ;
     sh:property [
         sh:path schema:license ;
@@ -203,6 +225,11 @@ ys:CreativeWork a sh:NodeShape ;
         ys:fromProperty wdt:P123 ;
     ] ;
     sh:property [
+        sh:path schema:contentRating ;
+        sh:node ys:Rating ;
+        ys:fromProperty wdt:P1657 , wdt:P1981 , wdt:P2747 , wdt:P5970 , wdt:P6452 ;
+    ] ;
+    sh:property [
         sh:path schema:sponsor ;
         sh:or (
             [
@@ -215,6 +242,18 @@ ys:CreativeWork a sh:NodeShape ;
         ys:fromProperty wdt:P859 ;
     ] ;
     sh:property [
+        sh:path schema:translator ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:fromProperty wdt:P655 ;
+    ] ;
+    sh:property [
         sh:path schema:workExample ;
         sh:node ys:CreativeWork ;
         ys:fromProperty wdt:P747 ;
@@ -225,7 +264,7 @@ ys:Article a sh:NodeShape ;
     sh:targetClass schema:Article ;
     ys:fromClass wd:Q191067 ;
     sh:property [
-        sh:path schema:pagination ;
+        sh:path schema:pagination ; # TODO: pattern
         sh:datatype xsd:string ;
         ys:fromProperty wdt:P304 ;
     ] .
@@ -275,6 +314,11 @@ ys:CreativeWorkSeason a sh:NodeShape ;
         ys:fromProperty wdt:P1113 ;
     ] ;
     sh:property [
+        sh:path schema:partOfSeries ;
+        sh:node ys:CreativeWorkSeries ;
+        ys:fromProperty wdt:P179 ;
+    ] ;
+    sh:property [
         sh:path schema:productionCompany ;
         sh:node ys:Organization ;
         ys:fromProperty wdt:P272 ;
@@ -282,7 +326,12 @@ ys:CreativeWorkSeason a sh:NodeShape ;
 
 ys:TVSeason a sh:NodeShape ;
     sh:targetClass schema:TVSeason ;
-    ys:fromClass wd:Q3464665 .
+    ys:fromClass wd:Q3464665 ;
+    sh:property [
+        sh:path schema:countryOfOrigin ;
+        sh:node ys:Country ;
+        ys:fromProperty wdt:P495 ;
+    ] .
 
 
 ys:CreativeWorkSeries a sh:NodeShape ;
@@ -320,6 +369,19 @@ ys:MovieSeries a sh:NodeShape ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
+        sh:path schema:musicBy ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
+    ] ;
+    sh:property [
         sh:path schema:productionCompany ;
         sh:node ys:Organization ;
         ys:fromProperty wdt:P272 ;
@@ -343,6 +405,19 @@ ys:RadioSeries a sh:NodeShape ;
         sh:path schema:director ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:musicBy ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
         sh:path schema:numberOfEpisodes ;
@@ -372,6 +447,11 @@ ys:TVSeries a sh:NodeShape ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
+        sh:path schema:countryOfOrigin ;
+        sh:node ys:Country ;
+        ys:fromProperty wdt:P495 ;
+    ] ;
+    sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
     ] ;
@@ -388,6 +468,19 @@ ys:TVSeries a sh:NodeShape ;
         ys:fromProperty wdt:P2437 ;
     ] ;
     sh:property [
+        sh:path schema:musicBy ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
+    ] ;
+    sh:property [
         sh:path schema:productionCompany ;
         sh:node ys:Organization ;
         ys:fromProperty wdt:P272 ;
@@ -400,6 +493,19 @@ ys:VideoGameSeries a sh:NodeShape ;
         sh:path schema:director ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:musicBy ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
         sh:path schema:numberOfEpisodes ;
@@ -434,6 +540,29 @@ ys:Episode a sh:NodeShape ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
+        sh:path schema:musicBy ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
+    ] ;
+    sh:property [
+        sh:path schema:partOfSeason ;
+        sh:node ys:CreativeWorkSeason ;
+        ys:fromProperty wdt:P4908 ;
+    ] ;
+    sh:property [
+        sh:path schema:partOfSeries ;
+        sh:node ys:CreativeWorkSeries ;
+        ys:fromProperty wdt:P179 ;
+    ] ;
+    sh:property [
         sh:path schema:productionCompany ;
         sh:node ys:Organization ;
         ys:fromProperty wdt:P272 ;
@@ -441,7 +570,12 @@ ys:Episode a sh:NodeShape ;
 
 ys:TVEpisode a sh:NodeShape ;
     sh:targetClass schema:TVEpisode ;
-    ys:fromClass wd:Q21191270 .
+    ys:fromClass wd:Q21191270 ;
+    sh:property [
+        sh:path schema:countryOfOrigin ;
+        sh:node ys:Country ;
+        ys:fromProperty wdt:P495 ;
+    ] .
 
 
 ys:Game a sh:NodeShape ;
@@ -453,11 +587,37 @@ ys:MusicComposition a sh:NodeShape ;
     sh:targetClass schema:MusicComposition ;
     ys:fromClass wd:Q207628 ;
     sh:property [
+        sh:path schema:composer ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
+    ] ;
+    sh:property [
         sh:path schema:iswcCode ;
         sh:datatype xsd:string ;
         sh:pattern "^T-[0-9]{3}\\.[0-9]{3}\\.[0-9]{3}-[0-9]$" ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P1827 ;
+    ] ;
+    sh:property [
+        sh:path schema:lyricist ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P676 ;
     ] .
 
 
@@ -480,9 +640,27 @@ ys:Movie a sh:NodeShape ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
+        sh:path schema:countryOfOrigin ;
+        sh:node ys:Country ;
+        ys:fromProperty wdt:P495 ;
+    ] ;
+    sh:property [
         sh:path schema:director ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:musicBy ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
@@ -537,12 +715,68 @@ ys:VideoGame a sh:NodeShape ;
         sh:path schema:director ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P57 ;
+    ] ;
+    sh:property [
+        sh:path schema:musicBy ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
     ] .
 
 
 ys:Event a sh:NodeShape ;
     sh:targetClass schema:Event ;
     ys:fromClass wd:Q1656682 ;
+    sh:property [
+        sh:path schema:about ;
+        sh:node ys:Thing ;
+        ys:fromProperty wdt:P921 ;
+    ] ;
+    sh:property [
+        sh:path schema:composer ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
+    ] ;
+    sh:property [
+        sh:path schema:composer ;
+        sh:or (
+            [
+                sh:node ys:Person
+            ]
+            [
+                sh:node ys:MusicGroup
+            ]
+        ) ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P86 ;
+    ] ;
+    sh:property [
+        sh:path schema:contributor ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:fromProperty wdt:P767 ;
+    ] ;
     sh:property [
         sh:path schema:location ;
         sh:node ys:Place ;
@@ -597,6 +831,18 @@ ys:Event a sh:NodeShape ;
             ]
         ) ;
         ys:fromProperty wdt:P859 ;
+    ] ;
+    sh:property [
+        sh:path schema:translator ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:fromProperty wdt:P655 ;
     ] .
 
 
@@ -655,6 +901,12 @@ ys:Organization a sh:NodeShape ;
         sh:pattern "^[0-9]{9}$" ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P2771 ;
+    ] ;
+    sh:property [
+        sh:path schema:faxNumber ;
+        sh:datatype xsd:string ;
+        sh:pattern "^\+([17]|[2345689]\d{1,2})(-\d{1,14})+$" ;
+        ys:fromProperty wdt:P2900 ;
     ] ;
     sh:property [
         sh:path schema:founder ;
@@ -723,8 +975,13 @@ ys:Organization a sh:NodeShape ;
         sh:path schema:subOrganization ;
         sh:node ys:Organization ;
         ys:fromProperty wdt:P355 ;
+    ] ;
+    sh:property [
+        sh:path schema:telephone ;
+        sh:datatype xsd:string ;
+        sh:pattern "^\+([17]|[2345689]\d{1,2})(-\d{1,14})+$" ;
+        ys:fromProperty wdt:P1329 ;
     ] .
-
 
 ys:Airline a sh:NodeShape ;
     sh:targetClass schema:Airline ;
@@ -829,6 +1086,12 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P20 ;
     ] ;
     sh:property [
+        sh:path schema:faxNumber ;
+        sh:datatype xsd:string ;
+        sh:pattern "^\+([17]|[2345689]\d{1,2})(-\d{1,14})+$" ;
+        ys:fromProperty wdt:P2900 ;
+    ] ;
+    sh:property [
         sh:path schema:familyName ;
         sh:node ys:Thing ;
         ys:fromProperty wdt:P734 ;
@@ -843,6 +1106,11 @@ ys:Person a sh:NodeShape ;
         sh:node ys:Thing ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P21 ;
+    ] ;
+    sh:property [
+        sh:path schema:homeLocation ;
+        sh:node ys:Place ;
+        ys:fromProperty wdt:P551 ;
     ] ;
     sh:property [
         sh:path schema:memberOf ;
@@ -866,6 +1134,12 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P26 ;
     ] ;
     sh:property [
+        sh:path schema:telephone ;
+        sh:datatype xsd:string ;
+        sh:pattern "^\+([17]|[2345689]\d{1,2})(-\d{1,14})+$" ;
+        ys:fromProperty wdt:P1329 ;
+    ] ;
+    sh:property [
         sh:path schema:worksFor ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P108 ;
@@ -875,15 +1149,32 @@ ys:Place a sh:NodeShape ;
     sh:targetClass schema:Place ;
     ys:fromClass wd:Q17334923 ;
     sh:property [
+        sh:path schema:containsPlace ;
+        sh:node ys:Place ;
+        ys:fromProperty wdt:P150 ;
+    ] ;
+    sh:property [
         sh:path schema:containedInPlace ;
         sh:node ys:Place ;
         ys:fromProperty wdt:P131 ;
+    ] ;
+    sh:property [
+        sh:path schema:faxNumber ;
+        sh:datatype xsd:string ;
+        sh:pattern "^\+([17]|[2345689]\d{1,2})(-\d{1,14})+$" ;
+        ys:fromProperty wdt:P2900 ;
     ] ;
     sh:property [
         sh:path schema:geo ;
         sh:node ys:GeoCoordinates ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P625 ;
+    ] ;
+    sh:property [
+        sh:path schema:telephone ;
+        sh:datatype xsd:string ;
+        sh:pattern "^\+([17]|[2345689]\d{1,2})(-\d{1,14})+$" ;
+        ys:fromProperty wdt:P1329 ;
     ] . #TODO: address,
 
 
@@ -924,3 +1215,7 @@ ys:Airport a sh:NodeShape ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P239 ;
     ] .
+
+ys:Rating a sh:NodeShape ;
+    sh:targetClass schema:Rating ;
+    ys:fromClass wd:Q23649976 .
