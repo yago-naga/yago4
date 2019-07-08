@@ -128,11 +128,16 @@ public class YagoValueFactory extends AbstractValueFactory {
           SVF.createIRI("http://wikiba.se/ontology#statements"),
           SVF.createIRI("http://wikiba.se/ontology#sitelinks")
   };
-  private final Map<String, IRI> constantsIrisForString = new HashMap<>();
-  private final IRI[] constantsIrisForId = new IRI[CONSTANTS.length];
-
+  private static final Map<String, IRI> CONSTANTS_IRIS_FOR_STRING = new HashMap<>();
+  private static final Map<IRI, Integer> CONSTANTS_IDS_FOR_IRI = new HashMap<>();
   static {
     assert CONSTANTS.length < Byte.MAX_VALUE;
+
+    for (int i = 0; i < CONSTANTS.length; i++) {
+      IRI iri = CONSTANTS[i];
+      CONSTANTS_IRIS_FOR_STRING.put(iri.stringValue(), iri);
+      CONSTANTS_IDS_FOR_IRI.put(iri, i);
+    }
   }
 
   private static final YagoValueFactory INSTANCE = new YagoValueFactory();
@@ -142,16 +147,11 @@ public class YagoValueFactory extends AbstractValueFactory {
   }
 
   private YagoValueFactory() {
-    for (int i = 0; i < CONSTANTS.length; i++) {
-      IRI iri = new ConstantIri(CONSTANTS[i], i);
-      constantsIrisForString.put(iri.stringValue(), iri);
-      constantsIrisForId[i] = iri;
-    }
   }
 
   @Override
   public IRI createIRI(String iri) {
-    IRI constant = constantsIrisForString.get(iri);
+    IRI constant = CONSTANTS_IRIS_FOR_STRING.get(iri);
     if (constant != null) {
       return constant;
     }
@@ -194,7 +194,7 @@ public class YagoValueFactory extends AbstractValueFactory {
       case TYPED_LITERAL_KEY:
         return super.createLiteral(inputStream.readUTF(), (IRI) readBinaryTerm(inputStream));
       case CONSTANT_IRI_KEY:
-        return constantsIrisForId[inputStream.readByte()];
+        return CONSTANTS[inputStream.readByte()];
       case NUMERIC_IRI_KEY:
         return new NumericIri(inputStream.readByte(), inputStream.readChar(), inputStream.readInt());
       default:
@@ -203,18 +203,21 @@ public class YagoValueFactory extends AbstractValueFactory {
   }
 
   static void writeBinaryTerm(Value term, DataOutputStream outputStream) throws IOException {
-    if (term instanceof ConstantIri) {
-      outputStream.writeByte(CONSTANT_IRI_KEY);
-      outputStream.writeByte(((ConstantIri) term).id);
-    } else if (term instanceof NumericIri) {
+    if (term instanceof NumericIri) {
       NumericIri iri = (NumericIri) term;
       outputStream.writeByte(NUMERIC_IRI_KEY);
       outputStream.writeByte(iri.prefixId);
       outputStream.writeChar(iri.prefixChar);
       outputStream.writeInt(iri.id);
     } else if (term instanceof IRI) {
-      outputStream.writeByte(IRI_KEY);
-      outputStream.writeUTF(term.stringValue());
+      Integer encoding = CONSTANTS_IDS_FOR_IRI.get(term);
+      if (encoding == null) {
+        outputStream.writeByte(IRI_KEY);
+        outputStream.writeUTF(term.stringValue());
+      } else {
+        outputStream.writeByte(CONSTANT_IRI_KEY);
+        outputStream.writeByte(encoding);
+      }
     } else if (term instanceof BNode) {
       outputStream.writeByte(BNODE_KEY);
       outputStream.writeUTF(term.stringValue());
@@ -238,45 +241,6 @@ public class YagoValueFactory extends AbstractValueFactory {
       }
     } else {
       throw new EvaluationException("Unexpected term: " + term);
-    }
-  }
-
-  private static final class ConstantIri implements IRI {
-    private final IRI iri;
-    private final int id;
-
-    ConstantIri(IRI iri, int id) {
-      this.iri = iri;
-      this.id = id;
-    }
-
-    @Override
-    public String toString() {
-      return iri.toString();
-    }
-
-    @Override
-    public String stringValue() {
-      return iri.stringValue();
-    }
-
-    public String getNamespace() {
-      return iri.getNamespace();
-    }
-
-    @Override
-    public String getLocalName() {
-      return iri.getLocalName();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      return this == o || iri.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-      return iri.hashCode();
     }
   }
 
