@@ -144,12 +144,14 @@ public class JavaStreamEvaluator {
       return toStream((FlatMapPairNode<?, ?, K, V>) plan);
     } else if (plan instanceof IntersectionPairNode) {
       return toStream((IntersectionPairNode<K, V>) plan);
+    } else if (plan instanceof JoinNode) {
+      return toStream((JoinNode) plan);
+    } else if (plan instanceof JoinPairNode) {
+      return toStream((JoinPairNode) plan);
     } else if (plan instanceof MapPairNode) {
       return toStream((MapPairNode<?, ?, K, V>) plan);
     } else if (plan instanceof MapToPairNode) {
       return toStream((MapToPairNode<?, K, V>) plan);
-    } else if (plan instanceof PairJoinNode) {
-      return toStream((PairJoinNode) plan);
     } else if (plan instanceof SubtractPairNode) {
       return toStream((SubtractPairNode<K, V>) plan);
     } else if (plan instanceof TransitiveClosurePairNode) {
@@ -179,6 +181,18 @@ public class JavaStreamEvaluator {
     ));
   }
 
+  private <K, V> Stream<Map.Entry<K, V>> toStream(JoinNode<K, V> plan) {
+    return toStream(() -> new StreamMapJoinSpliterator<>(
+            toStream(plan.getLeftParent()).spliterator(),
+            toImmutableMap(plan.getRightParent())));
+  }
+
+  private <K, V1, V2> Stream<Map.Entry<K, Map.Entry<V1, V2>>> toStream(JoinPairNode<K, V1, V2> plan) {
+    return toStream(() -> new PairStreamMapJoinSpliterator<>(
+            toStream(plan.getLeftParent()).spliterator(),
+            toImmutableMap(plan.getRightParent())));
+  }
+
   private <KI, VI, KO, VO> Stream<Map.Entry<KO, VO>> toStream(MapPairNode<KI, VI, KO, VO> plan) {
     BiFunction<KI, VI, Map.Entry<KO, VO>> fn = plan.getFunction();
     return toStream(plan.getParent()).map(t -> fn.apply(t.getKey(), t.getValue()));
@@ -186,12 +200,6 @@ public class JavaStreamEvaluator {
 
   private <TI, KO, VO> Stream<Map.Entry<KO, VO>> toStream(MapToPairNode<TI, KO, VO> plan) {
     return toStream(plan.getParent()).map(plan.getFunction());
-  }
-
-  private <K, V1, V2> Stream<Map.Entry<K, Map.Entry<V1, V2>>> toStream(PairJoinNode<K, V1, V2> plan) {
-    return toStream(() -> new PairStreamMapJoinSpliterator<>(
-            toStream(plan.getLeftParent()).spliterator(),
-            toImmutableMap(plan.getRightParent())));
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(SubtractPairNode<K, V> plan) {

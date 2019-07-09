@@ -46,7 +46,7 @@ public abstract class PairPlanNode<K, V> {
   }
 
   public <V2> PairPlanNode<K, Map.Entry<V, V2>> join(PairPlanNode<K, V2> right) {
-    return new PairJoinNode<>(this, right);
+    return new JoinPairNode<>(this, right);
   }
 
   public PlanNode<K> keys() {

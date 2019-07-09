@@ -37,6 +37,10 @@ public abstract class PlanNode<T> {
     return new IntersectionNode<>(this, right);
   }
 
+  public <V> PairPlanNode<T, V> join(PairPlanNode<T, V> right) {
+    return new JoinNode<>(this, right);
+  }
+
   public <TO> PlanNode<TO> map(Function<T, TO> function) {
     return new MapNode<>(this, function);
   }
