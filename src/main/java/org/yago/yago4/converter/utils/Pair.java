@@ -5,7 +5,7 @@ import java.util.Map;
 
 public final class Pair<K, V> implements Map.Entry<K, V>, Serializable {
   private final K key;
-  private V value;
+  private final V value;
 
   public Pair(K key, V value) {
     this.key = key;
@@ -24,9 +24,7 @@ public final class Pair<K, V> implements Map.Entry<K, V>, Serializable {
 
   @Override
   public V setValue(V v) {
-    V old = value;
-    value = v;
-    return old;
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -39,11 +37,11 @@ public final class Pair<K, V> implements Map.Entry<K, V>, Serializable {
     if (this == obj) {
       return true;
     }
-    if (!(obj instanceof Pair)) {
+    if (!(obj instanceof Map.Entry)) {
       return false;
     }
-    Pair o = (Pair) obj;
-    return key.equals(o.key) && value.equals(o.value);
+    Map.Entry o = (Map.Entry) obj;
+    return key.equals(o.getKey()) && value.equals(o.getValue());
   }
 
   @Override

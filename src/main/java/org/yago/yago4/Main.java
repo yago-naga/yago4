@@ -6,19 +6,23 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.eclipse.rdf4j.model.*;
+import org.eclipse.rdf4j.model.IRI;
+import org.eclipse.rdf4j.model.Literal;
+import org.eclipse.rdf4j.model.Resource;
+import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.JavaStreamEvaluator;
+import org.yago.yago4.converter.plan.PairPlanNode;
 import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.NTriplesReader;
+import org.yago.yago4.converter.utils.Pair;
 import org.yago.yago4.converter.utils.YagoValueFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -36,8 +40,6 @@ public class Main {
   private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
-  private static final IRI SCHEMA_LATITUDE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "latitude");
-  private static final IRI SCHEMA_LONGITUDE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "longitude");
 
   private static final Pattern WKT_COORDINATES_PATTERN = Pattern.compile("^POINT\\(([0-9.]+) +([0-9.]+)\\)$", Pattern.CASE_INSENSITIVE);
 
@@ -113,19 +115,21 @@ public class Main {
   }
 
   private static Map<Resource, PlanNode<Resource>> classesFromSchema(PartitionedStatements partitionedStatements) {
-    var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31));
-    var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279));
-    wikidataSubClassOf = wikidataSubClassOf.transitiveClosure(wikidataSubClassOf, Statement::getObject, Statement::getSubject, (t1, t2) -> VALUE_FACTORY.createStatement(t1.getSubject(), WDT_P279, t2.getObject()));
+    var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31))
+            .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()));
+    var wikidataSuperClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279))
+            .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()));
+    wikidataSuperClassOf = wikidataSuperClassOf.transitiveClosure(wikidataSuperClassOf);
 
     var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
 
-    var badWikidataClasses = joinWithSubClassOfClosure(PlanNode.fromCollection(WD_BAD_TYPES).map(t -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX + t)), wikidataSubClassOf);
+    var badWikidataClasses = joinWithSuperClassOfClosure(PlanNode.fromCollection(WD_BAD_TYPES).map(t -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX + t)), wikidataSuperClassOf);
 
-    var badWikidataItems = wikidataInstanceOf.join(badWikidataClasses, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1.getSubject());
+    var badWikidataItems = wikidataInstanceOf.intersection(badWikidataClasses).values();
 
-    var schemaThings = wikidataItems.antiJoin(badWikidataItems, Function.identity()).cache();
+    var schemaThings = wikidataItems.subtract(badWikidataItems).cache();
 
     Map<Resource, PlanNode<Resource>> instancesSet = new HashMap<>();
     instancesSet.put(SCHEMA_THING, schemaThings);
@@ -143,10 +147,11 @@ public class Main {
       if (SCHEMA_BLACKLIST.contains(yagoClass)) {
         continue; // We ignore the blacklisted classes
       }
-      var sourceClasses = joinWithSubClassOfClosure(PlanNode.fromCollection(entry.getValue()), wikidataSubClassOf);
+      var sourceClasses = joinWithSuperClassOfClosure(PlanNode.fromCollection(entry.getValue()), wikidataSuperClassOf);
       var mappedInstance = wikidataInstanceOf
-              .join(sourceClasses, s -> (Resource) s.getObject(), Function.identity(), (t1, t2) -> t1.getSubject())
-              .join(schemaThings, Function.identity(), Function.identity(), (t1, t2) -> t1)
+              .intersection(sourceClasses)
+              .values()
+              .intersection(schemaThings)
               .cache();
       instancesSet.put(yagoClass, mappedInstance);
     }
@@ -154,9 +159,10 @@ public class Main {
     return instancesSet;
   }
 
-  private static PlanNode<Resource> joinWithSubClassOfClosure(PlanNode<Resource> classes, PlanNode<Statement> subClassOf) {
-    return subClassOf
-            .join(classes, t -> (Resource) t.getObject(), Function.identity(), (t, e) -> t.getSubject())
+  private static PlanNode<Resource> joinWithSuperClassOfClosure(PlanNode<Resource> classes, PairPlanNode<Resource, Resource> superClassOf) {
+    return superClassOf
+            .intersection(classes)
+            .values()
             .union(classes);
   }
 
@@ -164,10 +170,10 @@ public class Main {
     return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
       IRI yagoProperty = propertyShape.getProperty();
 
-      var triples = propertyShape.getFromProperties()
+      var subjectObjects = propertyShape.getFromProperties()
               .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
               .reduce(PlanNode::union).orElseGet(PlanNode::empty)
-              .map(triple -> VALUE_FACTORY.createStatement(triple.getSubject(), yagoProperty, triple.getObject()));
+              .mapToPair(t -> new Pair<>(t.getSubject(), t.getObject()));
 
       // Datatype filter
       if (propertyShape.getDatatypes().isPresent()) {
@@ -175,18 +181,17 @@ public class Main {
 
         //We map IRIs to xsd:anyUri
         if (dts.contains(XMLSchema.ANYURI)) {
-          triples = triples.flatMap(t -> {
-            Value object = t.getObject();
+          subjectObjects = subjectObjects.flatMapValue(object -> {
             if (object instanceof IRI || (object instanceof Literal && XMLSchema.ANYURI.equals(((Literal) object).getDatatype()))) {
               return normalizeUri(object.stringValue())
-                      .map(o -> VALUE_FACTORY.createStatement(t.getSubject(), t.getPredicate(), VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI)));
+                      .map(o -> VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI));
             } else {
-              return Stream.of(t);
+              return Stream.of(object);
             }
           });
         }
         //TODO: time and quantity values
-        triples = triples.filter(t -> t.getObject() instanceof Literal && dts.contains(((Literal) t.getObject()).getDatatype()));
+        subjectObjects = subjectObjects.filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()));
       }
 
       // Range type filter
@@ -194,49 +199,45 @@ public class Main {
         ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
         Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
         if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
-          triples = triples.flatMap(t -> {
+          subjectObjects = subjectObjects.flatMapValue(object -> {
             //TODO: precision
-            Matcher matcher = WKT_COORDINATES_PATTERN.matcher(t.getObject().stringValue());
+            Matcher matcher = WKT_COORDINATES_PATTERN.matcher(object.stringValue());
             if (!matcher.matches()) {
               return Stream.empty();
             }
             double longitude = Float.parseFloat(matcher.group(1));
             double latitude = Float.parseFloat(matcher.group(2));
-            IRI geo = VALUE_FACTORY.createIRI("geo:" + latitude + "," + longitude);
-            return Stream.of(
-                    VALUE_FACTORY.createStatement(t.getSubject(), t.getPredicate(), geo),
-                    VALUE_FACTORY.createStatement(geo, RDF.TYPE, SCHEMA_GEO_COORDINATES),
-                    VALUE_FACTORY.createStatement(geo, SCHEMA_LATITUDE, VALUE_FACTORY.createLiteral(latitude)),
-                    VALUE_FACTORY.createStatement(geo, SCHEMA_LONGITUDE, VALUE_FACTORY.createLiteral(longitude))
-            );
+            return Stream.of(VALUE_FACTORY.createIRI("geo:" + latitude + "," + longitude)); //TODO: description of geocoordinates
           });
         } else {
-          var triplesForRange = triples;
-          triples = nodeShape.getClasses()
+          var objectSubjectsForRange = subjectObjects.mapPair((k, v) -> new Pair<>((Resource) v, k));
+          subjectObjects = nodeShape.getClasses()
                   .distinct()
                   .flatMap(cls -> Stream.ofNullable(classInstances.get(cls)))
-                  .map(rangeExtension -> triplesForRange.join(rangeExtension, t -> (Resource) t.getObject(), Function.identity(), (t1, t2) -> t1))
-                  .reduce(PlanNode::union).orElseGet(PlanNode::empty);
+                  .map(objectSubjectsForRange::intersection)
+                  .reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty)
+                  .mapPair((k, v) -> new Pair<>(v, k));
         }
       }
 
       //Regex
       if (propertyShape.getPattern().isPresent()) {
         Pattern pattern = propertyShape.getPattern().get();
-        triples = triples.filter(t -> pattern.matcher(t.getObject().stringValue()).matches());
+        subjectObjects = subjectObjects.filterValue(object -> pattern.matcher(object.stringValue()).matches());
       }
 
       // Domain type filter
-      var triplesForDomain = triples;
-      triples = propertyShape.getParentShapes().stream()
+      var subjectObjectsForDomain = subjectObjects;
+      subjectObjects = propertyShape.getParentShapes().stream()
               .flatMap(Collection::stream)
               .flatMap(ShaclSchema.NodeShape::getClasses)
               .distinct()
               .flatMap(cls -> Stream.ofNullable(classInstances.get(cls)))
-              .map(domainExtension -> triplesForDomain.join(domainExtension, Statement::getSubject, Function.identity(), (t1, t2) -> t1))
-              .reduce(PlanNode::union).orElseGet(PlanNode::empty);
+              .map(subjectObjectsForDomain::intersection)
+              .reduce(PairPlanNode::union)
+              .orElseGet(PairPlanNode::empty);
 
-      return triples;
+      return subjectObjects.map((s, o) -> VALUE_FACTORY.createStatement(s, yagoProperty, o));
     }).reduce(PlanNode::union).get();
   }
 

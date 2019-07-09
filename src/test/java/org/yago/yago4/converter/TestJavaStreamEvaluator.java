@@ -44,20 +44,44 @@ class TestJavaStreamEvaluator {
   }
 
   @Test
-  void testJoin() {
+  void testIntersection() {
     assertEquals(
-            List.of(5, 10),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2))
-                    .join(PlanNode.fromCollection(List.of(4, 8)), t -> t, t -> t / 4, Integer::sum))
+            List.of(1, 3),
+            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2, 3))
+                    .intersection(PlanNode.fromCollection(List.of(1, 3, 4))))
     );
   }
 
   @Test
-  void testAntiJoin() {
+  void testJoinPairPair() {
+    assertEquals(
+            List.of(5, 10),
+            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2))
+                    .mapToPair(t -> new Pair<>(t * 2, t))
+                    .join(PlanNode.fromCollection(List.of(4, 8)).mapToPair(t -> new Pair<>(t / 2, t)))
+                    .mapValue(e -> e.getKey() + e.getValue())
+                    .values()
+            )
+    );
+  }
+
+  @Test
+  void testSubtract() {
     assertEquals(
             List.of(2, 8),
             evaluator.evaluateToList(PlanNode.fromCollection(List.of(2, 4, 6, 8))
-                    .antiJoin(PlanNode.fromCollection(List.of(2, 3)), t -> t / 2))
+                    .subtract(PlanNode.fromCollection(List.of(4, 6))))
+    );
+  }
+
+  @Test
+  void testSubtractPair() {
+    assertEquals(
+            List.of(2, 8),
+            evaluator.evaluateToList(PlanNode.fromCollection(List.of(2, 4, 6, 8))
+                    .mapToPair(t -> new Pair<>(t / 2, t))
+                    .subtract(PlanNode.fromCollection(List.of(2, 3)))
+                    .values())
     );
   }
 
@@ -66,7 +90,9 @@ class TestJavaStreamEvaluator {
     assertEquals(
             List.of(1, 2, 3, 4),
             evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
-                    .transitiveClosure(PlanNode.fromCollection(List.of(new Pair<>(1, 2), new Pair<>(2, 3), new Pair<>(1, 4), new Pair<>(5, 6))), t -> t, Pair::getKey, (t1, t2) -> t2.getValue()))
+                    .mapToPair(t -> new Pair<>(t, t))
+                    .transitiveClosure(PlanNode.fromCollection(List.of(new Pair<>(1, 2), new Pair<>(2, 3), new Pair<>(1, 4), new Pair<>(5, 6))).mapToPair(t -> t))
+                    .values())
     );
   }
 

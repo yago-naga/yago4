@@ -5,17 +5,13 @@ import org.eclipse.rdf4j.model.Statement;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.function.BiFunction;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class PlanNode<T> {
-
-  public <T2> PlanNode<T> antiJoin(PlanNode<T2> right, Function<T, T2> leftKey) {
-    return new AntiJoinNode<>(this, right, leftKey);
-  }
 
   public PlanNode<T> cache() {
     return new CacheNode<>(this);
@@ -37,15 +33,16 @@ public abstract class PlanNode<T> {
     return new CollectionNode<>(elements);
   }
 
-  /**
-   * It is strongly recommended to use Function.identity() instead of t -> t because it unlocks some optimizations.
-   */
-  public <T2, TO, K> PlanNode<TO> join(PlanNode<T2> right, Function<T, K> leftKey, Function<T2, K> rightKey, BiFunction<T, T2, TO> mergeFunction) {
-    return new JoinNode<>(this, right, leftKey, rightKey, mergeFunction);
+  public PlanNode<T> intersection(PlanNode<T> right) {
+    return new IntersectionNode<>(this, right);
   }
 
   public <TO> PlanNode<TO> map(Function<T, TO> function) {
     return new MapNode<>(this, function);
+  }
+
+  public <KO, VO> PairPlanNode<KO, VO> mapToPair(Function<T, Map.Entry<KO, VO>> function) {
+    return new MapToPairNode<>(this, function);
   }
 
   public static PlanNode<Statement> readBinaryRDF(Path filePath) {
@@ -56,8 +53,8 @@ public abstract class PlanNode<T> {
     return new NTriplesReaderNode(filePath);
   }
 
-  public <T2, K> PlanNode<T> transitiveClosure(PlanNode<T2> right, Function<T, K> leftKey, Function<T2, K> rightKey, BiFunction<T, T2, T> mergeFunction) {
-    return new TransitiveClosureNode<>(this, right, leftKey, rightKey, mergeFunction);
+  public PlanNode<T> subtract(PlanNode<T> right) {
+    return new SubtractNode<>(this, right);
   }
 
   public PlanNode<T> union(PlanNode<T> right) {
