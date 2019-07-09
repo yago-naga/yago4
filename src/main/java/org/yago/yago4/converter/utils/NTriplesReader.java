@@ -1,14 +1,15 @@
 package org.yago.yago4.converter.utils;
 
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
 import org.yago.yago4.converter.EvaluationException;
 
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Code from org.eclipse.rdf4j.rio.ntriples.
@@ -31,10 +32,20 @@ public class NTriplesReader implements Serializable {
 
   public Stream<Statement> read(Path filePath) {
     try {
-      return Files.lines(filePath).parallel().flatMap(this::parseNTriplesLine);
+      return openReader(filePath).lines().parallel().flatMap(this::parseNTriplesLine);
     } catch (IOException e) {
       throw new EvaluationException(e);
     }
+  }
+
+  private BufferedReader openReader(Path filePath) throws IOException {
+    InputStream inputStream = new BufferedInputStream(Files.newInputStream(filePath), 16777216);
+    if (filePath.endsWith(".gzip")) {
+      inputStream = new GZIPInputStream(inputStream);
+    } else if (filePath.endsWith(".bz2")) {
+      inputStream = new BZip2CompressorInputStream(inputStream);
+    }
+    return new BufferedReader(new InputStreamReader(inputStream));
   }
 
   public Stream<Statement> parseNTriplesLine(String line) {
