@@ -19,8 +19,10 @@ import org.yago.yago4.converter.utils.NTriplesReader;
 import org.yago.yago4.converter.utils.Pair;
 import org.yago.yago4.converter.utils.YagoValueFactory;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -58,8 +60,14 @@ public class Main {
           VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue")
 
   );
+  private static final Set<IRI> LABEL_IRIS = Set.of(
+          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "name"),
+          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName"),
+          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "description")
+  );
 
-  public static void main(String[] args) throws ParseException {
+
+  public static void main(String[] args) throws ParseException, IOException {
     Options options = new Options();
     options.addRequiredOption("dir", "workingDirectory", true, "Working directory where the partition should be stored");
 
@@ -69,7 +77,7 @@ public class Main {
 
     // Processing
     options.addOption("yago", "buildYago", false, "Build Yago");
-    options.addOption("yagoNt", "yagoNt", true, "Path to the full Yago N-Triples file to build");
+    options.addOption("yagoDir", "yagoDir", true, "Path to the directory where Yago N-Triples files should be built");
 
     CommandLine params = (new DefaultParser()).parse(options, args);
 
@@ -84,10 +92,10 @@ public class Main {
     }
 
     if (params.hasOption("yago")) {
-      Path yagoNt = Path.of(params.getOptionValue("yagoNt"));
+      Path yagoDir = Path.of(params.getOptionValue("yagoDir"));
 
-      System.out.println("Generating Yago N-Triples dump to " + yagoNt);
-      buildYago(partitionedStatements, yagoNt);
+      System.out.println("Generating Yago N-Triples dump to " + yagoDir);
+      buildYago(partitionedStatements, yagoDir);
     }
   }
 
@@ -102,16 +110,26 @@ public class Main {
     return IRIShortener.shortened(iri).replace('/', '-').replace(':', '/');
   }
 
-  private static void buildYago(PartitionedStatements partitionedStatements, Path outputFile) {
+  private static void buildYago(PartitionedStatements partitionedStatements, Path outputDir) throws IOException {
+    Files.createDirectories(outputDir);
+
+    var evaluator = new JavaStreamEvaluator(VALUE_FACTORY);
+
     var classInstances = classesFromSchema(partitionedStatements);
     var yagoClasses = classInstances.entrySet().stream().map(e -> {
       var yagoClass = e.getKey();
       return e.getValue().map(i -> VALUE_FACTORY.createStatement(i, RDF.TYPE, yagoClass));
     }).reduce(PlanNode::union).get();
+    evaluator.evaluateToNTriples(yagoClasses, outputDir.resolve("yago-wd-types.nt"));
 
-    var yagoFacts = yagoClasses.union(propertiesFromSchema(partitionedStatements, classInstances));
-
-    (new JavaStreamEvaluator(VALUE_FACTORY)).evaluateToNTriples(yagoFacts, outputFile);
+    evaluator.evaluateToNTriples(
+            propertiesFromSchema(partitionedStatements, classInstances, LABEL_IRIS, null),
+            outputDir.resolve("yago-wd-labels.nt")
+    );
+    evaluator.evaluateToNTriples(
+            propertiesFromSchema(partitionedStatements, classInstances, null, LABEL_IRIS),
+            outputDir.resolve("yago-wd-facts.nt")
+    );
   }
 
   private static Map<Resource, PlanNode<Resource>> classesFromSchema(PartitionedStatements partitionedStatements) {
@@ -166,9 +184,20 @@ public class Main {
             .union(classes);
   }
 
-  private static PlanNode<Statement> propertiesFromSchema(PartitionedStatements partitionedStatements, Map<Resource, PlanNode<Resource>> classInstances) {
+  private static PlanNode<Statement> propertiesFromSchema(
+          PartitionedStatements partitionedStatements,
+          Map<Resource, PlanNode<Resource>> classInstances,
+          Set<IRI> onlyProperties,
+          Set<IRI> excludeProperties
+  ) {
     return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
       IRI yagoProperty = propertyShape.getProperty();
+      if (onlyProperties != null && !onlyProperties.contains(yagoProperty)) {
+        return PlanNode.<Statement>empty();
+      }
+      if (excludeProperties != null && excludeProperties.contains(yagoProperty)) {
+        return PlanNode.<Statement>empty();
+      }
 
       var subjectObjects = propertyShape.getFromProperties()
               .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
@@ -239,17 +268,6 @@ public class Main {
 
       return subjectObjects.map((s, o) -> VALUE_FACTORY.createStatement(s, yagoProperty, o));
     }).reduce(PlanNode::union).get();
-  }
-
-  private static PlanNode<Resource> getInstancesOfShape(ShaclSchema.NodeShape nodeShape, Map<Resource, PlanNode<Resource>> classInstances) {
-    return nodeShape.getClasses()
-            .map(cls -> {
-              if (!classInstances.containsKey(cls)) {
-                System.err.println("No instances found for class " + cls);
-              }
-              return classInstances.getOrDefault(cls, PlanNode.empty());
-            })
-            .reduce(PlanNode::union).get();
   }
 
   private static Stream<String> normalizeUri(String uri) {
