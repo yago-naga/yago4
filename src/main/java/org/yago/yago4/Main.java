@@ -167,7 +167,7 @@ public class Main {
 
     var mappingOthers = goodWikidataItems
             .subtract(mappingFromEnWikipedia.keys())
-            .mapToPair(e -> new Pair<>(e, (Resource) VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, ((IRI) e).getLocalName())));
+            .mapToPair(e -> new Pair<>(e, (Resource) VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "wikidata_" + ((IRI) e).getLocalName())));
     return mappingFromEnWikipedia.union(mappingOthers).cache();
   }
 
