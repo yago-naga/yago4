@@ -42,6 +42,7 @@ public class Main {
   private static final IRI WIKIBASE_ITEM = VALUE_FACTORY.createIRI("http://wikiba.se/ontology#Item");
   private static final IRI WDT_P31 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P31");
   private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
+  private static final IRI WDT_P646 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P646");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
   private static final IRI SCHEMA_ABOUT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "about");
@@ -125,13 +126,8 @@ public class Main {
     wikidataSuperClassOf = wikidataSuperClassOf.transitiveClosure(wikidataSuperClassOf);
 
     var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements, wikidataInstanceOf, wikidataSuperClassOf);
-    evaluator.evaluateToNTriples(
-            wikidataToYagoUrisMapping
-                    .map((wd, yago) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, wd)),
-            outputDir.resolve("yago-wd-sameAs.nt")
-    );
-
     var classInstances = classesFromSchema(wikidataToYagoUrisMapping, wikidataInstanceOf, wikidataSuperClassOf);
+
     var yagoClasses = classInstances.entrySet().stream().map(e -> {
       var yagoClass = e.getKey();
       return e.getValue().map(i -> VALUE_FACTORY.createStatement(i, RDF.TYPE, yagoClass));
@@ -146,6 +142,12 @@ public class Main {
             propertiesFromSchema(partitionedStatements, classInstances, wikidataToYagoUrisMapping, null, LABEL_IRIS),
             outputDir.resolve("yago-wd-facts.nt")
     );
+
+    evaluator.evaluateToNTriples(
+            buildSameAs(partitionedStatements, wikidataToYagoUrisMapping),
+            outputDir.resolve("yago-wd-sameAs.nt")
+    );
+
   }
 
   private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataInstanceOf, PairPlanNode<Resource, Resource> wikidataSuperClassOf) {
@@ -296,6 +298,27 @@ public class Main {
 
       return subjectObjects.map((s, o) -> VALUE_FACTORY.createStatement(s, yagoProperty, o));
     }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+  }
+
+  private static PlanNode<Statement> buildSameAs(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+    // Wikidata
+    PlanNode<Statement> wikidata = wikidataToYagoUrisMapping.map((wd, yago) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, wd));
+
+    //dbPedia
+    PlanNode<Statement> dbPedia = mapKeyToYago(partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+            .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
+            .mapToPair(s -> new Pair<>((Resource) s.getObject(), s.getSubject())), wikidataToYagoUrisMapping)
+            .mapValue(wikipedia -> VALUE_FACTORY.createIRI(wikipedia.stringValue().replace("https://en.wikipedia.org/wiki/", "http://dbpedia.org/resource/")))
+            .map((yago, dbpedia) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, dbpedia));
+
+    //Freebase
+    Pattern freebaseIdPattern = Pattern.compile("/m/0([0-9a-z_]{2,6}|1[0123][0-9a-z_]{5})$");
+    PlanNode<Statement> freebase = mapKeyToYago(partitionedStatements.getForKey(keyForIri(WDT_P646)).mapToPair(s -> new Pair<>(s.getSubject(), s.getObject())), wikidataToYagoUrisMapping)
+            .filterValue(fb -> freebaseIdPattern.matcher(fb.stringValue()).matches())
+            .mapValue(fb -> VALUE_FACTORY.createIRI("http://rdf.freebase.com/ns/", fb.stringValue().substring(1).replace("/", ".")))
+            .map((yago, fp) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, fp));
+
+    return wikidata.union(dbPedia).union(freebase);
   }
 
   private static PlanNode<Resource> mapToYago(PlanNode<Resource> facts, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
