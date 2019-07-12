@@ -33,7 +33,7 @@ public class NTriplesReader implements Serializable {
 
   public Stream<Statement> read(Path filePath) {
     try {
-      return openReader(filePath).lines().parallel().flatMap(this::parseNTriplesLine);
+      return openReader(filePath).lines().parallel().flatMap(this::parseNTriplesLineSafe);
     } catch (IOException e) {
       throw new EvaluationException(e);
     }
@@ -50,7 +50,16 @@ public class NTriplesReader implements Serializable {
     return new BufferedReader(new InputStreamReader(inputStream));
   }
 
-  public Stream<Statement> parseNTriplesLine(String line) {
+  private Stream<Statement> parseNTriplesLineSafe(String line) {
+    try {
+      return parseNTriplesLine(line);
+    } catch (Exception e) {
+      System.err.println(e.getMessage() + ": " + line);
+      return Stream.empty();
+    }
+  }
+
+  private Stream<Statement> parseNTriplesLine(String line) {
     int i = skipBlanks(line, 0);
     if (i >= line.length() || line.charAt(i) == '#') {
       return Stream.empty();
@@ -68,7 +77,7 @@ public class NTriplesReader implements Serializable {
     i = skipBlanks(line, i);
     Value object = NTriplesUtil.parseValue(line.substring(i, skipBlanksAndDotInReverse(line, line.length() - 1) + 1), valueFactory);
 
-    return Stream.ofNullable(valueFactory.createStatement(subject, predicate, object));
+    return Stream.of(valueFactory.createStatement(subject, predicate, object));
   }
 
   private static int skipBlanks(String str, int i) {
