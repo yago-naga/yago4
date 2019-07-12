@@ -42,7 +42,7 @@ public class NTriplesReader implements Serializable {
   private BufferedReader openReader(Path filePath) throws IOException {
     String extension = FilenameUtils.getExtension(filePath.toString());
     InputStream inputStream = new BufferedInputStream(Files.newInputStream(filePath), 16777216);
-    if (extension.equals("gzip")) {
+    if (extension.equals("gz")) {
       inputStream = new GZIPInputStream(inputStream);
     } else if (extension.equals("bz2")) {
       inputStream = new BZip2CompressorInputStream(inputStream);
