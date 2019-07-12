@@ -6,10 +6,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.eclipse.rdf4j.model.IRI;
-import org.eclipse.rdf4j.model.Literal;
-import org.eclipse.rdf4j.model.Resource;
-import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
@@ -26,6 +23,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -36,16 +34,24 @@ public class Main {
 
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
+  private static final String P_PREFIX = "http://www.wikidata.org/prop/";
+  private static final String PSV_PREFIX = "http://www.wikidata.org/prop/statement/value/";
   private static final String SCHEMA_PREFIX = "http://schema.org/";
+  private static final String WIKIBASE_PREFIX = "http://wikiba.se/ontology#";
   private static final String YAGO_RESOURCE_PREFIX = "http://yago-knowledge.org/resource/";
 
-  private static final IRI WIKIBASE_ITEM = VALUE_FACTORY.createIRI("http://wikiba.se/ontology#Item");
+  private static final IRI WIKIBASE_ITEM = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "Item");
+  private static final IRI WIKIBASE_BEST_RANK = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "BestRank");
+  private static final IRI WIKIBASE_TIME_VALUE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timeValue");
+  private static final IRI WIKIBASE_TIME_PRECISION = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timePrecision");
   private static final IRI WDT_P31 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P31");
   private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
   private static final IRI WDT_P646 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P646");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
   private static final IRI SCHEMA_ABOUT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "about");
+
+  private static final Set<IRI> CALENDAR_DT_SET = Set.of(XMLSchema.GYEAR, XMLSchema.GYEARMONTH, XMLSchema.DATE, XMLSchema.DATETIME);
 
   private static final Pattern WKT_COORDINATES_PATTERN = Pattern.compile("^POINT\\(([0-9.]+) +([0-9.]+)\\)$", Pattern.CASE_INSENSITIVE);
 
@@ -218,6 +224,17 @@ public class Main {
           Set<IRI> onlyProperties,
           Set<IRI> excludeProperties
   ) {
+    // Some utility plans
+    PlanNode<Resource> bestRanks = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
+            .filter(s -> s.getObject().equals(WIKIBASE_BEST_RANK))
+            .map(Statement::getSubject).cache();
+
+    PairPlanNode<Resource, Value> cleanTimes = partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE))
+            .mapToPair(s -> new Pair<>(s.getSubject(), s.getObject()))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION))
+                    .mapToPair(s -> new Pair<>(s.getSubject(), s.getObject())))
+            .flatMapValue(e -> cleanupTime(e.getKey(), e.getValue())).cache();
+
     return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
       IRI yagoProperty = propertyShape.getProperty();
       if (onlyProperties != null && !onlyProperties.contains(yagoProperty)) {
@@ -227,36 +244,57 @@ public class Main {
         return PlanNode.<Statement>empty();
       }
 
-      var subjectObjects = propertyShape.getFromProperties()
-              .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
-              .reduce(PlanNode::union).orElseGet(PlanNode::empty)
-              .mapToPair(t -> new Pair<>(t.getSubject(), t.getObject()));
+      PairPlanNode<Resource, Value> subjectObjects = PairPlanNode.empty();
 
       // Datatype filter
       if (propertyShape.getDatatypes().isPresent()) {
         Set<IRI> dts = propertyShape.getDatatypes().get();
 
-        //We map IRIs to xsd:anyUri
-        if (dts.contains(XMLSchema.ANYURI)) {
-          subjectObjects = subjectObjects.flatMapValue(object -> {
+        if (dts.equals(Collections.singleton(XMLSchema.ANYURI))) {
+          //We map IRIs to xsd:anyUri
+          subjectObjects = subjectObjects.union(getPropertyValues(partitionedStatements, propertyShape).flatMapValue(object -> {
             if (object instanceof IRI || (object instanceof Literal && XMLSchema.ANYURI.equals(((Literal) object).getDatatype()))) {
               return normalizeUri(object.stringValue())
                       .map(o -> VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI));
             } else {
               return Stream.of(object);
             }
-          });
+          }));
+        } else if (CALENDAR_DT_SET.containsAll(dts)) {
+          //We clean up times by retrieving their full representation
+          subjectObjects = subjectObjects.union(propertyShape.getFromProperties()
+                  .map(wikidataProperty -> {
+                    if (wikidataProperty.getNamespace().equals(WDT_PREFIX)) {
+                      return partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(P_PREFIX, wikidataProperty.getLocalName())))
+                              .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()))
+                              .intersection(bestRanks)
+                              .join(partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(PSV_PREFIX, wikidataProperty.getLocalName())))
+                                      .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()))
+                                      .join(cleanTimes)
+                                      .values()
+                                      .mapToPair(Function.identity())
+                              ).values().mapToPair(Function.identity());
+                    } else {
+                      return partitionedStatements.getForKey(keyForIri(wikidataProperty))
+                              .mapToPair(t -> new Pair<>(t.getSubject(), t.getObject()));
+                    }
+                  })
+                  .reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty));
+        } else {
+          subjectObjects = subjectObjects.union(getPropertyValues(partitionedStatements, propertyShape)
+                  .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype())));
         }
-        //TODO: time and quantity values
-        subjectObjects = subjectObjects.filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()));
+        //TODO: quantity values
       }
 
       // Range type filter
       if (propertyShape.getNodeShape().isPresent()) {
+        var innerSubjectObjects = getPropertyValues(partitionedStatements, propertyShape);
+
         ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
         Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
         if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
-          subjectObjects = subjectObjects.flatMapValue(object -> {
+          innerSubjectObjects = innerSubjectObjects.flatMapValue(object -> {
             //TODO: precision
             Matcher matcher = WKT_COORDINATES_PATTERN.matcher(object.stringValue());
             if (!matcher.matches()) {
@@ -267,7 +305,7 @@ public class Main {
             return Stream.of(VALUE_FACTORY.createIRI("geo:" + latitude + "," + longitude)); //TODO: description of geocoordinates
           });
         } else {
-          var objectSubjectsForRange = subjectObjects.mapPair((k, v) -> new Pair<>((Resource) v, k));
+          var objectSubjectsForRange = innerSubjectObjects.mapPair((k, v) -> new Pair<>((Resource) v, k));
           objectSubjectsForRange = mapKeyToYago(objectSubjectsForRange, wikidataToYagoUrisMapping);
           subjectObjects = nodeShape.getClasses()
                   .distinct()
@@ -276,6 +314,7 @@ public class Main {
                   .reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty)
                   .mapPair((k, v) -> new Pair<>(v, k));
         }
+        subjectObjects = subjectObjects.union(innerSubjectObjects);
       }
 
       //Regex
@@ -298,6 +337,13 @@ public class Main {
 
       return subjectObjects.map((s, o) -> VALUE_FACTORY.createStatement(s, yagoProperty, o));
     }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+  }
+
+  private static PairPlanNode<Resource, Value> getPropertyValues(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape) {
+    return propertyShape.getFromProperties()
+            .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
+            .reduce(PlanNode::union).orElseGet(PlanNode::empty)
+            .mapToPair(t -> new Pair<>(t.getSubject(), t.getObject()));
   }
 
   private static PlanNode<Statement> buildSameAs(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
@@ -341,6 +387,33 @@ public class Main {
       }
       return Stream.of(parsedURI.toString());
     } catch (URISyntaxException e) {
+      return Stream.empty();
+    }
+  }
+
+  private static Stream<Value> cleanupTime(Value value, Value precision) {
+    if (!(value instanceof Literal) || !(precision instanceof Literal)) {
+      return Stream.empty();
+    }
+    try {
+      String[] parts = value.stringValue().split("(?<!\\A)[\\-:TZ]");
+      if (parts.length != 6) {
+        return Stream.empty();
+      }
+      int p = ((Literal) precision).intValue();
+      switch (p) {
+        case 9:
+          return Stream.of(VALUE_FACTORY.createLiteral(parts[0], XMLSchema.GYEAR));
+        case 10:
+          return Stream.of(VALUE_FACTORY.createLiteral(parts[0] + "-" + parts[1], XMLSchema.GYEARMONTH));
+        case 11:
+          return Stream.of(VALUE_FACTORY.createLiteral(parts[0] + "-" + parts[1] + "-" + parts[2], XMLSchema.DATE));
+        case 14:
+          return Stream.of(VALUE_FACTORY.createLiteral(value.stringValue(), XMLSchema.DATETIME));
+        default:
+          return Stream.empty();
+      }
+    } catch (IllegalArgumentException e) {
       return Stream.empty();
     }
   }

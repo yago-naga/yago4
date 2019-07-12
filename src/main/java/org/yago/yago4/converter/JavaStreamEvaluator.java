@@ -199,7 +199,12 @@ public class JavaStreamEvaluator {
   }
 
   private <TI, KO, VO> Stream<Map.Entry<KO, VO>> toStream(MapToPairNode<TI, KO, VO> plan) {
-    return toStream(plan.getParent()).map(plan.getFunction());
+    Function<TI, Map.Entry<KO, VO>> fn = plan.getFunction();
+    if (fn.equals(Function.identity())) {
+      return (Stream<Map.Entry<KO, VO>>) toStream(plan.getParent());
+    } else {
+      return toStream(plan.getParent()).map(plan.getFunction());
+    }
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(SubtractPairNode<K, V> plan) {
