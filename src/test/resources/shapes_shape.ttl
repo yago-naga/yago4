@@ -8,7 +8,6 @@
 @prefix wd: <http://www.wikidata.org/entity/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix ys: <http://yago-knowledge.org/schema#> .
-
 @prefix yss: <http://yago-knowledge.org/shapes-shapes#> .
 
 yss:NodeShape a sh:NodeShape ;
@@ -39,7 +38,26 @@ yss:PropertyShape a sh:NodeShape ;
         sh:maxCount 1 ;
     ] ;
     sh:property [
+        sh:path ys:fromProperty ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
         sh:path sh:node ;
+        sh:class sh:NodeShape ;
         sh:maxCount 1 ;
-
+    ] ;
+    sh:property [
+        sh:path sh:datatype ;
+        sh:class rdfs:Datatype ;
     ] .
+
+
+# Allowed datatypes
+xsd:integer a rdfs:Datatype .
+xsd:string a rdfs:Datatype .
+xsd:anyURI a rdfs:Datatype .
+xsd:dateTime a rdfs:Datatype .
+xsd:date a rdfs:Datatype .
+xsd:gYearMonth a rdfs:Datatype .
+xsd:gYear a rdfs:Datatype .
+rdf:langString a rdfs:Datatype .

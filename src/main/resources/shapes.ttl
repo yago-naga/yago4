@@ -13,10 +13,6 @@
 ys:
 	rdfs:label "Yago 4 shapes declaration"@en .
 
-# Hack to allow simple Shacl validation of our shapes
-sh:property rdfs:range sh:PropertyShape .
-
-
 
 ys:Thing a sh:NodeShape ;
     sh:targetClass schema:Thing ;
@@ -304,7 +300,7 @@ ys:CreativeWorkSeason a sh:NodeShape ;
     sh:targetClass schema:CreativeWorkSeason ;
     sh:property [
         sh:path schema:actor ;
-        sh:datatype ys:Person ;
+        sh:node ys:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
@@ -360,7 +356,7 @@ ys:MovieSeries a sh:NodeShape ;
     sh:targetClass schema:MovieSeries ;
     sh:property [
         sh:path schema:actor ;
-        sh:datatype ys:Person ;
+        sh:node ys:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
@@ -398,7 +394,7 @@ ys:RadioSeries a sh:NodeShape ;
     ys:fromClass wd:Q14623351 ;
     sh:property [
         sh:path schema:actor ;
-        sh:datatype ys:Person ;
+        sh:node ys:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
@@ -443,7 +439,7 @@ ys:TVSeries a sh:NodeShape ;
     ys:fromClass wd:Q5398426 ;
     sh:property [
         sh:path schema:actor ;
-        sh:datatype ys:Person ;
+        sh:node ys:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
@@ -531,7 +527,7 @@ ys:Episode a sh:NodeShape ;
     ys:fromClass wd:Q1983062 ;
     sh:property [
         sh:path schema:actor ;
-        sh:datatype ys:Person ;
+        sh:node ys:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
@@ -636,7 +632,7 @@ ys:Movie a sh:NodeShape ;
     ys:fromClass wd:Q11424 ;
     sh:property [
         sh:path schema:actor ;
-        sh:datatype ys:Person ;
+        sh:node ys:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
@@ -708,7 +704,7 @@ ys:VideoGame a sh:NodeShape ;
     ys:fromClass wd:Q7889 ;
     sh:property [
         sh:path schema:actor ;
-        sh:datatype ys:Person ;
+        sh:node ys:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [

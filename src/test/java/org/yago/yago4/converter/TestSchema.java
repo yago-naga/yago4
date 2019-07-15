@@ -27,6 +27,7 @@ class TestSchema {
     Class context = getClass();
     doValidation(
             context.getResource("/shapes_shape.ttl"),
+            new URL("https://www.w3.org/ns/shacl.ttl"),
             new URL("https://schema.org/version/latest/schema.nt"),
             context.getResource("/shapes.ttl")
     );

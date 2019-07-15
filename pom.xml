@@ -10,7 +10,7 @@
         <apache.compress.version>1.18</apache.compress.version>
         <apache.cli.version>1.4</apache.cli.version>
         <guava.version>28.0-jre</guava.version>
-        <junit.version>5.4.2</junit.version>
+        <junit.version>5.5.0</junit.version>
         <rdf4j.version>2.5.3</rdf4j.version>
     </properties>
 
@@ -48,6 +48,12 @@
         <dependency>
             <groupId>org.eclipse.rdf4j</groupId>
             <artifactId>rdf4j-shacl</artifactId>
+            <version>${rdf4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.rdf4j</groupId>
+            <artifactId>rdf4j-sail-inferencer</artifactId>
             <version>${rdf4j.version}</version>
             <scope>test</scope>
         </dependency>
