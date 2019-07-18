@@ -3,7 +3,6 @@ package org.yago.yago4.converter;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
 import org.eclipse.rdf4j.model.Statement;
 import org.yago.yago4.converter.plan.*;
 import org.yago.yago4.converter.utils.NTriplesReader;
@@ -18,6 +17,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -271,7 +271,7 @@ public class JavaStreamEvaluator {
       iteration = StreamSupport.stream(new StreamMapJoinSpliterator<>(
               iteration.spliterator(),
               right
-      ), true)
+      ), false)
               .map(Map.Entry::getValue)
               .filter(closure::add)
               .collect(Collectors.toList());
@@ -288,7 +288,7 @@ public class JavaStreamEvaluator {
     } else if (plan instanceof TransitiveClosurePairNode) {
       return toMap((TransitiveClosurePairNode<K, V>) plan);
     } else {
-      return toStream(plan).collect(Multimaps.toMultimap(Map.Entry::getKey, Map.Entry::getValue, ArrayListMultimap::create));
+      return toStream(plan).collect(toMultimapCollector());
     }
   }
 
@@ -300,15 +300,15 @@ public class JavaStreamEvaluator {
   }
 
   private <K, V> Multimap<K, V> toMap(TransitiveClosurePairNode<K, V> plan) {
-    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(Multimaps.toMultimap(Map.Entry::getKey, Map.Entry::getValue, ArrayListMultimap::create));
+    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(toMultimapCollector());
 
     Multimap<V, V> right = toMap(plan.getRightParent());
     List<Map.Entry<K, V>> iteration = new ArrayList<>(closure.entries()); //TODO: avoid list
     while (!iteration.isEmpty()) {
       iteration = StreamSupport.stream(new PairStreamMapJoinSpliterator<>(
-              iteration.parallelStream().map(t -> Maps.immutableEntry(t.getValue(), t.getKey())).spliterator(),
+              iteration.stream().map(t -> Maps.immutableEntry(t.getValue(), t.getKey())).spliterator(),
               right
-      ), true)
+      ), false)
               .map(Map.Entry::getValue)
               .filter(t -> closure.put(t.getKey(), t.getValue()))
               .collect(Collectors.toList());
@@ -316,7 +316,24 @@ public class JavaStreamEvaluator {
     return closure;
   }
 
-  private <T> Stream<T> toStream(Supplier<Spliterator<T>> spliterator) {
+  private static <T> Stream<T> toStream(Supplier<Spliterator<T>> spliterator) {
     return StreamSupport.stream(spliterator, 0, true); //TODO: characteristics
+  }
+
+  private static <K, V> Collector<Map.Entry<K, V>, Multimap<K, V>, Multimap<K, V>> toMultimapCollector() {
+    return Collector.of(
+            ArrayListMultimap::create,
+            (m, i) -> m.put(i.getKey(), i.getValue()),
+            (a, b) -> {
+              if (a.size() > b.size()) {
+                a.putAll(b);
+                return a;
+              } else {
+                b.putAll(a);
+                return b;
+              }
+            }
+    );
+
   }
 }

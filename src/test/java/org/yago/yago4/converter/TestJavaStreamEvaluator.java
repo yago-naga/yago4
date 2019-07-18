@@ -108,7 +108,7 @@ class TestJavaStreamEvaluator {
   @Test
   void testPairTransitiveClosure() {
     assertEquals(
-            List.of(1, 2, 4, 3),
+            List.of(1, 4, 2, 3),
             evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
                     .mapToPair(t -> Maps.immutableEntry(t, t))
                     .transitiveClosure(PlanNode.fromCollection(List.of(Maps.immutableEntry(1, 2), Maps.immutableEntry(2, 3), Maps.immutableEntry(1, 4), Maps.immutableEntry(5, 6))).mapToPair(t -> t))
