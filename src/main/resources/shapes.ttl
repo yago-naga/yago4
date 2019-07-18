@@ -16,6 +16,7 @@ ys:
 
 ys:Thing a sh:NodeShape ;
     sh:targetClass schema:Thing ;
+    ys:fromClass wd:Q35120 ;
     sh:property [
         sh:path schema:alternateName ;
         sh:datatype rdf:langString ;
