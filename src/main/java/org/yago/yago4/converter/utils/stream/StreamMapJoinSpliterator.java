@@ -1,7 +1,7 @@
 package org.yago.yago4.converter.utils.stream;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-import org.yago.yago4.converter.utils.Pair;
 
 import java.util.Map;
 import java.util.Spliterator;
@@ -18,7 +18,7 @@ public class StreamMapJoinSpliterator<K, V> extends AbstractStreamSpliterator<K,
 
   @Override
   protected void onElement(K input, Consumer<? super Map.Entry<K, V>> action) {
-    right.get(input).forEach(v -> action.accept(new Pair<>(input, v)));
+    right.get(input).forEach(v -> action.accept(Maps.immutableEntry(input, v)));
   }
 
   @Override

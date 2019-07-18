@@ -1,11 +1,15 @@
 package org.yago.yago4.converter;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import org.eclipse.rdf4j.model.Statement;
 import org.yago.yago4.converter.plan.*;
-import org.yago.yago4.converter.utils.*;
+import org.yago.yago4.converter.utils.NTriplesReader;
+import org.yago.yago4.converter.utils.NTriplesWriter;
+import org.yago.yago4.converter.utils.RDFBinaryFormat;
+import org.yago.yago4.converter.utils.YagoValueFactory;
 import org.yago.yago4.converter.utils.stream.*;
 
 import java.nio.file.Path;
@@ -302,7 +306,7 @@ public class JavaStreamEvaluator {
     List<Map.Entry<K, V>> iteration = new ArrayList<>(closure.entries()); //TODO: avoid list
     while (!iteration.isEmpty()) {
       iteration = StreamSupport.stream(new PairStreamMapJoinSpliterator<>(
-              iteration.parallelStream().map(t -> entry(t.getValue(), t.getKey())).spliterator(),
+              iteration.parallelStream().map(t -> Maps.immutableEntry(t.getValue(), t.getKey())).spliterator(),
               right
       ), true)
               .map(Map.Entry::getValue)
@@ -314,9 +318,5 @@ public class JavaStreamEvaluator {
 
   private <T> Stream<T> toStream(Supplier<Spliterator<T>> spliterator) {
     return StreamSupport.stream(spliterator, 0, true); //TODO: characteristics
-  }
-
-  private static <K, V> Map.Entry<K, V> entry(K key, V value) {
-    return new Pair<>(key, value);
   }
 }
