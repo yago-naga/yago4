@@ -45,7 +45,7 @@ public class JavaStreamEvaluator {
     if (cachedValue != null) {
       return cachedValue.parallelStream();
     } else if (plan instanceof CacheNode) {
-      return toImmutableSet(plan).parallelStream();
+      return toSet(plan).parallelStream();
     } else if (plan instanceof CollectionNode) {
       return toStream((CollectionNode<T>) plan);
     } else if (plan instanceof FilterNode) {
@@ -67,7 +67,7 @@ public class JavaStreamEvaluator {
     } else if (plan instanceof SubtractNode) {
       return toStream((SubtractNode<T>) plan);
     } else if (plan instanceof TransitiveClosureNode) {
-      return toMutableSet((TransitiveClosureNode<T>) plan).parallelStream();
+      return toSet((TransitiveClosureNode<T>) plan).parallelStream();
     } else if (plan instanceof UnionNode) {
       return toStream((UnionNode<T>) plan);
     } else if (plan instanceof ValuesNode) {
@@ -92,7 +92,7 @@ public class JavaStreamEvaluator {
   private <T> Stream<T> toStream(IntersectionNode<T> plan) {
     return toStream(() -> new StreamSetJoinSpliterator<>(
             toStream(plan.getLeftParent()).spliterator(),
-            toImmutableSet(plan.getRightParent())
+            toSet(plan.getRightParent())
     ));
   }
 
@@ -121,7 +121,7 @@ public class JavaStreamEvaluator {
   private <T> Stream<T> toStream(SubtractNode<T> plan) {
     return toStream(() -> new StreamSetAntiJoinSpliterator<>(
             toStream(plan.getLeftParent()).spliterator(),
-            toImmutableSet(plan.getRightParent())
+            toSet(plan.getRightParent())
     ));
   }
 
@@ -139,7 +139,7 @@ public class JavaStreamEvaluator {
     if (cachedValue != null) {
       return cachedValue.entries().parallelStream();
     } else if (plan instanceof CachePairNode) {
-      return toImmutableMap(plan).entries().parallelStream();
+      return toMap(plan).entries().parallelStream();
     } else if (plan instanceof FilterPairNode) {
       return toStream((FilterPairNode<K, V>) plan);
     } else if (plan instanceof FlatMapPairNode) {
@@ -157,7 +157,7 @@ public class JavaStreamEvaluator {
     } else if (plan instanceof SubtractPairNode) {
       return toStream((SubtractPairNode<K, V>) plan);
     } else if (plan instanceof TransitiveClosurePairNode) {
-      return toMutableMap((TransitiveClosurePairNode<K, V>) plan).entries().parallelStream();
+      return toMap((TransitiveClosurePairNode<K, V>) plan).entries().parallelStream();
     } else if (plan instanceof UnionPairNode) {
       return toStream((UnionPairNode<K, V>) plan);
     } else {
@@ -179,20 +179,20 @@ public class JavaStreamEvaluator {
   private <K, V> Stream<Map.Entry<K, V>> toStream(IntersectionPairNode<K, V> plan) {
     return toStream(() -> new PairStreamSetJoinSpliterator<>(
             toStream(plan.getLeftParent()).spliterator(),
-            toImmutableSet(plan.getRightParent())
+            toSet(plan.getRightParent())
     ));
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(JoinNode<K, V> plan) {
     return toStream(() -> new StreamMapJoinSpliterator<>(
             toStream(plan.getLeftParent()).spliterator(),
-            toImmutableMap(plan.getRightParent())));
+            toMap(plan.getRightParent())));
   }
 
   private <K, V1, V2> Stream<Map.Entry<K, Map.Entry<V1, V2>>> toStream(JoinPairNode<K, V1, V2> plan) {
     return toStream(() -> new PairStreamMapJoinSpliterator<>(
             toStream(plan.getLeftParent()).spliterator(),
-            toImmutableMap(plan.getRightParent())));
+            toMap(plan.getRightParent())));
   }
 
   private <KI, VI, KO, VO> Stream<Map.Entry<KO, VO>> toStream(MapPairNode<KI, VI, KO, VO> plan) {
@@ -212,7 +212,7 @@ public class JavaStreamEvaluator {
   private <K, V> Stream<Map.Entry<K, V>> toStream(SubtractPairNode<K, V> plan) {
     return toStream(() -> new PairStreamSetAntiJoinSpliterator<>(
             toStream(plan.getLeftParent()).spliterator(),
-            toImmutableSet(plan.getRightParent())
+            toSet(plan.getRightParent())
     ));
   }
 
@@ -220,60 +220,32 @@ public class JavaStreamEvaluator {
     return plan.getParents().stream().flatMap(this::toStream);
   }
 
-  private <T> Set<T> toImmutableSet(PlanNode<T> plan) {
+  private <T> Set<T> toSet(PlanNode<T> plan) {
     Set<T> value = cache.get(plan);
     if (value != null) {
       return value;
     } else if (plan instanceof CacheNode) {
-      return toImmutableSet((CacheNode<T>) plan);
+      return toSet((CacheNode<T>) plan);
+    }
+    if (plan instanceof CollectionNode) {
+      return toSet((CollectionNode<T>) plan);
     } else if (plan instanceof KeysNode) {
-      return toImmutableSet((KeysNode<T, ?>) plan);
+      return toSet((KeysNode<T, ?>) plan);
+    } else if (plan instanceof TransitiveClosureNode) {
+      return toSet((TransitiveClosureNode<T>) plan);
     } else {
-      return toMutableSet(plan);
+      return toStream(plan).collect(Collectors.toSet());
     }
   }
 
-  private <T> Set<T> toImmutableSet(CacheNode<T> plan) {
-    Set<T> value = toImmutableSet(plan.getParent());
+  private <T> Set<T> toSet(CacheNode<T> plan) {
+    Set<T> value = toSet(plan.getParent());
     cache.put(plan, value);
     cache.put(plan.getParent(), value); //to allow using the parent value as cache key, avoids impact of a common mistake
     return value;
   }
 
-  private <K, V> Set<K> toImmutableSet(KeysNode<K, V> plan) {
-    return toImmutableMap(plan.getParent()).keySet();
-  }
-
-  private <T> boolean isAlreadyMutableSet(PlanNode<T> plan) {
-    return plan instanceof FilterNode && isAlreadyMutableSet(((FilterNode<T>) plan).getParent()) ||
-            plan instanceof CollectionNode;
-  }
-
-  private <T> Set<T> toMutableSet(PlanNode<T> plan) {
-    if (plan instanceof FilterNode) {
-      return toMutableSet((FilterNode<T>) plan);
-    } else if (plan instanceof CollectionNode) {
-      return toMutableSet((CollectionNode<T>) plan);
-    } else if (plan instanceof KeysNode) {
-      return toMutableSet((KeysNode<T, ?>) plan);
-    } else if (plan instanceof TransitiveClosureNode) {
-      return toMutableSet((TransitiveClosureNode<T>) plan);
-    } else {
-      return toStream(plan).collect(Collectors.toSet());
-    }
-  }
-
-  private <T> Set<T> toMutableSet(FilterNode<T> plan) {
-    if (isAlreadyMutableSet(plan.getParent())) {
-      Set<T> elements = toMutableSet(plan.getParent());
-      elements.removeIf(plan.getPredicate());
-      return elements;
-    } else {
-      return toStream(plan).collect(Collectors.toSet());
-    }
-  }
-
-  private <T> Set<T> toMutableSet(CollectionNode<T> plan) {
+  private <T> Set<T> toSet(CollectionNode<T> plan) {
     Collection<T> elements = plan.getElements();
     if (elements instanceof Set) {
       return (Set<T>) elements;
@@ -282,14 +254,14 @@ public class JavaStreamEvaluator {
     }
   }
 
-  private <K, V> Set<K> toMutableSet(KeysNode<K, V> plan) {
-    return toMutableMap(plan.getParent()).keySet();
+  private <K, V> Set<K> toSet(KeysNode<K, V> plan) {
+    return toMap(plan.getParent()).keySet();
   }
 
-  private <T> Set<T> toMutableSet(TransitiveClosureNode<T> plan) {
-    Set<T> closure = toMutableSet(plan.getLeftParent());
+  private <T> Set<T> toSet(TransitiveClosureNode<T> plan) {
+    Set<T> closure = toStream(plan.getLeftParent()).collect(Collectors.toSet());
 
-    Multimap<T, T> right = toImmutableMap(plan.getRightParent());
+    Multimap<T, T> right = toMap(plan.getRightParent());
     List<T> iteration = new ArrayList<>(closure); //TODO: avoid list
     while (!iteration.isEmpty()) {
       iteration = StreamSupport.stream(new StreamMapJoinSpliterator<>(
@@ -303,36 +275,30 @@ public class JavaStreamEvaluator {
     return closure;
   }
 
-  private <K, V> Multimap<K, V> toImmutableMap(PairPlanNode<K, V> plan) {
+  private <K, V> Multimap<K, V> toMap(PairPlanNode<K, V> plan) {
     Multimap<K, V> value = cachePairs.get(plan);
     if (value != null) {
       return value;
     } else if (plan instanceof CachePairNode) {
-      return toImmutableMap((CachePairNode<K, V>) plan);
-    } else {
-      return toMutableMap(plan);
-    }
-  }
-
-  private <K, V> Multimap<K, V> toImmutableMap(CachePairNode<K, V> plan) {
-    Multimap<K, V> value = toImmutableMap(plan.getParent());
-    cachePairs.put(plan, value);
-    cachePairs.put(plan.getParent(), value); //to allow using the parent value as cache key, avoids impact of a common mistake
-    return value;
-  }
-
-  private <K, V> Multimap<K, V> toMutableMap(PairPlanNode<K, V> plan) {
-    if (plan instanceof TransitiveClosurePairNode) {
-      return toMutableMap((TransitiveClosurePairNode<K, V>) plan);
+      return toMap((CachePairNode<K, V>) plan);
+    } else if (plan instanceof TransitiveClosurePairNode) {
+      return toMap((TransitiveClosurePairNode<K, V>) plan);
     } else {
       return toStream(plan).collect(Multimaps.toMultimap(Map.Entry::getKey, Map.Entry::getValue, ArrayListMultimap::create));
     }
   }
 
-  private <K, V> Multimap<K, V> toMutableMap(TransitiveClosurePairNode<K, V> plan) {
-    Multimap<K, V> closure = toMutableMap(plan.getLeftParent());
+  private <K, V> Multimap<K, V> toMap(CachePairNode<K, V> plan) {
+    Multimap<K, V> value = toMap(plan.getParent());
+    cachePairs.put(plan, value);
+    cachePairs.put(plan.getParent(), value); //to allow using the parent value as cache key, avoids impact of a common mistake
+    return value;
+  }
 
-    Multimap<V, V> right = toImmutableMap(plan.getRightParent());
+  private <K, V> Multimap<K, V> toMap(TransitiveClosurePairNode<K, V> plan) {
+    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(Multimaps.toMultimap(Map.Entry::getKey, Map.Entry::getValue, ArrayListMultimap::create));
+
+    Multimap<V, V> right = toMap(plan.getRightParent());
     List<Map.Entry<K, V>> iteration = new ArrayList<>(closure.entries()); //TODO: avoid list
     while (!iteration.isEmpty()) {
       iteration = StreamSupport.stream(new PairStreamMapJoinSpliterator<>(
