@@ -53,6 +53,17 @@ class TestJavaStreamEvaluator {
   }
 
   @Test
+  void testIntersectionPair() {
+    assertEquals(
+            List.of(new Pair<>(1, 'a'), new Pair<>(3, 'c')),
+            evaluator.evaluateToList(PlanNode.fromCollection(List.of(new Pair<>(1, 'a'), new Pair<>(2, 'b'), new Pair<>(3, 'c')))
+                    .mapToPair(t -> t)
+                    .intersection(PlanNode.fromCollection(List.of(1, 3, 4)))
+                    .map(Pair::new))
+    );
+  }
+
+  @Test
   void testJoinPairPair() {
     assertEquals(
             List.of(5, 10),
