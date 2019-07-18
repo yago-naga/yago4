@@ -90,6 +90,15 @@ class TestJavaStreamEvaluator {
     assertEquals(
             List.of(1, 2, 3, 4),
             evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
+                    .transitiveClosure(PlanNode.fromCollection(List.of(new Pair<>(1, 2), new Pair<>(2, 3), new Pair<>(1, 4), new Pair<>(5, 6))).mapToPair(t -> t)))
+    );
+  }
+
+  @Test
+  void testPairTransitiveClosure() {
+    assertEquals(
+            List.of(1, 2, 4, 3),
+            evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
                     .mapToPair(t -> new Pair<>(t, t))
                     .transitiveClosure(PlanNode.fromCollection(List.of(new Pair<>(1, 2), new Pair<>(2, 3), new Pair<>(1, 4), new Pair<>(5, 6))).mapToPair(t -> t))
                     .values())

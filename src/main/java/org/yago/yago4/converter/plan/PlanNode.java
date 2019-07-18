@@ -61,6 +61,10 @@ public abstract class PlanNode<T> {
     return new SubtractNode<>(this, right);
   }
 
+  public PlanNode<T> transitiveClosure(PairPlanNode<T, T> right) {
+    return new TransitiveClosureNode<>(this, right);
+  }
+
   public PlanNode<T> union(PlanNode<T> right) {
     return new UnionNode<>(Stream.concat(unionChildren(this), unionChildren(right)).collect(Collectors.toList()));
   }

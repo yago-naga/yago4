@@ -1,8 +1,8 @@
 package org.yago.yago4.converter;
 
-import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
 import org.eclipse.rdf4j.model.Statement;
 import org.yago.yago4.converter.plan.*;
 import org.yago.yago4.converter.utils.*;
@@ -24,7 +24,7 @@ public class JavaStreamEvaluator {
   private final NTriplesReader nTriplesReader;
   private final NTriplesWriter nTriplesWriter;
   private final Map<PlanNode, Set> cache = new HashMap<>();
-  private final Map<PairPlanNode, SetMultimap> cachePairs = new HashMap<>();
+  private final Map<PairPlanNode, Multimap> cachePairs = new HashMap<>();
 
   public JavaStreamEvaluator(YagoValueFactory valueFactory) {
     this.valueFactory = valueFactory;
@@ -66,6 +66,8 @@ public class JavaStreamEvaluator {
       return (Stream<T>) toStream((RDFBinaryReaderNode) plan);
     } else if (plan instanceof SubtractNode) {
       return toStream((SubtractNode<T>) plan);
+    } else if (plan instanceof TransitiveClosureNode) {
+      return toMutableSet((TransitiveClosureNode<T>) plan).parallelStream();
     } else if (plan instanceof UnionNode) {
       return toStream((UnionNode<T>) plan);
     } else if (plan instanceof ValuesNode) {
@@ -133,7 +135,7 @@ public class JavaStreamEvaluator {
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(PairPlanNode<K, V> plan) {
-    SetMultimap<K, V> cachedValue = cachePairs.get(plan);
+    Multimap<K, V> cachedValue = cachePairs.get(plan);
     if (cachedValue != null) {
       return cachedValue.entries().parallelStream();
     } else if (plan instanceof CachePairNode) {
@@ -254,6 +256,8 @@ public class JavaStreamEvaluator {
       return toMutableSet((CollectionNode<T>) plan);
     } else if (plan instanceof KeysNode) {
       return toMutableSet((KeysNode<T, ?>) plan);
+    } else if (plan instanceof TransitiveClosureNode) {
+      return toMutableSet((TransitiveClosureNode<T>) plan);
     } else {
       return toStream(plan).collect(Collectors.toSet());
     }
@@ -282,8 +286,25 @@ public class JavaStreamEvaluator {
     return toMutableMap(plan.getParent()).keySet();
   }
 
-  private <K, V> SetMultimap<K, V> toImmutableMap(PairPlanNode<K, V> plan) {
-    SetMultimap<K, V> value = cachePairs.get(plan);
+  private <T> Set<T> toMutableSet(TransitiveClosureNode<T> plan) {
+    Set<T> closure = toMutableSet(plan.getLeftParent());
+
+    Multimap<T, T> right = toImmutableMap(plan.getRightParent());
+    List<T> iteration = new ArrayList<>(closure); //TODO: avoid list
+    while (!iteration.isEmpty()) {
+      iteration = StreamSupport.stream(new StreamMapJoinSpliterator<>(
+              iteration.spliterator(),
+              right
+      ), true)
+              .map(Map.Entry::getValue)
+              .filter(closure::add)
+              .collect(Collectors.toList());
+    }
+    return closure;
+  }
+
+  private <K, V> Multimap<K, V> toImmutableMap(PairPlanNode<K, V> plan) {
+    Multimap<K, V> value = cachePairs.get(plan);
     if (value != null) {
       return value;
     } else if (plan instanceof CachePairNode) {
@@ -293,27 +314,25 @@ public class JavaStreamEvaluator {
     }
   }
 
-  private <K, V> SetMultimap<K, V> toImmutableMap(CachePairNode<K, V> plan) {
-    SetMultimap<K, V> value = toImmutableMap(plan.getParent());
+  private <K, V> Multimap<K, V> toImmutableMap(CachePairNode<K, V> plan) {
+    Multimap<K, V> value = toImmutableMap(plan.getParent());
     cachePairs.put(plan, value);
     cachePairs.put(plan.getParent(), value); //to allow using the parent value as cache key, avoids impact of a common mistake
     return value;
   }
 
-  private <K, V> SetMultimap<K, V> toMutableMap(PairPlanNode<K, V> plan) {
+  private <K, V> Multimap<K, V> toMutableMap(PairPlanNode<K, V> plan) {
     if (plan instanceof TransitiveClosurePairNode) {
       return toMutableMap((TransitiveClosurePairNode<K, V>) plan);
     } else {
-      SetMultimap<K, V> map = Multimaps.synchronizedSetMultimap(HashMultimap.create());
-      toStream(plan).forEach(e -> map.put(e.getKey(), e.getValue()));
-      return map;
+      return toStream(plan).collect(Multimaps.toMultimap(Map.Entry::getKey, Map.Entry::getValue, ArrayListMultimap::create));
     }
   }
 
-  private <K, V> SetMultimap<K, V> toMutableMap(TransitiveClosurePairNode<K, V> plan) {
-    SetMultimap<K, V> closure = toMutableMap(plan.getLeftParent());
+  private <K, V> Multimap<K, V> toMutableMap(TransitiveClosurePairNode<K, V> plan) {
+    Multimap<K, V> closure = toMutableMap(plan.getLeftParent());
 
-    SetMultimap<V, V> right = toImmutableMap(plan.getRightParent());
+    Multimap<V, V> right = toImmutableMap(plan.getRightParent());
     List<Map.Entry<K, V>> iteration = new ArrayList<>(closure.entries()); //TODO: avoid list
     while (!iteration.isEmpty()) {
       iteration = StreamSupport.stream(new PairStreamMapJoinSpliterator<>(
@@ -329,16 +348,6 @@ public class JavaStreamEvaluator {
 
   private <T> Stream<T> toStream(Supplier<Spliterator<T>> spliterator) {
     return StreamSupport.stream(spliterator, 0, true); //TODO: characteristics
-  }
-
-  private <T> void iterate(Set<T> closure, Function<Spliterator<T>, Spliterator<T>> add) {
-    //TODO: avoid list creation
-    List<T> iteration = new ArrayList<>(closure);
-    while (!iteration.isEmpty()) {
-      iteration = StreamSupport.stream(add.apply(iteration.spliterator()), true)
-              .filter(closure::add)
-              .collect(Collectors.toList());
-    }
   }
 
   private static <K, V> Map.Entry<K, V> entry(K key, V value) {
