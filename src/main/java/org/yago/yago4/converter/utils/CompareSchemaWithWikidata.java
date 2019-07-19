@@ -6,6 +6,7 @@ import org.yago.yago4.ShaclSchema;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,7 +37,7 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
   private void compareProperties() {
     var wikidataMapping = getEquivalentProperties();
     var yagoMapping = ShaclSchema.getSchema().getPropertyShapes()
-            .flatMap(shape -> shape.getFromProperties().map(wdp -> new Pair<>(wdp.stringValue(), shape.getProperty().stringValue())))
+            .flatMap(shape -> shape.getFromProperties().map(wdp -> Map.entry(wdp.stringValue(), shape.getProperty().stringValue())))
             .collect(Collectors.toSet());
     System.out.println();
     System.out.println("==== PROPERTIES ====");
@@ -47,7 +48,7 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
   private void compareClasses() {
     var wikidataMapping = getEquivalentsClasses();
     var yagoMapping = ShaclSchema.getSchema().getNodeShapes()
-            .flatMap(shape -> shape.getFromClasses().flatMap(wdcl -> shape.getClasses().map(ycl -> new Pair<>(wdcl.stringValue(), ycl.stringValue()))))
+            .flatMap(shape -> shape.getFromClasses().flatMap(wdcl -> shape.getClasses().map(ycl -> Map.entry(wdcl.stringValue(), ycl.stringValue()))))
             .collect(Collectors.toSet());
     System.out.println();
     System.out.println("==== CLASSES ====");
@@ -55,8 +56,8 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
     System.out.println();
   }
 
-  private Set<Pair<String, String>> getEquivalentProperties() {
-    Set<Pair<String, String>> out = new HashSet<>();
+  private Set<Map.Entry<String, String>> getEquivalentProperties() {
+    Set<Map.Entry<String, String>> out = new HashSet<>();
     try (RepositoryConnection connection = repository.getConnection()) {
       try (var results = connection.prepareTupleQuery("SELECT DISTINCT ?wd ?yago WHERE {\n" +
               "  ?p wdt:P1628|wdt:P2235|wdt:P2236 ?yago .\n" +
@@ -65,15 +66,15 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
               "}").evaluate()) {
         while (results.hasNext()) {  // iterate over the result
           var bindingSet = results.next();
-          out.add(new Pair<>(bindingSet.getValue("wd").stringValue(), bindingSet.getValue("yago").stringValue()));
+          out.add(Map.entry(bindingSet.getValue("wd").stringValue(), bindingSet.getValue("yago").stringValue()));
         }
       }
     }
     return out;
   }
 
-  private Set<Pair<String, String>> getEquivalentsClasses() {
-    Set<Pair<String, String>> out = new HashSet<>();
+  private Set<Map.Entry<String, String>> getEquivalentsClasses() {
+    Set<Map.Entry<String, String>> out = new HashSet<>();
     try (RepositoryConnection connection = repository.getConnection()) {
       try (var results = connection.prepareTupleQuery("SELECT DISTINCT ?wd ?yago WHERE {\n" +
               "  ?wd wdt:P1709|wdt:P3950 ?yago .\n" +
@@ -81,18 +82,18 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
               "}").evaluate()) {
         while (results.hasNext()) {  // iterate over the result
           var bindingSet = results.next();
-          out.add(new Pair<>(bindingSet.getValue("wd").stringValue(), bindingSet.getValue("yago").stringValue()));
+          out.add(Map.entry(bindingSet.getValue("wd").stringValue(), bindingSet.getValue("yago").stringValue()));
         }
       }
     }
     return out;
   }
 
-  private <T> void printDiff(Set<T> wikidata, Set<T> yago) {
+  private <K, V> void printDiff(Set<Map.Entry<K, V>> wikidata, Set<Map.Entry<K, V>> yago) {
     System.out.println("= not in Wikidata =");
     for (var v : yago) {
       if (!wikidata.contains(v)) {
-        System.out.println(v);
+        System.out.println(v.getKey() + " -> " + v.getValue());
       }
     }
     System.out.println();
@@ -100,7 +101,7 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
     System.out.println("= not in Yago =");
     for (var v : wikidata) {
       if (!yago.contains(v)) {
-        System.out.println(v);
+        System.out.println(v.getKey() + " -> " + v.getValue());
       }
     }
     System.out.println();
