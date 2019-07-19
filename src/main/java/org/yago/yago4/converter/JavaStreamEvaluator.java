@@ -1,6 +1,6 @@
 package org.yago.yago4.converter;
 
-import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import org.eclipse.rdf4j.model.Statement;
@@ -322,7 +322,7 @@ public class JavaStreamEvaluator {
 
   private static <K, V> Collector<Map.Entry<K, V>, Multimap<K, V>, Multimap<K, V>> toMultimapCollector() {
     return Collector.of(
-            ArrayListMultimap::create,
+            HashMultimap::create,
             (m, i) -> m.put(i.getKey(), i.getValue()),
             (a, b) -> {
               if (a.size() > b.size()) {
