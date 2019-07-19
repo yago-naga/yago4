@@ -229,12 +229,6 @@ public class Main {
             .filter(s -> s.getObject().equals(WIKIBASE_BEST_RANK))
             .map(Statement::getSubject).cache();
 
-    PairPlanNode<Resource, Value> cleanTimes = partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE))
-            .mapToPair(s -> new Pair<>(s.getSubject(), s.getObject()))
-            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION))
-                    .mapToPair(s -> new Pair<>(s.getSubject(), s.getObject())))
-            .flatMapValue(e -> cleanupTime(e.getKey(), e.getValue())).cache();
-
     return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
       IRI yagoProperty = propertyShape.getProperty();
       if (onlyProperties != null && !onlyProperties.contains(yagoProperty)) {
@@ -262,24 +256,12 @@ public class Main {
           }));
         } else if (CALENDAR_DT_SET.containsAll(dts)) {
           //We clean up times by retrieving their full representation
-          subjectObjects = subjectObjects.union(propertyShape.getFromProperties()
-                  .map(wikidataProperty -> {
-                    if (wikidataProperty.getNamespace().equals(WDT_PREFIX)) {
-                      return partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(P_PREFIX, wikidataProperty.getLocalName())))
-                              .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()))
-                              .intersection(bestRanks)
-                              .join(partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(PSV_PREFIX, wikidataProperty.getLocalName())))
-                                      .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()))
-                                      .join(cleanTimes)
-                                      .values()
-                                      .mapToPair(Function.identity())
-                              ).values().mapToPair(Function.identity());
-                    } else {
-                      return partitionedStatements.getForKey(keyForIri(wikidataProperty))
-                              .mapToPair(t -> new Pair<>(t.getSubject(), t.getObject()));
-                    }
-                  })
-                  .reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty));
+          subjectObjects = subjectObjects.union(
+                  getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
+                          .swap()
+                          .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE)).mapToPair(s -> new Pair<>(s.getSubject(), s.getObject())))
+                          .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> new Pair<>(s.getSubject(), s.getObject())))
+                          .flatMapPair((k, e) -> cleanupTime(e.getKey().getValue(), e.getValue()).map(t -> new Pair<>(e.getKey().getKey(), t))));
         } else {
           subjectObjects = subjectObjects.union(getPropertyValues(partitionedStatements, propertyShape)
                   .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype())));
@@ -344,6 +326,17 @@ public class Main {
             .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
             .reduce(PlanNode::union).orElseGet(PlanNode::empty)
             .mapToPair(t -> new Pair<>(t.getSubject(), t.getObject()));
+  }
+
+  private static PairPlanNode<Resource, Resource> getBestMainSnakComplexValues(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape, PlanNode<Resource> bestRanks) {
+    return propertyShape.getFromProperties().map(wikidataProperty ->
+            partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(P_PREFIX, wikidataProperty.getLocalName())))
+                    .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()))
+                    .intersection(bestRanks)
+                    .join(partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(PSV_PREFIX, wikidataProperty.getLocalName())))
+                            .mapToPair(t -> new Pair<>(t.getSubject(), (Resource) t.getObject()))
+                    ).values().mapToPair(Function.identity())
+    ).reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty);
   }
 
   private static PlanNode<Statement> buildSameAs(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
