@@ -618,6 +618,9 @@ ys:MusicComposition a sh:NodeShape ;
     ] .
 
 
+ys:MusicPlaylist a sh:NodeShape ;
+   sh:targetClass schema:MusicPlaylist .
+
 ys:MusicAlbum a sh:NodeShape ;
    sh:targetClass schema:MusicAlbum ;
    ys:fromClass wd:Q482994 ;
@@ -699,6 +702,9 @@ ys:PublicationVolume a sh:NodeShape ;
         ys:fromProperty wdt:P478 ;
     ] .
 
+ys:SoftwareApplication a sh:NodeShape ;
+    sh:targetClass schema:SoftwareApplication ;
+    ys:fromClass wd:Q166142 .
 
 ys:VideoGame a sh:NodeShape ;
     sh:targetClass schema:VideoGame ;
@@ -1004,6 +1010,9 @@ ys:Corporation a sh:NodeShape ;
     ys:fromClass wd:Q167037 .
 
 
+ys:PerformingGroup a sh:NodeShape ;
+    sh:targetClass schema:PerformingGroup .
+
 ys:MusicGroup a sh:NodeShape ;
     sh:targetClass schema:MusicGroup ;
     ys:fromClass wd:Q215380 ;
@@ -1194,6 +1203,8 @@ ys:City a sh:NodeShape ;
         ys:fromProperty wdt:P238 ;
     ] .
 
+ys:CivicStructure a sh:NodeShape ;
+    sh:targetClass schema:CivicStructure .
 
 ys:Airport a sh:NodeShape ;
     sh:targetClass schema:Airport ;
@@ -1216,3 +1227,7 @@ ys:Airport a sh:NodeShape ;
 ys:Rating a sh:NodeShape ;
     sh:targetClass schema:Rating ;
     ys:fromClass wd:Q23649976 .
+
+ys:Series a sh:NodeShape ;
+    sh:targetClass schema:Series ;
+    ys:fromClass wd:Q20937557 .

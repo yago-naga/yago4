@@ -6,9 +6,12 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.rdf4j.model.*;
+import org.eclipse.rdf4j.model.impl.LinkedHashModel;
 import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
+import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.JavaStreamEvaluator;
 import org.yago.yago4.converter.plan.PairPlanNode;
@@ -48,8 +51,13 @@ public class Main {
   private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
   private static final IRI WDT_P646 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P646");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
+  private static final IRI SCHEMA_INTANGIBLE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible");
+  private static final IRI SCHEMA_STRUCTURED_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue");
   private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
   private static final IRI SCHEMA_ABOUT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "about");
+  private static final IRI SCHEMA_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "name");
+  private static final IRI SCHEMA_ALTERNATE_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName");
+  private static final IRI SCHEMA_DESCRIPTION = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "description");
 
   private static final Set<IRI> CALENDAR_DT_SET = Set.of(XMLSchema.GYEAR, XMLSchema.GYEARMONTH, XMLSchema.DATE, XMLSchema.DATETIME);
 
@@ -66,15 +74,11 @@ public class Main {
   private static final Set<Resource> SCHEMA_BLACKLIST = Set.of(
           // Some schema class we do not want to emit even if they are super classes from the existing classes
           SCHEMA_THING,
-          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible"),
-          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue")
+          SCHEMA_INTANGIBLE,
+          SCHEMA_STRUCTURED_VALUE
 
   );
-  private static final Set<IRI> LABEL_IRIS = Set.of(
-          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "name"),
-          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName"),
-          VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "description")
-  );
+  private static final Set<IRI> LABEL_IRIS = Set.of(SCHEMA_NAME, SCHEMA_ALTERNATE_NAME, SCHEMA_DESCRIPTION);
 
 
   public static void main(String[] args) throws ParseException, IOException {
@@ -154,6 +158,7 @@ public class Main {
             outputDir.resolve("yago-wd-sameAs.nt")
     );
 
+    evaluator.evaluateToNTriples(buildYagoSchema(), outputDir.resolve("yago-wd-schema.nt"));
   }
 
   private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataInstanceOf, PairPlanNode<Resource, Resource> wikidataSuperClassOf) {
@@ -358,6 +363,65 @@ public class Main {
             .map((yago, fp) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, fp));
 
     return wikidata.union(dbPedia).union(freebase);
+  }
+
+  private static PlanNode<Statement> buildYagoSchema() {
+    Model yagoStatements = new LinkedHashModel();
+    ShaclSchema schema = ShaclSchema.getSchema();
+
+    // Classes
+    schema.getNodeShapes()
+            .flatMap(ShaclSchema.NodeShape::getClasses)
+            .flatMap(c -> schema.getClass(c).stream())
+            .forEach(c -> {
+              yagoStatements.add(c.getTerm(), RDF.TYPE, RDFS.CLASS);
+              yagoStatements.add(c.getTerm(), RDF.TYPE, OWL.CLASS);
+              c.getLabels().forEach(l -> yagoStatements.add(c.getTerm(), RDFS.LABEL, VALUE_FACTORY.createLiteral(camlCaseToRegular(l.stringValue()), "en")));
+              c.getComments().forEach(l -> yagoStatements.add(c.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue(), "en")));
+              c.getSuperClasses().forEach(cp -> {
+                if (cp.equals(SCHEMA_INTANGIBLE)) {
+                  //We ignore schema:Intangible
+                  yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, SCHEMA_THING);
+                } else if (cp.equals(SCHEMA_STRUCTURED_VALUE)) {
+                  //schema:StructuredValue are not schema:Thing
+                } else { //We ignore schema:Intangible
+                  yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, cp);
+                }
+              });
+            });
+
+    // Properties
+    schema.getPropertyShapes()
+            .forEach(shape -> schema.getProperty(shape.getProperty()).ifPresent(p -> {
+              yagoStatements.add(p.getTerm(), RDF.TYPE, RDF.PROPERTY);
+              if (shape.getNodeShape().isPresent() && shape.getDatatypes().isEmpty()) {
+                yagoStatements.add(p.getTerm(), RDF.TYPE, OWL.OBJECTPROPERTY);
+              } else if (shape.getNodeShape().isEmpty() && shape.getDatatypes().isPresent()) {
+                yagoStatements.add(p.getTerm(), RDF.TYPE, OWL.DATATYPEPROPERTY);
+              } else {
+                System.err.println("Not sure if " + p.getTerm() + " is an object or a datatype property.");
+              }
+              p.getLabels().forEach(l -> yagoStatements.add(p.getTerm(), RDFS.LABEL, VALUE_FACTORY.createLiteral(camlCaseToRegular(l.stringValue()), "en")));
+              p.getComments().forEach(l -> yagoStatements.add(p.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue(), "en")));
+              p.getSuperProperties().forEach(cp -> {
+                if (cp.equals(VALUE_FACTORY.createIRI("rdfs:label"))) {
+                  // dirty fix for https://github.com/schemaorg/schemaorg/pull/2312
+                } else {
+                  yagoStatements.add(p.getTerm(), RDFS.SUBPROPERTYOF, cp);
+                }
+              });
+              p.getInverseProperties().forEach(cp -> yagoStatements.add(p.getTerm(), OWL.INVERSEOF, cp));
+            }));
+
+    // Some hardcoded triples
+    yagoStatements.add(SCHEMA_NAME, RDFS.SUBPROPERTYOF, RDFS.LABEL);
+    yagoStatements.add(SCHEMA_DESCRIPTION, RDFS.SUBPROPERTYOF, RDFS.COMMENT);
+
+    return PlanNode.fromCollection(yagoStatements);
+  }
+
+  private static String camlCaseToRegular(String txt) {
+    return StringUtils.join(StringUtils.splitByCharacterTypeCamelCase(txt), " ").toLowerCase();
   }
 
   private static PlanNode<Resource> mapToYago(PlanNode<Resource> facts, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {

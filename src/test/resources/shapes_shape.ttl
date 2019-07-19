@@ -10,7 +10,7 @@
 @prefix ys: <http://yago-knowledge.org/schema#> .
 @prefix yss: <http://yago-knowledge.org/shapes-shapes#> .
 
-yss:NodeShape a sh:NodeShape ;
+yss:NodeShapeShape a sh:NodeShape ;
     sh:targetClass sh:NodeShape ;
     sh:closed true ;
     sh:property [
@@ -28,7 +28,7 @@ yss:NodeShape a sh:NodeShape ;
         sh:node yss:PropertyShape ;
     ] .
 
-yss:PropertyShape a sh:NodeShape ;
+yss:PropertyShapeShape a sh:NodeShape ;
     sh:targetClass sh:PropertyShape ;
     # sh:closed true ;
     sh:property [

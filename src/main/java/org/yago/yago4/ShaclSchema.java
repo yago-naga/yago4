@@ -4,6 +4,7 @@ import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
 import org.eclipse.rdf4j.model.util.Models;
 import org.eclipse.rdf4j.model.util.RDFCollections;
+import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
 import org.eclipse.rdf4j.rio.RDFFormat;
@@ -38,7 +39,8 @@ public class ShaclSchema {
   private static final IRI SH_UNIQUE_LANG = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#uniqueLang");
   private static final IRI YS_FROM_CLASS = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#fromClass");
   private static final IRI YS_FROM_PROPERTY = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#fromProperty");
-  private static final ShaclSchema SINGLETON = new ShaclSchema(readSchema());
+  private static final IRI SCHEMA_INVERSE_OF = VALUE_FACTORY.createIRI("http://schema.org/inverseOf");
+  private static final ShaclSchema SINGLETON = new ShaclSchema(readSchemaModel());
   private Model model;
 
   private ShaclSchema(Model model) {
@@ -49,7 +51,7 @@ public class ShaclSchema {
     return SINGLETON;
   }
 
-  private static Model readSchema() {
+  private static Model readSchemaModel() {
     Model model = new LinkedHashModel();
     RDFParser parser = Rio.createParser(RDFFormat.TURTLE, VALUE_FACTORY);
     parser.setRDFHandler(new StatementCollector(model));
@@ -79,6 +81,22 @@ public class ShaclSchema {
             Stream.of(subClass),
             Models.getPropertyResources(model, subClass, RDFS.SUBCLASSOF).stream().flatMap(this::getSuperClasses)
     );
+  }
+
+  public Optional<Class> getClass(Resource term) {
+    if (model.contains(term, RDF.TYPE, RDFS.CLASS) || model.contains(term, RDF.TYPE, OWL.CLASS)) {
+      return Optional.of(new Class(term));
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  public Optional<Property> getProperty(Resource term) {
+    if (model.contains(term, RDF.TYPE, RDF.PROPERTY) || model.contains(term, RDF.TYPE, OWL.OBJECTPROPERTY) || model.contains(term, RDF.TYPE, OWL.DATATYPEPROPERTY)) {
+      return Optional.of(new Property(term));
+    } else {
+      return Optional.empty();
+    }
   }
 
   public interface NodeShape {
@@ -227,6 +245,53 @@ public class ShaclSchema {
 
     public Stream<IRI> getFromProperties() {
       return Models.getPropertyIRIs(model, id, YS_FROM_PROPERTY).stream();
+    }
+  }
+
+  private abstract class OntologyElement {
+    protected Resource term;
+
+    private OntologyElement(Resource term) {
+      this.term = term;
+    }
+
+    public Resource getTerm() {
+      return term;
+    }
+
+    public Stream<Literal> getLabels() {
+      return Models.getPropertyLiterals(model, term, RDFS.LABEL).stream();
+    }
+
+    public Stream<Literal> getComments() {
+      return Models.getPropertyLiterals(model, term, RDFS.COMMENT).stream();
+    }
+  }
+
+  public class Class extends OntologyElement {
+    private Class(Resource term) {
+      super(term);
+    }
+
+    public Stream<Resource> getSuperClasses() {
+      return Models.getPropertyResources(model, term, RDFS.SUBCLASSOF).stream();
+    }
+  }
+
+  public class Property extends OntologyElement {
+    private Property(Resource term) {
+      super(term);
+    }
+
+    public Stream<Resource> getSuperProperties() {
+      return Models.getPropertyResources(model, term, RDFS.SUBPROPERTYOF).stream();
+    }
+
+    public Stream<Resource> getInverseProperties() {
+      return Stream.concat(
+              Models.getPropertyResources(model, term, OWL.INVERSEOF).stream(),
+              Models.getPropertyResources(model, term, SCHEMA_INVERSE_OF).stream()
+      );
     }
   }
 }
