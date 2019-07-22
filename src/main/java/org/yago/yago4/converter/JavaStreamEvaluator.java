@@ -224,16 +224,23 @@ public class JavaStreamEvaluator {
     return plan.getParents().stream().flatMap(this::toStream);
   }
 
+  private <T> boolean isAlreadySet(PlanNode<T> planNode) {
+    return planNode instanceof CacheNode ||
+            planNode instanceof CollectionNode ||
+            planNode instanceof KeysNode && isAlreadyMap(((KeysNode<T, ?>) planNode).getParent()) ||
+            planNode instanceof TransitiveClosureNode ||
+            cache.containsKey(planNode);
+  }
+
   private <T> Set<T> toSet(PlanNode<T> plan) {
     Set<T> value = cache.get(plan);
     if (value != null) {
       return value;
     } else if (plan instanceof CacheNode) {
       return toSet((CacheNode<T>) plan);
-    }
-    if (plan instanceof CollectionNode) {
+    } else if (plan instanceof CollectionNode) {
       return toSet((CollectionNode<T>) plan);
-    } else if (plan instanceof KeysNode) {
+    } else if (plan instanceof KeysNode && isAlreadyMap(((KeysNode<T, ?>) plan).getParent())) {
       return toSet((KeysNode<T, ?>) plan);
     } else if (plan instanceof TransitiveClosureNode) {
       return toSet((TransitiveClosureNode<T>) plan);
@@ -277,6 +284,12 @@ public class JavaStreamEvaluator {
               .collect(Collectors.toList());
     }
     return closure;
+  }
+
+  private <K, V> boolean isAlreadyMap(PairPlanNode<K, V> planNode) {
+    return planNode instanceof CachePairNode ||
+            planNode instanceof TransitiveClosurePairNode ||
+            cachePairs.containsKey(planNode);
   }
 
   private <K, V> Multimap<K, V> toMap(PairPlanNode<K, V> plan) {
