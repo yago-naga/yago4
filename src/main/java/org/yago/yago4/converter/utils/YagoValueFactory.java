@@ -1,7 +1,7 @@
 package org.yago.yago4.converter.utils;
 
 import org.eclipse.rdf4j.model.*;
-import org.eclipse.rdf4j.model.impl.AbstractValueFactory;
+import org.eclipse.rdf4j.model.datatypes.XMLDatatypeUtil;
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
@@ -9,13 +9,20 @@ import org.eclipse.rdf4j.model.vocabulary.SKOS;
 import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.yago.yago4.converter.EvaluationException;
 
+import javax.xml.datatype.XMLGregorianCalendar;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
-public class YagoValueFactory extends AbstractValueFactory {
+public class YagoValueFactory implements ValueFactory {
+  private static final SimpleValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
+
   private static final String[] NUMERIC_PREFIXES = new String[]{
           "http://www.wikidata.org/Special:EntityData/F",
           "http://www.wikidata.org/Special:EntityData/L",
@@ -171,40 +178,163 @@ public class YagoValueFactory extends AbstractValueFactory {
           try {
             return new NumericIri(i, Integer.parseInt(iri.substring(prefixLength)));
           } catch (NumberFormatException e) {
-            return super.createIRI(iri);
+            return VALUE_FACTORY.createIRI(iri);
           }
         }
       }
     }
 
-    return super.createIRI(iri);
+    return VALUE_FACTORY.createIRI(iri);
+  }
+
+  @Override
+  public IRI createIRI(String namespace, String localName) {
+    return createIRI(namespace + localName);
+  }
+
+  @Override
+  public BNode createBNode() {
+    return VALUE_FACTORY.createBNode();
+  }
+
+  @Override
+  public BNode createBNode(String nodeID) {
+    return VALUE_FACTORY.createBNode(nodeID);
+  }
+
+  @Override
+  public Literal createLiteral(String label) {
+    return new StringLiteral(label);
+  }
+
+  @Override
+  public Literal createLiteral(String label, String language) {
+    return new LangStringLiteral(label, language);
+  }
+
+  @Override
+  public Literal createLiteral(String label, IRI datatype) {
+    if (XMLSchema.STRING.equals(datatype)) {
+      return new StringLiteral(label);
+    }
+    if (XMLSchema.DOUBLE.equals(datatype)) {
+      try {
+        return new DoubleLiteral(XMLDatatypeUtil.parseDouble(label));
+      } catch (NumberFormatException e) {
+        // fall thought
+      }
+    }
+    if (XMLSchema.INTEGER.equals(datatype)) {
+      try {
+        return new IntegerLiteral(XMLDatatypeUtil.parseLong(label));
+      } catch (NumberFormatException e) {
+        // fall thought
+      }
+    }
+
+    return VALUE_FACTORY.createLiteral(label, datatype);
+  }
+
+  @Override
+  public Literal createLiteral(boolean value) {
+    return VALUE_FACTORY.createLiteral(value);
+  }
+
+  @Override
+  public Literal createLiteral(byte value) {
+    return VALUE_FACTORY.createLiteral(value);
+  }
+
+  @Override
+  public Literal createLiteral(short value) {
+    return VALUE_FACTORY.createLiteral(value);
+  }
+
+  @Override
+  public Literal createLiteral(int value) {
+    return VALUE_FACTORY.createLiteral(value);
+  }
+
+  @Override
+  public Literal createLiteral(long value) {
+    return VALUE_FACTORY.createLiteral(value);
+  }
+
+  @Override
+  public Literal createLiteral(float value) {
+    return VALUE_FACTORY.createLiteral(value);
+  }
+
+  @Override
+  public Literal createLiteral(double value) {
+    return new DoubleLiteral(value);
+  }
+
+  @Override
+  public Literal createLiteral(BigDecimal bigDecimal) {
+    return VALUE_FACTORY.createLiteral(bigDecimal);
+  }
+
+  @Override
+  public Literal createLiteral(BigInteger value) {
+    try {
+      return new IntegerLiteral(value.longValueExact());
+    } catch (ArithmeticException e) {
+      return VALUE_FACTORY.createLiteral(value);
+    }
+  }
+
+  @Override
+  public Literal createLiteral(XMLGregorianCalendar calendar) {
+    return VALUE_FACTORY.createLiteral(calendar);
+  }
+
+  @Override
+  public Literal createLiteral(Date date) {
+    return VALUE_FACTORY.createLiteral(date);
+  }
+
+  @Override
+  public Statement createStatement(Resource subject, IRI predicate, Value object) {
+    return VALUE_FACTORY.createStatement(subject, predicate, object);
+  }
+
+  @Override
+  public Statement createStatement(Resource subject, IRI predicate, Value object, Resource context) {
+    return VALUE_FACTORY.createStatement(subject, predicate, object, context);
   }
 
   private static final int IRI_KEY = 1;
+  private static final int CONSTANT_IRI_KEY = 6;
+  private static final int NUMERIC_IRI_KEY = 7;
   private static final int BNODE_KEY = 2;
   private static final int STRING_LITERAL_KEY = 3;
   private static final int LANG_STRING_LITERAL_KEY = 4;
+  private static final int DOUBLE_LITERAL_KEY = 8;
+  private static final int INTEGER_LITERAL_KEY = 9;
   private static final int TYPED_LITERAL_KEY = 5;
-  private static final int CONSTANT_IRI_KEY = 6;
-  private static final int NUMERIC_IRI_KEY = 7;
 
   Value readBinaryTerm(DataInputStream inputStream) throws IOException {
     int b = inputStream.readByte();
     switch (b) {
       case IRI_KEY:
-        return super.createIRI(inputStream.readUTF());
-      case BNODE_KEY:
-        return super.createBNode(inputStream.readUTF());
-      case STRING_LITERAL_KEY:
-        return super.createLiteral(inputStream.readUTF());
-      case LANG_STRING_LITERAL_KEY:
-        return super.createLiteral(inputStream.readUTF(), inputStream.readUTF());
-      case TYPED_LITERAL_KEY:
-        return super.createLiteral(inputStream.readUTF(), (IRI) readBinaryTerm(inputStream));
+        return VALUE_FACTORY.createIRI(inputStream.readUTF());
       case CONSTANT_IRI_KEY:
         return CONSTANTS[inputStream.readByte()];
       case NUMERIC_IRI_KEY:
         return new NumericIri(inputStream.readByte(), inputStream.readInt());
+      case BNODE_KEY:
+        return VALUE_FACTORY.createBNode(inputStream.readUTF());
+      case STRING_LITERAL_KEY:
+        return new StringLiteral(inputStream.readUTF());
+      case LANG_STRING_LITERAL_KEY:
+        return new LangStringLiteral(inputStream.readUTF(), inputStream.readUTF());
+      case DOUBLE_LITERAL_KEY:
+        return new DoubleLiteral(inputStream.readDouble());
+      case INTEGER_LITERAL_KEY:
+        return new IntegerLiteral(inputStream.readLong());
+      case TYPED_LITERAL_KEY:
+        return VALUE_FACTORY.createLiteral(inputStream.readUTF(), (IRI) readBinaryTerm(inputStream));
       default:
         throw new EvaluationException("Not expected type byte: " + b);
     }
@@ -230,21 +360,24 @@ public class YagoValueFactory extends AbstractValueFactory {
       outputStream.writeUTF(term.stringValue());
     } else if (term instanceof Literal) {
       Literal literal = (Literal) term;
-      switch (literal.getDatatype().stringValue()) {
-        case "http://www.w3.org/2001/XMLSchema#string":
-          outputStream.writeByte(STRING_LITERAL_KEY);
-          outputStream.writeUTF(literal.stringValue());
-          break;
-        case "http://www.w3.org/1999/02/22-rdf-syntax-ns#langString":
-          outputStream.writeByte(LANG_STRING_LITERAL_KEY);
-          outputStream.writeUTF(literal.stringValue());
-          outputStream.writeUTF(literal.getLanguage().get());
-          break;
-        default:
-          outputStream.writeByte(TYPED_LITERAL_KEY);
-          outputStream.writeUTF(literal.stringValue());
-          writeBinaryTerm(literal.getDatatype(), outputStream);
-          break;
+
+      if (literal instanceof StringLiteral) {
+        outputStream.writeByte(STRING_LITERAL_KEY);
+        outputStream.writeUTF(literal.stringValue());
+      } else if (literal instanceof LangStringLiteral) {
+        outputStream.writeByte(LANG_STRING_LITERAL_KEY);
+        outputStream.writeUTF(literal.stringValue());
+        outputStream.writeUTF(literal.getLanguage().get());
+      } else if (literal instanceof DoubleLiteral) {
+        outputStream.writeByte(DOUBLE_LITERAL_KEY);
+        outputStream.writeDouble(literal.doubleValue());
+      } else if (literal instanceof IntegerLiteral) {
+        outputStream.writeByte(INTEGER_LITERAL_KEY);
+        outputStream.writeLong(literal.longValue());
+      } else {
+        outputStream.writeByte(TYPED_LITERAL_KEY);
+        outputStream.writeUTF(literal.stringValue());
+        writeBinaryTerm(literal.getDatatype(), outputStream);
       }
     } else {
       throw new EvaluationException("Unexpected term: " + term);
@@ -300,6 +433,419 @@ public class YagoValueFactory extends AbstractValueFactory {
     @Override
     public int hashCode() {
       return Integer.hashCode(id);
+    }
+  }
+
+  private static final class DoubleLiteral implements Literal {
+    private final double value;
+
+    private DoubleLiteral(double value) {
+      this.value = value;
+    }
+
+    @Override
+    public String getLabel() {
+      return Double.toString(value);
+    }
+
+    @Override
+    public Optional<String> getLanguage() {
+      return Optional.empty();
+    }
+
+    @Override
+    public IRI getDatatype() {
+      return XMLSchema.DOUBLE;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      } else if (o instanceof DoubleLiteral) {
+        return value == ((DoubleLiteral) o).value;
+      } else if (o instanceof Literal) {
+        Literal l = (Literal) o;
+        return l.getDatatype().equals(XMLSchema.DOUBLE) && l.getLabel().equals(getLabel());
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return Double.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+      return Double.toString(value);
+    }
+
+    @Override
+    public byte byteValue() {
+      return (byte) value;
+    }
+
+    @Override
+    public short shortValue() {
+      return (short) value;
+    }
+
+    @Override
+    public int intValue() {
+      return (int) value;
+    }
+
+    @Override
+    public long longValue() {
+      return (long) value;
+    }
+
+    @Override
+    public BigInteger integerValue() {
+      return BigInteger.valueOf((long) value);
+    }
+
+    @Override
+    public BigDecimal decimalValue() {
+      return BigDecimal.valueOf(value);
+    }
+
+    @Override
+    public float floatValue() {
+      return (float) value;
+    }
+
+    @Override
+    public double doubleValue() {
+      return value;
+    }
+
+    @Override
+    public boolean booleanValue() {
+      throw new IllegalArgumentException();
+    }
+
+    @Override
+    public XMLGregorianCalendar calendarValue() {
+      throw new IllegalArgumentException();
+    }
+
+    @Override
+    public String stringValue() {
+      return Double.toString(value);
+    }
+  }
+
+  private static final class IntegerLiteral implements Literal {
+    private final long value;
+
+    private IntegerLiteral(long value) {
+      this.value = value;
+    }
+
+    @Override
+    public String getLabel() {
+      return Long.toString(value);
+    }
+
+    @Override
+    public Optional<String> getLanguage() {
+      return Optional.empty();
+    }
+
+    @Override
+    public IRI getDatatype() {
+      return XMLSchema.INTEGER;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      } else if (o instanceof IntegerLiteral) {
+        return value == ((IntegerLiteral) o).value;
+      } else if (o instanceof Literal) {
+        Literal l = (Literal) o;
+        return l.getDatatype().equals(XMLSchema.INTEGER) && l.getLabel().equals(getLabel());
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return Long.hashCode(value);
+    }
+
+    @Override
+    public String toString() {
+      return Long.toString(value);
+    }
+
+    @Override
+    public byte byteValue() {
+      return (byte) value;
+    }
+
+    @Override
+    public short shortValue() {
+      return (short) value;
+    }
+
+    @Override
+    public int intValue() {
+      return (int) value;
+    }
+
+    @Override
+    public long longValue() {
+      return value;
+    }
+
+    @Override
+    public BigInteger integerValue() {
+      return BigInteger.valueOf(value);
+    }
+
+    @Override
+    public BigDecimal decimalValue() {
+      return BigDecimal.valueOf(value);
+    }
+
+    @Override
+    public float floatValue() {
+      return value;
+    }
+
+    @Override
+    public double doubleValue() {
+      return value;
+    }
+
+    @Override
+    public boolean booleanValue() {
+      throw new IllegalArgumentException();
+    }
+
+    @Override
+    public XMLGregorianCalendar calendarValue() {
+      throw new IllegalArgumentException();
+    }
+
+    @Override
+    public String stringValue() {
+      return Long.toString(value);
+    }
+  }
+
+  private static final class StringLiteral implements Literal {
+    private final String label;
+
+    private StringLiteral(String label) {
+      this.label = label;
+    }
+
+    @Override
+    public String getLabel() {
+      return label;
+    }
+
+    @Override
+    public Optional<String> getLanguage() {
+      return Optional.empty();
+    }
+
+    @Override
+    public IRI getDatatype() {
+      return XMLSchema.STRING;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      } else if (o instanceof LangStringLiteral) {
+        LangStringLiteral l = (LangStringLiteral) o;
+        return l.label.equals(label);
+      } else if (o instanceof Literal) {
+        Literal l = (Literal) o;
+        return l.getDatatype().equals(XMLSchema.STRING) && l.getLabel().equals(label);
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return label.hashCode();
+    }
+
+    @Override
+    public String toString() {
+      return label;
+    }
+
+    @Override
+    public String stringValue() {
+      return label;
+    }
+
+    @Override
+    public boolean booleanValue() {
+      throw new IllegalArgumentException();
+    }
+
+    @Override
+    public byte byteValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public short shortValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public int intValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public long longValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public float floatValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public double doubleValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public BigInteger integerValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public BigDecimal decimalValue() {
+      throw new NumberFormatException();
+    }
+
+    @Override
+    public XMLGregorianCalendar calendarValue() {
+      throw new IllegalArgumentException();
+    }
+  }
+
+  private static final class LangStringLiteral implements Literal {
+    private final String label;
+    private final String language;
+
+    private LangStringLiteral(String label, String language) {
+      this.label = label;
+      this.language = language;
+    }
+
+    @Override
+    public String getLabel() {
+      return label;
+    }
+
+    @Override
+    public Optional<String> getLanguage() {
+      return Optional.of(language);
+    }
+
+    @Override
+    public IRI getDatatype() {
+      return RDF.LANGSTRING;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      } else if (o instanceof LangStringLiteral) {
+        LangStringLiteral l = (LangStringLiteral) o;
+        return l.label.equals(label) && l.language.equals(language);
+      } else if (o instanceof Literal) {
+        Literal l = (Literal) o;
+        Optional<String> lang = l.getLanguage();
+        return l.getLabel().equals(label) && lang.isPresent() && lang.get().equals(label);
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return label.hashCode();
+    }
+
+    @Override
+    public String toString() {
+      return label;
+    }
+
+    @Override
+    public String stringValue() {
+      return label;
+    }
+
+    @Override
+    public boolean booleanValue() {
+      return XMLDatatypeUtil.parseBoolean(getLabel());
+    }
+
+    @Override
+    public byte byteValue() {
+      return XMLDatatypeUtil.parseByte(getLabel());
+    }
+
+    @Override
+    public short shortValue() {
+      return XMLDatatypeUtil.parseShort(getLabel());
+    }
+
+    @Override
+    public int intValue() {
+      return XMLDatatypeUtil.parseInt(getLabel());
+    }
+
+    @Override
+    public long longValue() {
+      return XMLDatatypeUtil.parseLong(getLabel());
+    }
+
+    @Override
+    public float floatValue() {
+      return XMLDatatypeUtil.parseFloat(getLabel());
+    }
+
+    @Override
+    public double doubleValue() {
+      return XMLDatatypeUtil.parseDouble(getLabel());
+    }
+
+    @Override
+    public BigInteger integerValue() {
+      return XMLDatatypeUtil.parseInteger(getLabel());
+    }
+
+    @Override
+    public BigDecimal decimalValue() {
+      return XMLDatatypeUtil.parseDecimal(getLabel());
+    }
+
+    @Override
+    public XMLGregorianCalendar calendarValue() {
+      return XMLDatatypeUtil.parseCalendar(getLabel());
     }
   }
 }
