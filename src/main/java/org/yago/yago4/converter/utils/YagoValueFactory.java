@@ -17,21 +17,29 @@ import java.util.Map;
 
 public class YagoValueFactory extends AbstractValueFactory {
   private static final String[] NUMERIC_PREFIXES = new String[]{
-          "http://www.wikidata.org/Special:EntityData/",
-          "http://www.wikidata.org/entity/",
-          "http://www.wikidata.org/prop/direct-normalized/",
-          "http://www.wikidata.org/prop/direct/",
-          "http://www.wikidata.org/prop/novalue/",
-          "http://www.wikidata.org/prop/statement/value-normalized/",
-          "http://www.wikidata.org/prop/statement/value/",
-          "http://www.wikidata.org/prop/statement/",
-          "http://www.wikidata.org/prop/qualifier/value-normalized/",
-          "http://www.wikidata.org/prop/qualifier/value/",
-          "http://www.wikidata.org/prop/qualifier/",
-          "http://www.wikidata.org/prop/reference/value-normalized/",
-          "http://www.wikidata.org/prop/reference/value/",
-          "http://www.wikidata.org/prop/reference/",
-          "http://www.wikidata.org/prop/"
+          "http://www.wikidata.org/Special:EntityData/F",
+          "http://www.wikidata.org/Special:EntityData/L",
+          "http://www.wikidata.org/Special:EntityData/P",
+          "http://www.wikidata.org/Special:EntityData/Q",
+          "http://www.wikidata.org/Special:EntityData/S",
+          "http://www.wikidata.org/entity/F",
+          "http://www.wikidata.org/entity/L",
+          "http://www.wikidata.org/entity/P",
+          "http://www.wikidata.org/entity/Q",
+          "http://www.wikidata.org/entity/S",
+          "http://www.wikidata.org/prop/direct-normalized/P",
+          "http://www.wikidata.org/prop/direct/P",
+          "http://www.wikidata.org/prop/novalue/P",
+          "http://www.wikidata.org/prop/statement/value-normalized/P",
+          "http://www.wikidata.org/prop/statement/value/P",
+          "http://www.wikidata.org/prop/statement/P",
+          "http://www.wikidata.org/prop/qualifier/value-normalized/P",
+          "http://www.wikidata.org/prop/qualifier/value/P",
+          "http://www.wikidata.org/prop/qualifier/P",
+          "http://www.wikidata.org/prop/reference/value-normalized/P",
+          "http://www.wikidata.org/prop/reference/value/P",
+          "http://www.wikidata.org/prop/reference/P",
+          "http://www.wikidata.org/prop/P"
   };
 
   static {
@@ -156,12 +164,12 @@ public class YagoValueFactory extends AbstractValueFactory {
       return constant;
     }
 
-    for (int i = 0; i < NUMERIC_PREFIXES.length; i++) {
+    for (byte i = 0; i < NUMERIC_PREFIXES.length; i++) {
       if (iri.startsWith(NUMERIC_PREFIXES[i])) {
         int prefixLength = NUMERIC_PREFIXES[i].length();
         if (iri.length() > prefixLength) {
           try {
-            return new NumericIri(i, iri.charAt(prefixLength), Integer.parseInt(iri.substring(prefixLength + 1)));
+            return new NumericIri(i, Integer.parseInt(iri.substring(prefixLength)));
           } catch (NumberFormatException e) {
             return super.createIRI(iri);
           }
@@ -196,7 +204,7 @@ public class YagoValueFactory extends AbstractValueFactory {
       case CONSTANT_IRI_KEY:
         return CONSTANTS[inputStream.readByte()];
       case NUMERIC_IRI_KEY:
-        return new NumericIri(inputStream.readByte(), inputStream.readChar(), inputStream.readInt());
+        return new NumericIri(inputStream.readByte(), inputStream.readInt());
       default:
         throw new EvaluationException("Not expected type byte: " + b);
     }
@@ -207,7 +215,6 @@ public class YagoValueFactory extends AbstractValueFactory {
       NumericIri iri = (NumericIri) term;
       outputStream.writeByte(NUMERIC_IRI_KEY);
       outputStream.writeByte(iri.prefixId);
-      outputStream.writeChar(iri.prefixChar);
       outputStream.writeInt(iri.id);
     } else if (term instanceof IRI) {
       Integer encoding = CONSTANTS_IDS_FOR_IRI.get(term);
@@ -245,13 +252,11 @@ public class YagoValueFactory extends AbstractValueFactory {
   }
 
   private static final class NumericIri implements IRI {
-    private final int prefixId;
-    private final char prefixChar;
+    private final byte prefixId;
     private final int id;
 
-    NumericIri(int prefixId, char prefixChar, int id) {
+    NumericIri(byte prefixId, int id) {
       this.prefixId = prefixId;
-      this.prefixChar = prefixChar;
       this.id = id;
     }
 
@@ -262,17 +267,19 @@ public class YagoValueFactory extends AbstractValueFactory {
 
     @Override
     public String stringValue() {
-      return NUMERIC_PREFIXES[prefixId] + prefixChar + id;
+      return NUMERIC_PREFIXES[prefixId] + id;
     }
 
     @Override
     public String getNamespace() {
-      return NUMERIC_PREFIXES[prefixId];
+      String prefix = NUMERIC_PREFIXES[prefixId];
+      return NUMERIC_PREFIXES[prefixId].substring(0, prefix.length() - 1);
     }
 
     @Override
     public String getLocalName() {
-      return prefixChar + Integer.toString(id);
+      String prefix = NUMERIC_PREFIXES[prefixId];
+      return prefix.charAt(prefix.length() - 1) + Integer.toString(id);
     }
 
     @Override
@@ -282,7 +289,7 @@ public class YagoValueFactory extends AbstractValueFactory {
       }
       if (o instanceof NumericIri) {
         NumericIri other = (NumericIri) o;
-        return prefixId == other.prefixId && prefixChar == other.prefixChar && id == other.id;
+        return prefixId == other.prefixId && id == other.id;
       }
       if (o instanceof IRI) {
         return stringValue().equals(((IRI) o).stringValue());

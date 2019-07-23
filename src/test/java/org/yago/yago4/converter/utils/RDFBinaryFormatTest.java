@@ -1,5 +1,6 @@
 package org.yago.yago4.converter.utils;
 
+import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Statement;
 import org.junit.jupiter.api.Test;
 
@@ -28,5 +29,13 @@ class RDFBinaryFormatTest {
     Path file = Files.createTempFile("test", "binary");
     RDFBinaryFormat.write(Statements.stream(), file);
     assertEquals(Statements, RDFBinaryFormat.read(valueFactory, file).collect(Collectors.toList()));
+  }
+
+  @Test
+  void numericEncodedIriNamespace() {
+    YagoValueFactory valueFactory = YagoValueFactory.getInstance();
+    IRI iri = valueFactory.createIRI("http://www.wikidata.org/entity/Q42");
+    assertEquals("http://www.wikidata.org/entity/", iri.getNamespace());
+    assertEquals("Q42", iri.getLocalName());
   }
 }
