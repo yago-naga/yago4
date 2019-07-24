@@ -32,7 +32,7 @@ public class YagoValueFactory implements ValueFactory {
     }
   }
 
-  private static final String[] NUMERIC_PREFIXES = new String[]{
+  private static final String[] NUMERIC_NAMESPACES = new String[]{
           "http://www.wikidata.org/Special:EntityData/",
           "http://www.wikidata.org/entity/",
           "http://www.wikidata.org/prop/direct-normalized/",
@@ -49,10 +49,22 @@ public class YagoValueFactory implements ValueFactory {
           "http://www.wikidata.org/prop/reference/",
           "http://www.wikidata.org/prop/"
   };
+  static {
+    assert NUMERIC_NAMESPACES.length < Byte.MAX_VALUE;
+  }
+
+  private static final String[] ENCODED_NAMESPACES = new String[]{
+          "http://www.wikidata.org/entity/statement/",
+          "http://www.wikidata.org/value/",
+          "http://www.wikidata.org/reference/",
+          "http://yago-knowledge.org/resource/",
+          "https://en.wikipedia.org/wiki/",
+          "http://dbpedia.org/resource/",
+          "http://rdf.freebase.com/ns/"
+  };
 
   static {
-
-    assert NUMERIC_PREFIXES.length < Byte.MAX_VALUE;
+    assert ENCODED_NAMESPACES.length < Byte.MAX_VALUE;
   }
 
   private static final ValueFactory SVF = SimpleValueFactory.getInstance();
@@ -167,20 +179,32 @@ public class YagoValueFactory implements ValueFactory {
 
   @Override
   public IRI createIRI(String iri) {
+    return buildIRI(iri);
+  }
+
+  private static IRI buildIRI(String iri) {
     IRI constant = CONSTANTS_IRIS_FOR_STRING.get(iri);
     if (constant != null) {
       return constant;
     }
 
-    for (byte i = 0; i < NUMERIC_PREFIXES.length; i++) {
-      if (iri.startsWith(NUMERIC_PREFIXES[i])) {
-        int prefixLength = NUMERIC_PREFIXES[i].length();
+    for (byte i = 0; i < NUMERIC_NAMESPACES.length; i++) {
+      if (iri.startsWith(NUMERIC_NAMESPACES[i])) {
+        int prefixLength = NUMERIC_NAMESPACES[i].length();
         if (iri.length() > prefixLength) {
           try {
             return new NumericIri(i, iri.charAt(prefixLength), Integer.parseInt(iri.substring(prefixLength + 1)));
           } catch (NumberFormatException e) {
-            return new BasicIRI(iri);
+            break;
           }
+        }
+      }
+    }
+    for (byte i = 0; i < ENCODED_NAMESPACES.length; i++) {
+      if (iri.startsWith(ENCODED_NAMESPACES[i])) {
+        int prefixLength = ENCODED_NAMESPACES[i].length();
+        if (iri.length() >= prefixLength) {
+          return new NamespaceIRI(i, iri.substring(prefixLength));
         }
       }
     }
@@ -190,7 +214,7 @@ public class YagoValueFactory implements ValueFactory {
 
   @Override
   public IRI createIRI(String namespace, String localName) {
-    return createIRI(namespace + localName);
+    return buildIRI(namespace + localName);
   }
 
   @Override
@@ -321,7 +345,7 @@ public class YagoValueFactory implements ValueFactory {
     int b = inputStream.readByte();
     switch (b) {
       case IRI_KEY:
-        return new BasicIRI(inputStream.readUTF());
+        return buildIRI(inputStream.readUTF());
       case CONSTANT_IRI_KEY:
         return CONSTANTS[inputStream.readByte()];
       case NUMERIC_IRI_KEY:
@@ -347,8 +371,8 @@ public class YagoValueFactory implements ValueFactory {
     if (term instanceof NumericIri) {
       NumericIri iri = (NumericIri) term;
       outputStream.writeByte(NUMERIC_IRI_KEY);
-      outputStream.writeChar(iri.prefixId);
-      outputStream.writeByte(iri.prefixChar);
+      outputStream.writeByte(iri.prefixId);
+      outputStream.writeChar(iri.prefixChar);
       outputStream.writeInt(iri.id);
     } else if (term instanceof IRI) {
       Integer encoding = CONSTANTS_IDS_FOR_IRI.get(term);
@@ -396,11 +420,6 @@ public class YagoValueFactory implements ValueFactory {
     }
 
     @Override
-    public String toString() {
-      return iri;
-    }
-
-    @Override
     public String stringValue() {
       return iri;
     }
@@ -413,6 +432,11 @@ public class YagoValueFactory implements ValueFactory {
     @Override
     public String getLocalName() {
       return iri.substring(URIUtil.getLocalNameIndex(iri));
+    }
+
+    @Override
+    public String toString() {
+      return iri;
     }
 
     @Override
@@ -432,6 +456,56 @@ public class YagoValueFactory implements ValueFactory {
     }
   }
 
+  private static final class NamespaceIRI implements IRI {
+    private final byte namespaceId;
+    private final String localName;
+
+    private NamespaceIRI(byte namespaceId, String localName) {
+      this.namespaceId = namespaceId;
+      this.localName = localName;
+    }
+
+    @Override
+    public String stringValue() {
+      return ENCODED_NAMESPACES[namespaceId] + localName;
+    }
+
+    @Override
+    public String getNamespace() {
+      return ENCODED_NAMESPACES[namespaceId];
+    }
+
+    @Override
+    public String getLocalName() {
+      return localName;
+    }
+
+    @Override
+    public String toString() {
+      return stringValue();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o instanceof NamespaceIRI) {
+        NamespaceIRI other = (NamespaceIRI) o;
+        return namespaceId == other.namespaceId && localName.equals(other.localName);
+      }
+      if (o instanceof IRI) {
+        return stringValue().equals(((IRI) o).stringValue());
+      }
+      return false;
+    }
+
+    @Override
+    public int hashCode() {
+      return localName.hashCode();
+    }
+  }
+
   private static final class NumericIri implements IRI {
     private final byte prefixId;
     private final char prefixChar;
@@ -444,23 +518,23 @@ public class YagoValueFactory implements ValueFactory {
     }
 
     @Override
-    public String toString() {
-      return stringValue();
-    }
-
-    @Override
     public String stringValue() {
-      return NUMERIC_PREFIXES[prefixId] + prefixChar + id;
+      return NUMERIC_NAMESPACES[prefixId] + prefixChar + id;
     }
 
     @Override
     public String getNamespace() {
-      return NUMERIC_PREFIXES[prefixId];
+      return NUMERIC_NAMESPACES[prefixId];
     }
 
     @Override
     public String getLocalName() {
       return prefixChar + Integer.toString(id);
+    }
+
+    @Override
+    public String toString() {
+      return stringValue();
     }
 
     @Override
@@ -486,7 +560,6 @@ public class YagoValueFactory implements ValueFactory {
 
 
   private static abstract class BasicLiteral implements Literal {
-
     @Override
     public String toString() {
       return getLabel();
