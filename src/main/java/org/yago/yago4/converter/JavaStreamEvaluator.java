@@ -24,14 +24,12 @@ import java.util.stream.StreamSupport;
 
 public class JavaStreamEvaluator {
 
-  private final YagoValueFactory valueFactory;
   private final NTriplesReader nTriplesReader;
   private final NTriplesWriter nTriplesWriter;
   private final Map<PlanNode, Set> cache = new HashMap<>();
   private final Map<PairPlanNode, Multimap> cachePairs = new HashMap<>();
 
   public JavaStreamEvaluator(YagoValueFactory valueFactory) {
-    this.valueFactory = valueFactory;
     nTriplesReader = new NTriplesReader(valueFactory);
     nTriplesWriter = new NTriplesWriter();
   }
@@ -119,7 +117,7 @@ public class JavaStreamEvaluator {
   }
 
   private Stream<Statement> toStream(RDFBinaryReaderNode plan) {
-    return RDFBinaryFormat.read(valueFactory, plan.getFilePath());
+    return RDFBinaryFormat.read(plan.getFilePath());
   }
 
   private <T> Stream<T> toStream(SubtractNode<T> plan) {

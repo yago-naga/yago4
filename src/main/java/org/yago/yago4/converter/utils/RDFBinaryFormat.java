@@ -3,6 +3,8 @@ package org.yago.yago4.converter.utils;
 import org.eclipse.rdf4j.model.IRI;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
+import org.eclipse.rdf4j.model.ValueFactory;
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory;
 import org.yago.yago4.converter.EvaluationException;
 
 import java.io.*;
@@ -17,8 +19,8 @@ import java.util.stream.StreamSupport;
 
 public class RDFBinaryFormat implements Serializable {
 
-  public static Stream<Statement> read(YagoValueFactory valueFactory, Path filePath) {
-    return StreamSupport.stream(() -> new BinaryReaderIterator(valueFactory, filePath), 0, true);
+  public static Stream<Statement> read(Path filePath) {
+    return StreamSupport.stream(() -> new BinaryReaderIterator(filePath), 0, true);
   }
 
   public static void write(Stream<Statement> stream, Path filePath) {
@@ -38,12 +40,11 @@ public class RDFBinaryFormat implements Serializable {
   private static class BinaryReaderIterator implements Spliterator<Statement>, AutoCloseable {
     private static final int BATCH_SIZE = 4096;
 
-    private final YagoValueFactory valueFactory;
+    private static ValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
     private final DataInputStream inputStream;
 
-    BinaryReaderIterator(YagoValueFactory valueFactory, Path filePath) {
+    BinaryReaderIterator(Path filePath) {
       try {
-        this.valueFactory = valueFactory;
         inputStream = new DataInputStream(new BufferedInputStream(Files.newInputStream(filePath)));
       } catch (IOException e) {
         throw new EvaluationException(e);
@@ -53,10 +54,10 @@ public class RDFBinaryFormat implements Serializable {
     @Override
     public boolean tryAdvance(Consumer<? super Statement> consumer) {
       try {
-        consumer.accept(valueFactory.createStatement(
-                (Resource) valueFactory.readBinaryTerm(inputStream),
-                (IRI) valueFactory.readBinaryTerm(inputStream),
-                valueFactory.readBinaryTerm(inputStream)
+        consumer.accept(VALUE_FACTORY.createStatement(
+                (Resource) YagoValueFactory.readBinaryTerm(inputStream),
+                (IRI) YagoValueFactory.readBinaryTerm(inputStream),
+                YagoValueFactory.readBinaryTerm(inputStream)
         ));
         return true;
       } catch (EOFException e) {
@@ -71,10 +72,10 @@ public class RDFBinaryFormat implements Serializable {
     public void forEachRemaining(Consumer<? super Statement> action) {
       try {
         while (true) {
-          action.accept(valueFactory.createStatement(
-                  (Resource) valueFactory.readBinaryTerm(inputStream),
-                  (IRI) valueFactory.readBinaryTerm(inputStream),
-                  valueFactory.readBinaryTerm(inputStream)
+          action.accept(VALUE_FACTORY.createStatement(
+                  (Resource) YagoValueFactory.readBinaryTerm(inputStream),
+                  (IRI) YagoValueFactory.readBinaryTerm(inputStream),
+                  YagoValueFactory.readBinaryTerm(inputStream)
           ));
         }
       } catch (EOFException e) {
@@ -92,10 +93,10 @@ public class RDFBinaryFormat implements Serializable {
       int i = 0;
       for (; i < batch.length; i++) {
         try {
-          batch[i] = valueFactory.createStatement(
-                  (Resource) valueFactory.readBinaryTerm(inputStream),
-                  (IRI) valueFactory.readBinaryTerm(inputStream),
-                  valueFactory.readBinaryTerm(inputStream)
+          batch[i] = VALUE_FACTORY.createStatement(
+                  (Resource) YagoValueFactory.readBinaryTerm(inputStream),
+                  (IRI) YagoValueFactory.readBinaryTerm(inputStream),
+                  YagoValueFactory.readBinaryTerm(inputStream)
           );
         } catch (EOFException e) {
           break;

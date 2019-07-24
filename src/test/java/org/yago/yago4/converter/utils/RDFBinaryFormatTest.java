@@ -32,7 +32,7 @@ class RDFBinaryFormatTest {
 
     Path file = Files.createTempFile("test", "binary");
     RDFBinaryFormat.write(Statements.stream(), file);
-    assertEquals(Statements, RDFBinaryFormat.read(valueFactory, file).collect(Collectors.toList()));
+    assertEquals(Statements, RDFBinaryFormat.read(file).collect(Collectors.toList()));
   }
 
   @Test
@@ -48,6 +48,8 @@ class RDFBinaryFormatTest {
     YagoValueFactory valueFactory = YagoValueFactory.getInstance();
     assertEquals(valueFactory.createLiteral("foo"), valueFactory.createLiteral("foo", XMLSchema.STRING));
     assertEquals(valueFactory.createLiteral(1.0), valueFactory.createLiteral("1.0", XMLSchema.DOUBLE));
+    assertEquals(valueFactory.createLiteral(1.0f), valueFactory.createLiteral("1.0", XMLSchema.DOUBLE));
     assertEquals(valueFactory.createLiteral(BigInteger.valueOf(1)), valueFactory.createLiteral("1", XMLSchema.INTEGER));
+    assertEquals(valueFactory.createLiteral(1), valueFactory.createLiteral("1", XMLSchema.INTEGER));
   }
 }
