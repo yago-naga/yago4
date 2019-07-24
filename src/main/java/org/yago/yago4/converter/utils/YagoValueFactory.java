@@ -33,29 +33,21 @@ public class YagoValueFactory implements ValueFactory {
   }
 
   private static final String[] NUMERIC_PREFIXES = new String[]{
-          "http://www.wikidata.org/Special:EntityData/F",
-          "http://www.wikidata.org/Special:EntityData/L",
-          "http://www.wikidata.org/Special:EntityData/P",
-          "http://www.wikidata.org/Special:EntityData/Q",
-          "http://www.wikidata.org/Special:EntityData/S",
-          "http://www.wikidata.org/entity/F",
-          "http://www.wikidata.org/entity/L",
-          "http://www.wikidata.org/entity/P",
-          "http://www.wikidata.org/entity/Q",
-          "http://www.wikidata.org/entity/S",
-          "http://www.wikidata.org/prop/direct-normalized/P",
-          "http://www.wikidata.org/prop/direct/P",
-          "http://www.wikidata.org/prop/novalue/P",
-          "http://www.wikidata.org/prop/statement/value-normalized/P",
-          "http://www.wikidata.org/prop/statement/value/P",
-          "http://www.wikidata.org/prop/statement/P",
-          "http://www.wikidata.org/prop/qualifier/value-normalized/P",
-          "http://www.wikidata.org/prop/qualifier/value/P",
-          "http://www.wikidata.org/prop/qualifier/P",
-          "http://www.wikidata.org/prop/reference/value-normalized/P",
-          "http://www.wikidata.org/prop/reference/value/P",
-          "http://www.wikidata.org/prop/reference/P",
-          "http://www.wikidata.org/prop/P"
+          "http://www.wikidata.org/Special:EntityData/",
+          "http://www.wikidata.org/entity/",
+          "http://www.wikidata.org/prop/direct-normalized/",
+          "http://www.wikidata.org/prop/direct/",
+          "http://www.wikidata.org/prop/novalue/",
+          "http://www.wikidata.org/prop/statement/value-normalized/",
+          "http://www.wikidata.org/prop/statement/value/",
+          "http://www.wikidata.org/prop/statement/",
+          "http://www.wikidata.org/prop/qualifier/value-normalized/",
+          "http://www.wikidata.org/prop/qualifier/value/",
+          "http://www.wikidata.org/prop/qualifier/",
+          "http://www.wikidata.org/prop/reference/value-normalized/",
+          "http://www.wikidata.org/prop/reference/value/",
+          "http://www.wikidata.org/prop/reference/",
+          "http://www.wikidata.org/prop/"
   };
 
   static {
@@ -185,7 +177,7 @@ public class YagoValueFactory implements ValueFactory {
         int prefixLength = NUMERIC_PREFIXES[i].length();
         if (iri.length() > prefixLength) {
           try {
-            return new NumericIri(i, Integer.parseInt(iri.substring(prefixLength)));
+            return new NumericIri(i, iri.charAt(prefixLength), Integer.parseInt(iri.substring(prefixLength + 1)));
           } catch (NumberFormatException e) {
             return new BasicIRI(iri);
           }
@@ -333,7 +325,7 @@ public class YagoValueFactory implements ValueFactory {
       case CONSTANT_IRI_KEY:
         return CONSTANTS[inputStream.readByte()];
       case NUMERIC_IRI_KEY:
-        return new NumericIri(inputStream.readByte(), inputStream.readInt());
+        return new NumericIri(inputStream.readByte(), inputStream.readChar(), inputStream.readInt());
       case BNODE_KEY:
         return VALUE_FACTORY.createBNode(inputStream.readUTF());
       case STRING_LITERAL_KEY:
@@ -355,7 +347,8 @@ public class YagoValueFactory implements ValueFactory {
     if (term instanceof NumericIri) {
       NumericIri iri = (NumericIri) term;
       outputStream.writeByte(NUMERIC_IRI_KEY);
-      outputStream.writeByte(iri.prefixId);
+      outputStream.writeChar(iri.prefixId);
+      outputStream.writeByte(iri.prefixChar);
       outputStream.writeInt(iri.id);
     } else if (term instanceof IRI) {
       Integer encoding = CONSTANTS_IDS_FOR_IRI.get(term);
@@ -441,10 +434,12 @@ public class YagoValueFactory implements ValueFactory {
 
   private static final class NumericIri implements IRI {
     private final byte prefixId;
+    private final char prefixChar;
     private final int id;
 
-    NumericIri(byte prefixId, int id) {
+    NumericIri(byte prefixId, char prefixChar, int id) {
       this.prefixId = prefixId;
+      this.prefixChar = prefixChar;
       this.id = id;
     }
 
@@ -455,19 +450,17 @@ public class YagoValueFactory implements ValueFactory {
 
     @Override
     public String stringValue() {
-      return NUMERIC_PREFIXES[prefixId] + id;
+      return NUMERIC_PREFIXES[prefixId] + prefixChar + id;
     }
 
     @Override
     public String getNamespace() {
-      String prefix = NUMERIC_PREFIXES[prefixId];
-      return NUMERIC_PREFIXES[prefixId].substring(0, prefix.length() - 1);
+      return NUMERIC_PREFIXES[prefixId];
     }
 
     @Override
     public String getLocalName() {
-      String prefix = NUMERIC_PREFIXES[prefixId];
-      return prefix.charAt(prefix.length() - 1) + Integer.toString(id);
+      return prefixChar + Integer.toString(id);
     }
 
     @Override
@@ -477,7 +470,7 @@ public class YagoValueFactory implements ValueFactory {
       }
       if (o instanceof NumericIri) {
         NumericIri other = (NumericIri) o;
-        return prefixId == other.prefixId && id == other.id;
+        return prefixId == other.prefixId && prefixChar == other.prefixChar && id == other.id;
       }
       if (o instanceof IRI) {
         return stringValue().equals(((IRI) o).stringValue());
