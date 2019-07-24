@@ -1,7 +1,5 @@
 package org.yago.yago4.converter.plan;
 
-import com.google.common.collect.Maps;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -38,11 +36,11 @@ public abstract class PairPlanNode<K, V> {
   }
 
   public <KO> PairPlanNode<KO, V> flatMapKey(Function<K, Stream<KO>> function) {
-    return flatMapPair((k, v) -> function.apply(k).map(k2 -> Maps.immutableEntry(k2, v)));
+    return flatMapPair((k, v) -> function.apply(k).map(k2 -> Map.entry(k2, v)));
   }
 
   public <VO> PairPlanNode<K, VO> flatMapValue(Function<V, Stream<VO>> function) {
-    return flatMapPair((k, v) -> function.apply(v).map(v2 -> Maps.immutableEntry(k, v2)));
+    return flatMapPair((k, v) -> function.apply(v).map(v2 -> Map.entry(k, v2)));
   }
 
   public <V2> PairPlanNode<K, Map.Entry<V, V2>> join(PairPlanNode<K, V2> right) {
@@ -66,11 +64,11 @@ public abstract class PairPlanNode<K, V> {
   }
 
   public <KO> PairPlanNode<KO, V> mapKey(Function<K, KO> function) {
-    return mapPair((k, v) -> Maps.immutableEntry(function.apply(k), v));
+    return mapPair((k, v) -> Map.entry(function.apply(k), v));
   }
 
   public <VO> PairPlanNode<K, VO> mapValue(Function<V, VO> function) {
-    return mapPair((k, v) -> Maps.immutableEntry(k, function.apply(v)));
+    return mapPair((k, v) -> Map.entry(k, function.apply(v)));
   }
 
   public PairPlanNode<K, V> subtract(PlanNode<K> right) {
@@ -79,7 +77,7 @@ public abstract class PairPlanNode<K, V> {
 
 
   public PairPlanNode<V, K> swap() {
-    return mapPair((k, v) -> Maps.immutableEntry(v, k));
+    return mapPair((k, v) -> Map.entry(v, k));
   }
 
   public PairPlanNode<K, V> transitiveClosure(PairPlanNode<V, V> right) {

@@ -1,12 +1,12 @@
 package org.yago.yago4.converter;
 
-import com.google.common.collect.Maps;
 import org.junit.jupiter.api.Test;
 import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.YagoValueFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -55,11 +55,11 @@ class TestJavaStreamEvaluator {
   @Test
   void testIntersectionPair() {
     assertEquals(
-            List.of(Maps.immutableEntry(1, 'a'), Maps.immutableEntry(3, 'c')),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(Maps.immutableEntry(1, 'a'), Maps.immutableEntry(2, 'b'), Maps.immutableEntry(3, 'c')))
+            List.of(Map.entry(1, 'a'), Map.entry(3, 'c')),
+            evaluator.evaluateToList(PlanNode.fromCollection(List.of(Map.entry(1, 'a'), Map.entry(2, 'b'), Map.entry(3, 'c')))
                     .mapToPair(t -> t)
                     .intersection(PlanNode.fromCollection(List.of(1, 3, 4)))
-                    .map(Maps::immutableEntry))
+                    .map(Map::entry))
     );
   }
 
@@ -68,8 +68,8 @@ class TestJavaStreamEvaluator {
     assertEquals(
             List.of(5, 10),
             evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2))
-                    .mapToPair(t -> Maps.immutableEntry(t * 2, t))
-                    .join(PlanNode.fromCollection(List.of(4, 8)).mapToPair(t -> Maps.immutableEntry(t / 2, t)))
+                    .mapToPair(t -> Map.entry(t * 2, t))
+                    .join(PlanNode.fromCollection(List.of(4, 8)).mapToPair(t -> Map.entry(t / 2, t)))
                     .mapValue(e -> e.getKey() + e.getValue())
                     .values()
             )
@@ -90,7 +90,7 @@ class TestJavaStreamEvaluator {
     assertEquals(
             List.of(2, 8),
             evaluator.evaluateToList(PlanNode.fromCollection(List.of(2, 4, 6, 8))
-                    .mapToPair(t -> Maps.immutableEntry(t / 2, t))
+                    .mapToPair(t -> Map.entry(t / 2, t))
                     .subtract(PlanNode.fromCollection(List.of(2, 3)))
                     .values())
     );
@@ -101,7 +101,7 @@ class TestJavaStreamEvaluator {
     assertEquals(
             List.of(1, 2, 3, 4),
             evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
-                    .transitiveClosure(PlanNode.fromCollection(List.of(Maps.immutableEntry(1, 2), Maps.immutableEntry(2, 3), Maps.immutableEntry(1, 4), Maps.immutableEntry(5, 6))).mapToPair(t -> t)))
+                    .transitiveClosure(PlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(2, 3), Map.entry(1, 4), Map.entry(5, 6))).mapToPair(t -> t)))
     );
   }
 
@@ -110,8 +110,8 @@ class TestJavaStreamEvaluator {
     assertEquals(
             List.of(1, 4, 2, 3),
             evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
-                    .mapToPair(t -> Maps.immutableEntry(t, t))
-                    .transitiveClosure(PlanNode.fromCollection(List.of(Maps.immutableEntry(1, 2), Maps.immutableEntry(2, 3), Maps.immutableEntry(1, 4), Maps.immutableEntry(5, 6))).mapToPair(t -> t))
+                    .mapToPair(t -> Map.entry(t, t))
+                    .transitiveClosure(PlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(2, 3), Map.entry(1, 4), Map.entry(5, 6))).mapToPair(t -> t))
                     .values())
     );
   }

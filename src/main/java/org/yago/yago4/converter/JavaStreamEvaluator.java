@@ -1,14 +1,9 @@
 package org.yago.yago4.converter;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.eclipse.rdf4j.model.Statement;
 import org.yago.yago4.converter.plan.*;
-import org.yago.yago4.converter.utils.NTriplesReader;
-import org.yago.yago4.converter.utils.NTriplesWriter;
-import org.yago.yago4.converter.utils.RDFBinaryFormat;
-import org.yago.yago4.converter.utils.YagoValueFactory;
+import org.yago.yago4.converter.utils.*;
 import org.yago.yago4.converter.utils.stream.*;
 
 import java.nio.file.Path;
@@ -243,7 +238,7 @@ public class JavaStreamEvaluator {
     } else if (plan instanceof TransitiveClosureNode) {
       return toSet((TransitiveClosureNode<T>) plan);
     } else {
-      return toStream(plan).collect(Collectors.toSet());
+      return toStream(plan).collect(toSetCollector());
     }
   }
 
@@ -259,7 +254,7 @@ public class JavaStreamEvaluator {
     if (elements instanceof Set) {
       return (Set<T>) elements;
     } else {
-      return new HashSet<>(elements);
+      return new ObjectOpenHashSet<>(elements);
     }
   }
 
@@ -268,7 +263,7 @@ public class JavaStreamEvaluator {
   }
 
   private <T> Set<T> toSet(TransitiveClosureNode<T> plan) {
-    Set<T> closure = toStream(plan.getLeftParent()).collect(Collectors.toSet());
+    Set<T> closure = toStream(plan.getLeftParent()).collect(toSetCollector());
 
     Multimap<T, T> right = toMap(plan.getRightParent());
     List<T> iteration = new ArrayList<>(closure); //TODO: avoid list
@@ -317,7 +312,7 @@ public class JavaStreamEvaluator {
     List<Map.Entry<K, V>> iteration = new ArrayList<>(closure.entries()); //TODO: avoid list
     while (!iteration.isEmpty()) {
       iteration = StreamSupport.stream(new PairStreamMapJoinSpliterator<>(
-              iteration.stream().map(t -> Maps.immutableEntry(t.getValue(), t.getKey())).spliterator(),
+              iteration.stream().map(t -> Map.entry(t.getValue(), t.getKey())).spliterator(),
               right
       ), false)
               .map(Map.Entry::getValue)
@@ -331,9 +326,25 @@ public class JavaStreamEvaluator {
     return StreamSupport.stream(spliterator, 0, true); //TODO: characteristics
   }
 
+  private static <T> Collector<T, ObjectOpenHashSet<T>, ObjectOpenHashSet<T>> toSetCollector() {
+    return Collector.of(
+            ObjectOpenHashSet::new,
+            ObjectOpenHashSet::add,
+            (a, b) -> {
+              if (a.size() > b.size()) {
+                a.addAll(b);
+                return a;
+              } else {
+                b.addAll(a);
+                return b;
+              }
+            }
+    );
+  }
+
   private static <K, V> Collector<Map.Entry<K, V>, Multimap<K, V>, Multimap<K, V>> toMultimapCollector() {
     return Collector.of(
-            HashMultimap::create,
+            ArrayListHashMapMultimap::new,
             (m, i) -> m.put(i.getKey(), i.getValue()),
             (a, b) -> {
               if (a.size() > b.size()) {
@@ -345,6 +356,5 @@ public class JavaStreamEvaluator {
               }
             }
     );
-
   }
 }
