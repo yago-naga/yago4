@@ -349,7 +349,7 @@ ys:BookSeries a sh:NodeShape ;
 
 
 ys:ComicSeries a sh:NodeShape ;
-    sh:targetClass schema:BookSeries ;
+    sh:targetClass schema:ComicSeries ;
     ys:fromClass wd:Q14406742 .
 
 
@@ -391,7 +391,7 @@ ys:Periodical a sh:NodeShape ;
 
 
 ys:RadioSeries a sh:NodeShape ;
-    sh:targetClass schema:MovieSeries ;
+    sh:targetClass schema:RadioSeries ;
     ys:fromClass wd:Q14623351 ;
     sh:property [
         sh:path schema:actor ;
