@@ -91,6 +91,7 @@ public class Main {
 
     // Processing
     options.addOption("yago", "buildYago", false, "Build Yago");
+    options.addOption("small", "smallOnly", false, "Only introduces resources that are mapped to English Wikipedia");
     options.addOption("yagoDir", "yagoDir", true, "Path to the directory where Yago N-Triples files should be built");
 
     CommandLine params = (new DefaultParser()).parse(options, args);
@@ -109,7 +110,7 @@ public class Main {
       Path yagoDir = Path.of(params.getOptionValue("yagoDir"));
 
       System.out.println("Generating Yago N-Triples dump to " + yagoDir);
-      buildYago(partitionedStatements, yagoDir);
+      buildYago(partitionedStatements, yagoDir, params.hasOption("smallOnly"));
     }
   }
 
@@ -124,7 +125,7 @@ public class Main {
     return IRIShortener.shortened(iri).replace('/', '-').replace(':', '/');
   }
 
-  private static void buildYago(PartitionedStatements partitionedStatements, Path outputDir) throws IOException {
+  private static void buildYago(PartitionedStatements partitionedStatements, Path outputDir, boolean enWikipediaOnly) throws IOException {
     Files.createDirectories(outputDir);
 
     var evaluator = new JavaStreamEvaluator(VALUE_FACTORY);
@@ -135,7 +136,7 @@ public class Main {
             .mapToPair(t -> new Pair<>((Resource) t.getObject(), t.getSubject()));
     wikidataSuperClassOf = wikidataSuperClassOf.transitiveClosure(wikidataSuperClassOf);
 
-    var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements, wikidataInstanceOf, wikidataSuperClassOf);
+    var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements, wikidataInstanceOf, wikidataSuperClassOf, enWikipediaOnly);
     var classInstances = classesFromSchema(wikidataToYagoUrisMapping, wikidataInstanceOf, wikidataSuperClassOf);
 
     var yagoClasses = classInstances.entrySet().stream().map(e -> {
@@ -161,7 +162,7 @@ public class Main {
     evaluator.evaluateToNTriples(buildYagoSchema(), outputDir.resolve("yago-wd-schema.nt"));
   }
 
-  private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataInstanceOf, PairPlanNode<Resource, Resource> wikidataSuperClassOf) {
+  private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataInstanceOf, PairPlanNode<Resource, Resource> wikidataSuperClassOf, boolean enWikipediaOnly) {
     var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
@@ -172,16 +173,18 @@ public class Main {
 
     var goodWikidataItems = wikidataItems.subtract(badWikidataItems);
 
-    var mappingFromEnWikipedia = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+    var mapping = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
             .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
             .mapToPair(s -> new Pair<>((Resource) s.getObject(), s.getSubject()))
             .intersection(goodWikidataItems)
             .mapPair((wikidata, wikipedia) -> new Pair<>(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.stringValue().replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))));
 
-    var mappingOthers = goodWikidataItems
-            .subtract(mappingFromEnWikipedia.keys())
-            .mapToPair(e -> new Pair<>(e, (Resource) VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "wikidata_" + ((IRI) e).getLocalName())));
-    return mappingFromEnWikipedia.union(mappingOthers).cache();
+    if (!enWikipediaOnly) {
+      mapping = mapping.union(goodWikidataItems
+              .subtract(mapping.keys())
+              .mapToPair(e -> new Pair<>(e, VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "wikidata_" + ((IRI) e).getLocalName()))));
+    }
+    return mapping.cache();
   }
 
   private static Map<Resource, PlanNode<Resource>> classesFromSchema(PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping, PairPlanNode<Resource, Resource> wikidataInstanceOf, PairPlanNode<Resource, Resource> wikidataSuperClassOf) {
