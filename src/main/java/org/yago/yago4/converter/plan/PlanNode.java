@@ -33,6 +33,10 @@ public abstract class PlanNode<T> {
     return new CollectionNode<>(elements);
   }
 
+  public static <T> PlanNode<T> fromStream(Stream<T> elements) {
+    return fromCollection(elements.collect(Collectors.toList()));
+  }
+
   public PlanNode<T> intersection(PlanNode<T> right) {
     return new IntersectionNode<>(this, right);
   }

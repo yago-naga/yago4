@@ -1,5 +1,6 @@
 package org.yago.yago4.converter.plan;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -41,6 +42,14 @@ public abstract class PairPlanNode<K, V> {
 
   public <VO> PairPlanNode<K, VO> flatMapValue(Function<V, Stream<VO>> function) {
     return flatMapPair((k, v) -> function.apply(v).map(v2 -> Map.entry(k, v2)));
+  }
+
+  public static <K, V> PairPlanNode<K, V> fromCollection(Collection<Map.Entry<K, V>> elements) {
+    return (new CollectionNode<>(elements)).mapToPair(t -> t);
+  }
+
+  public static <K, V> PairPlanNode<K, V> fromStream(Stream<Map.Entry<K, V>> elements) {
+    return fromCollection(elements.collect(Collectors.toList()));
   }
 
   public <V2> PairPlanNode<K, Map.Entry<V, V2>> join(PairPlanNode<K, V2> right) {
