@@ -53,20 +53,6 @@ public class YagoValueFactory implements ValueFactory {
     assert NUMERIC_NAMESPACES.length < Byte.MAX_VALUE;
   }
 
-  private static final String[] ENCODED_NAMESPACES = new String[]{
-          "http://www.wikidata.org/entity/statement/",
-          "http://www.wikidata.org/value/",
-          "http://www.wikidata.org/reference/",
-          "http://yago-knowledge.org/resource/",
-          "https://en.wikipedia.org/wiki/",
-          "http://dbpedia.org/resource/",
-          "http://rdf.freebase.com/ns/"
-  };
-
-  static {
-    assert ENCODED_NAMESPACES.length < Byte.MAX_VALUE;
-  }
-
   private static final ValueFactory SVF = SimpleValueFactory.getInstance();
   private static final IRI[] CONSTANTS = new IRI[]{
           XMLSchema.STRING,
@@ -197,14 +183,6 @@ public class YagoValueFactory implements ValueFactory {
           } catch (NumberFormatException e) {
             break;
           }
-        }
-      }
-    }
-    for (byte i = 0; i < ENCODED_NAMESPACES.length; i++) {
-      if (iri.startsWith(ENCODED_NAMESPACES[i])) {
-        int prefixLength = ENCODED_NAMESPACES[i].length();
-        if (iri.length() >= prefixLength) {
-          return new NamespaceIRI(i, iri.substring(prefixLength));
         }
       }
     }
@@ -345,7 +323,7 @@ public class YagoValueFactory implements ValueFactory {
     int b = inputStream.readByte();
     switch (b) {
       case IRI_KEY:
-        return buildIRI(inputStream.readUTF());
+        return new BasicIRI(inputStream.readUTF());
       case CONSTANT_IRI_KEY:
         return CONSTANTS[inputStream.readByte()];
       case NUMERIC_IRI_KEY:
@@ -453,56 +431,6 @@ public class YagoValueFactory implements ValueFactory {
     @Override
     public int hashCode() {
       return iri.hashCode();
-    }
-  }
-
-  private static final class NamespaceIRI implements IRI {
-    private final byte namespaceId;
-    private final String localName;
-
-    private NamespaceIRI(byte namespaceId, String localName) {
-      this.namespaceId = namespaceId;
-      this.localName = localName;
-    }
-
-    @Override
-    public String stringValue() {
-      return ENCODED_NAMESPACES[namespaceId] + localName;
-    }
-
-    @Override
-    public String getNamespace() {
-      return ENCODED_NAMESPACES[namespaceId];
-    }
-
-    @Override
-    public String getLocalName() {
-      return localName;
-    }
-
-    @Override
-    public String toString() {
-      return stringValue();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o instanceof NamespaceIRI) {
-        NamespaceIRI other = (NamespaceIRI) o;
-        return namespaceId == other.namespaceId && localName.equals(other.localName);
-      }
-      if (o instanceof IRI) {
-        return stringValue().equals(((IRI) o).stringValue());
-      }
-      return false;
-    }
-
-    @Override
-    public int hashCode() {
-      return localName.hashCode();
     }
   }
 
