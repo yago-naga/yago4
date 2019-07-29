@@ -35,7 +35,12 @@ public abstract class Multimap<K, V> {
   }
 
   public boolean put(K k, V element) {
-    return inner.computeIfAbsent(k, this::createCollection).add(element);
+    Collection<V> values = inner.get(k);
+    if (values == null) {
+      values = createCollection();
+      inner.put(k, values);
+    }
+    return values.add(element);
   }
 
   public void putAll(Multimap<K, V> other) {

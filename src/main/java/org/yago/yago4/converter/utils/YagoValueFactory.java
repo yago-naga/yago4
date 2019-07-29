@@ -191,7 +191,7 @@ public class YagoValueFactory implements ValueFactory {
     for (byte i = 0; i < NUMERIC_NAMESPACES.length; i++) {
       if (iri.startsWith(NUMERIC_NAMESPACES[i])) {
         int prefixLength = NUMERIC_NAMESPACES[i].length();
-        if (iri.length() > prefixLength) {
+        if (iri.length() > prefixLength && iri.lastIndexOf('/') < prefixLength) {
           try {
             return new NumericIri(i, iri.charAt(prefixLength), Integer.parseInt(iri.substring(prefixLength + 1)));
           } catch (NumberFormatException e) {
