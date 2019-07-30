@@ -19,6 +19,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -28,6 +30,8 @@ import java.util.stream.Stream;
 
 public class Main {
   private static final YagoValueFactory VALUE_FACTORY = YagoValueFactory.getInstance();
+  private static final JavaStreamEvaluator evaluator = new JavaStreamEvaluator(VALUE_FACTORY);
+
 
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
@@ -115,8 +119,6 @@ public class Main {
   private static void buildYago(PartitionedStatements partitionedStatements, Path outputDir, boolean enWikipediaOnly) throws IOException {
     Files.createDirectories(outputDir);
 
-    var evaluator = new JavaStreamEvaluator(VALUE_FACTORY);
-
     var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements);
 
     var t = buildYagoClassesAndSuperClassOf(partitionedStatements, wikidataToYagoUrisMapping);
@@ -125,31 +127,40 @@ public class Main {
 
     var yagoShapeInstances = yagoShapeInstances(partitionedStatements, yagoSuperClassOf, yagoClasses, wikidataToYagoUrisMapping);
 
-    evaluator.evaluateToNTriples(
+    generateFile(
             buildClassesDescription(yagoClasses, yagoSuperClassOf, partitionedStatements, wikidataToYagoUrisMapping),
-            outputDir.resolve("yago-wd-class.nt")
+            outputDir, "yago-wd-class.nt"
     );
 
-    evaluator.evaluateToNTriples(
+    generateFile(
             buildInstanceOf(yagoShapeInstances.get(SCHEMA_THING), yagoClasses, partitionedStatements, wikidataToYagoUrisMapping),
-            outputDir.resolve("yago-wd-types.nt")
+            outputDir, "yago-wd-types.nt"
     );
 
-    evaluator.evaluateToNTriples(
+    generateFile(
             buildPropertiesFromSchema(partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping, LABEL_IRIS, null),
-            outputDir.resolve("yago-wd-labels.nt")
+            outputDir, "yago-wd-labels.nt"
     );
-    evaluator.evaluateToNTriples(
+
+    generateFile(
             buildPropertiesFromSchema(partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping, null, LABEL_IRIS),
-            outputDir.resolve("yago-wd-facts.nt")
+            outputDir, "yago-wd-facts.nt"
     );
 
-    evaluator.evaluateToNTriples(
+    generateFile(
             buildSameAs(partitionedStatements, yagoShapeInstances.get(SCHEMA_THING), wikidataToYagoUrisMapping),
-            outputDir.resolve("yago-wd-sameAs.nt")
+            outputDir, "yago-wd-sameAs.nt"
     );
 
-    evaluator.evaluateToNTriples(buildYagoSchema(), outputDir.resolve("yago-wd-schema.nt"));
+    generateFile(buildYagoSchema(), outputDir, "yago-wd-schema.nt");
+  }
+
+  private static void generateFile(PlanNode<Statement> stream, Path outputDir, String fileName) {
+    System.out.println("Generating " + fileName);
+    var start = LocalDateTime.now();
+    evaluator.evaluateToNTriples(stream, outputDir.resolve(fileName));
+    var end = LocalDateTime.now();
+    System.out.println("Generation of " + fileName + " done in " + Duration.between(start, end));
   }
 
   /**
@@ -339,9 +350,9 @@ public class Main {
         } else if (CALENDAR_DT_SET.containsAll(dts)) {
           //We clean up times by retrieving their full representation
           subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
-                          .swap()
-                          .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
-                          .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+                  .swap()
+                  .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+                  .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
                   .flatMapPair((k, e) -> cleanupTime(e.getKey().getValue(), e.getValue()).map(t -> Map.entry(e.getKey().getKey(), t)));
         } else {
           subjectObjects = getPropertyValues(partitionedStatements, propertyShape)
