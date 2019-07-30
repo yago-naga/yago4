@@ -318,6 +318,12 @@ public class Main {
             .filter(s -> s.getObject().equals(WIKIBASE_BEST_RANK))
             .map(Statement::getSubject).cache();
 
+    PairPlanNode<Resource, Value> cleanTimes = partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE))
+            .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .flatMapPair((k, e) -> cleanupTime(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
+            .cache();
+
     return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
       IRI yagoProperty = propertyShape.getProperty();
       if (onlyProperties != null && !onlyProperties.contains(yagoProperty)) {
@@ -327,7 +333,7 @@ public class Main {
         return PlanNode.<Statement>empty();
       }
 
-      PairPlanNode<Resource, Value> subjectObjects = PairPlanNode.empty();
+      PairPlanNode<Resource, Value> subjectObjects;
 
       if (propertyShape.getDatatypes().isPresent()) {
         if (propertyShape.getNodeShape().isPresent()) {
@@ -351,9 +357,9 @@ public class Main {
           //We clean up times by retrieving their full representation
           subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
                   .swap()
-                  .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
-                  .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
-                  .flatMapPair((k, e) -> cleanupTime(e.getKey().getValue(), e.getValue()).map(t -> Map.entry(e.getKey().getKey(), t)));
+                  .join(cleanTimes)
+                  .values()
+                  .mapToPair(t -> t);
         } else {
           subjectObjects = getPropertyValues(partitionedStatements, propertyShape)
                   .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()));
