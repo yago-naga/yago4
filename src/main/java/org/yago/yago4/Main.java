@@ -264,7 +264,7 @@ public class Main {
             partitionedStatements.getForKey(keyForIri(WDT_P31))
                     .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject())),
             wikidataToYagoUrisMapping
-    ); //TODO: cache?
+    ).cache(); //TODO: cache?
 
     var optionalThingSupersetWithoutClasses = optionalThingSuperset == null
             ? null
