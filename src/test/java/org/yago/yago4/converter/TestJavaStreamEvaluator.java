@@ -1,12 +1,11 @@
 package org.yago.yago4.converter;
 
 import org.junit.jupiter.api.Test;
+import org.yago.yago4.converter.plan.PairPlanNode;
 import org.yago.yago4.converter.plan.PlanNode;
 import org.yago.yago4.converter.utils.YagoValueFactory;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -16,58 +15,83 @@ class TestJavaStreamEvaluator {
 
   private static final JavaStreamEvaluator evaluator = new JavaStreamEvaluator(YagoValueFactory.getInstance());
 
+  private <T> List<T> evaluate(PlanNode<T> plan) {
+    return evaluator.evaluateToList(plan);
+  }
+
+  private <T extends Comparable<T>> void assertEq(List<T> expected, List<T> actual) {
+    actual = new ArrayList<>(actual);
+    actual.sort(Comparator.naturalOrder());
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testDistinct() {
+    assertEq(
+            List.of(1, 2),
+            evaluate(PlanNode.fromCollection(List.of(1, 2, 1, 2, 2)).distinct())
+    );
+  }
+
+  @Test
+  void testDistinctPairs() {
+    assertEq(
+            List.of(1, 2),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 'a'), Map.entry(2, 'b'), Map.entry(1, 'a'))).distinct().keys())
+    );
+  }
+
   @Test
   void testFilter() {
-    assertEquals(
+    assertEq(
             List.of(1, 2),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2, 3))
+            evaluate(PlanNode.fromCollection(List.of(1, 2, 3))
                     .filter(t -> t < 3))
     );
   }
 
   @Test
   void testMap() {
-    assertEquals(
+    assertEq(
             List.of(2, 4, 6),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2, 3))
+            evaluate(PlanNode.fromCollection(List.of(1, 2, 3))
                     .map(t -> 2 * t))
     );
   }
 
   @Test
   void testFlatMap() {
-    assertEquals(
-            List.of(1, 2, 2, 4, 3, 6),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2, 3))
+    assertEq(
+            List.of(1, 2, 2, 3, 4, 6),
+            evaluate(PlanNode.fromCollection(List.of(1, 2, 3))
                     .flatMap(t -> Stream.of(t, 2 * t)))
     );
   }
 
   @Test
   void testIntersection() {
-    assertEquals(
+    assertEq(
             List.of(1, 3),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2, 3))
+            evaluate(PlanNode.fromCollection(List.of(1, 2, 3))
                     .intersection(PlanNode.fromCollection(List.of(1, 3, 4))))
     );
   }
 
   @Test
   void testIntersectionPair() {
-    assertEquals(
-            List.of(Map.entry(1, 'a'), Map.entry(3, 'c')),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(Map.entry(1, 'a'), Map.entry(2, 'b'), Map.entry(3, 'c')))
-                    .mapToPair(t -> t)
+    assertEq(
+            List.of('a', 'c'),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 'a'), Map.entry(2, 'b'), Map.entry(3, 'c')))
                     .intersection(PlanNode.fromCollection(List.of(1, 3, 4)))
-                    .map(Map::entry))
+                    .values())
     );
   }
 
   @Test
   void testJoinPairPair() {
-    assertEquals(
+    assertEq(
             List.of(5, 10),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2))
+            evaluate(PlanNode.fromCollection(List.of(1, 2))
                     .mapToPair(t -> Map.entry(t * 2, t))
                     .join(PlanNode.fromCollection(List.of(4, 8)).mapToPair(t -> Map.entry(t / 2, t)))
                     .mapValue(e -> e.getKey() + e.getValue())
@@ -78,18 +102,18 @@ class TestJavaStreamEvaluator {
 
   @Test
   void testSubtract() {
-    assertEquals(
+    assertEq(
             List.of(2, 8),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(2, 4, 6, 8))
+            evaluate(PlanNode.fromCollection(List.of(2, 4, 6, 8))
                     .subtract(PlanNode.fromCollection(List.of(4, 6))))
     );
   }
 
   @Test
   void testSubtractPair() {
-    assertEquals(
+    assertEq(
             List.of(2, 8),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(2, 4, 6, 8))
+            evaluate(PlanNode.fromCollection(List.of(2, 4, 6, 8))
                     .mapToPair(t -> Map.entry(t / 2, t))
                     .subtract(PlanNode.fromCollection(List.of(2, 3)))
                     .values())
@@ -98,29 +122,29 @@ class TestJavaStreamEvaluator {
 
   @Test
   void testTransitiveClosure() {
-    assertEquals(
+    assertEq(
             List.of(1, 2, 3, 4),
-            evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
-                    .transitiveClosure(PlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(2, 3), Map.entry(1, 4), Map.entry(5, 6))).mapToPair(t -> t)))
+            evaluate(PlanNode.fromCollection(Collections.singletonList(1))
+                    .transitiveClosure(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(2, 3), Map.entry(1, 4), Map.entry(5, 6)))))
     );
   }
 
   @Test
   void testPairTransitiveClosure() {
-    assertEquals(
-            List.of(1, 4, 2, 3),
-            evaluator.evaluateToList(PlanNode.fromCollection(Collections.singletonList(1))
+    assertEq(
+            List.of(1, 2, 3, 4),
+            evaluate(PlanNode.fromCollection(Collections.singletonList(1))
                     .mapToPair(t -> Map.entry(t, t))
-                    .transitiveClosure(PlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(2, 3), Map.entry(1, 4), Map.entry(5, 6))).mapToPair(t -> t))
+                    .transitiveClosure(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(2, 3), Map.entry(1, 4), Map.entry(5, 6))))
                     .values())
     );
   }
 
   @Test
   void testUnion() {
-    assertEquals(
+    assertEq(
             List.of(1, 2, 9, 10),
-            evaluator.evaluateToList(PlanNode.fromCollection(List.of(1, 2))
+            evaluate(PlanNode.fromCollection(List.of(1, 2))
                     .union(PlanNode.fromCollection(List.of(9, 10))))
     );
   }
@@ -129,9 +153,9 @@ class TestJavaStreamEvaluator {
   void testCache() {
     AtomicInteger counter = new AtomicInteger(0);
     var cached = PlanNode.fromCollection(List.of(0, 0)).map(t -> t + counter.addAndGet(1)).cache();
-    assertEquals(
-            List.of(1, 2, 1, 2),
-            evaluator.evaluateToList(cached.union(cached))
+    assertEq(
+            List.of(1, 1, 2, 2),
+            evaluate(cached.union(cached))
     );
   }
 
@@ -139,8 +163,6 @@ class TestJavaStreamEvaluator {
   void testNoCache() {
     AtomicInteger counter = new AtomicInteger(0);
     var stream = PlanNode.fromCollection(List.of(0, 0)).map(t -> t + counter.addAndGet(1));
-    var results = evaluator.evaluateToList(stream.union(stream));
-    results.sort(Integer::compareTo);
-    assertEquals(List.of(1, 2, 3, 4), results);
+    assertEq(List.of(1, 2, 3, 4), evaluate(stream.union(stream)));
   }
 }

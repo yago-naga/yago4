@@ -322,6 +322,7 @@ public class Main {
             .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
             .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
             .flatMapPair((k, e) -> cleanupTime(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
+            .distinct()
             .cache();
 
     return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {

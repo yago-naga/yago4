@@ -42,9 +42,11 @@ public class JavaStreamEvaluator {
     if (cachedValue != null) {
       return cachedValue.parallelStream();
     } else if (plan instanceof CacheNode) {
-      return toSet(plan).parallelStream();
+      return toSet((CacheNode<T>) plan).parallelStream();
     } else if (plan instanceof CollectionNode) {
       return toStream((CollectionNode<T>) plan);
+    } else if (plan instanceof DistinctNode) {
+      return toSet((DistinctNode<T>) plan).parallelStream();
     } else if (plan instanceof FilterNode) {
       return toStream((FilterNode<T>) plan);
     } else if (plan instanceof FlatMapNode) {
@@ -136,7 +138,9 @@ public class JavaStreamEvaluator {
     if (cachedValue != null) {
       return cachedValue.entries().parallelStream();
     } else if (plan instanceof CachePairNode) {
-      return toMap(plan).entries().parallelStream();
+      return toMap((CachePairNode<K, V>) plan).entries().parallelStream();
+    } else if (plan instanceof DistinctPairNode) {
+      return toMap((DistinctPairNode<K, V>) plan).entries().parallelStream();
     } else if (plan instanceof FilterPairNode) {
       return toStream((FilterPairNode<K, V>) plan);
     } else if (plan instanceof FlatMapPairNode) {
@@ -233,6 +237,8 @@ public class JavaStreamEvaluator {
       return toSet((CacheNode<T>) plan);
     } else if (plan instanceof CollectionNode) {
       return toSet((CollectionNode<T>) plan);
+    } else if (plan instanceof DistinctNode) {
+      return toSet((DistinctNode<T>) plan);
     } else if (plan instanceof KeysNode && isAlreadyMap(((KeysNode<T, ?>) plan).getParent())) {
       return toSet((KeysNode<T, ?>) plan);
     } else if (plan instanceof TransitiveClosureNode) {
@@ -256,6 +262,10 @@ public class JavaStreamEvaluator {
     } else {
       return new ObjectOpenHashSet<>(elements);
     }
+  }
+
+  private <T> Set<T> toSet(DistinctNode<T> plan) {
+    return toSet(plan.getParent());
   }
 
   private <K, V> Set<K> toSet(KeysNode<K, V> plan) {
@@ -291,6 +301,8 @@ public class JavaStreamEvaluator {
       return value;
     } else if (plan instanceof CachePairNode) {
       return toMap((CachePairNode<K, V>) plan);
+    } else if (plan instanceof DistinctPairNode) {
+      return toMap((DistinctPairNode<K, V>) plan);
     } else if (plan instanceof TransitiveClosurePairNode) {
       return toMap((TransitiveClosurePairNode<K, V>) plan);
     } else {
@@ -303,6 +315,10 @@ public class JavaStreamEvaluator {
     cachePairs.put(plan, value);
     cachePairs.put(plan.getParent(), value); //to allow using the parent value as cache key, avoids impact of a common mistake
     return value;
+  }
+
+  private <K, V> Multimap<K, V> toMap(DistinctPairNode<K, V> plan) {
+    return toStream(plan.getParent()).collect(toMultimapCollector(ArraySetHashMapMultimap::new));
   }
 
   private <K, V> Multimap<K, V> toMap(TransitiveClosurePairNode<K, V> plan) {
@@ -343,8 +359,12 @@ public class JavaStreamEvaluator {
   }
 
   private static <K, V> Collector<Map.Entry<K, V>, Multimap<K, V>, Multimap<K, V>> toMultimapCollector() {
+    return toMultimapCollector(ArrayListHashMapMultimap::new);
+  }
+
+  private static <K, V> Collector<Map.Entry<K, V>, Multimap<K, V>, Multimap<K, V>> toMultimapCollector(Supplier<Multimap<K, V>> multimapSupplier) {
     return Collector.of(
-            ArrayListHashMapMultimap::new,
+            multimapSupplier,
             (m, i) -> m.put(i.getKey(), i.getValue()),
             (a, b) -> {
               if (a.size() > b.size()) {

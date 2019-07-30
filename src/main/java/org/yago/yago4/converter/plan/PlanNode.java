@@ -17,6 +17,10 @@ public abstract class PlanNode<T> {
     return new CacheNode<>(this);
   }
 
+  public PlanNode<T> distinct() {
+    return new DistinctNode<>(this);
+  }
+
   public static <T> PlanNode<T> empty() {
     return new CollectionNode<>(Collections.emptySet());
   }

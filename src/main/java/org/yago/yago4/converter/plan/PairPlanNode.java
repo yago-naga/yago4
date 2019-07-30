@@ -16,6 +16,10 @@ public abstract class PairPlanNode<K, V> {
     return new CachePairNode<>(this);
   }
 
+  public PairPlanNode<K, V> distinct() {
+    return new DistinctPairNode<>(this);
+  }
+
   public static <K, V> PairPlanNode<K, V> empty() {
     return new UnionPairNode<>(Collections.emptyList());
   }
