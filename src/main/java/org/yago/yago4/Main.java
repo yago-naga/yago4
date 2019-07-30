@@ -125,7 +125,9 @@ public class Main {
     var yagoClasses = t.getKey();
     var yagoSuperClassOf = t.getValue();
 
-    var yagoShapeInstances = yagoShapeInstances(partitionedStatements, yagoSuperClassOf, yagoClasses, wikidataToYagoUrisMapping);
+    var yagoShapeInstances = yagoShapeInstances(partitionedStatements, yagoSuperClassOf, yagoClasses,
+            enWikipediaOnly ? enWikipediaElements(partitionedStatements, wikidataToYagoUrisMapping) : null,
+            wikidataToYagoUrisMapping);
 
     generateFile(
             buildClassesDescription(yagoClasses, yagoSuperClassOf, partitionedStatements, wikidataToYagoUrisMapping),
@@ -250,12 +252,23 @@ public class Main {
     return Map.entry(yagoClasses, yagoSuperClassOf);
   }
 
-  private static Map<Resource, PlanNode<Resource>> yagoShapeInstances(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> yagoSuperClassOf, PlanNode<Resource> yagoClasses, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+  private static PlanNode<Resource> enWikipediaElements(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+    var wikidataLinkedToEnWikipedia = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+            .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
+            .map(t -> (Resource) t.getObject());
+    return mapToYago(wikidataLinkedToEnWikipedia, wikidataToYagoUrisMapping);
+  }
+
+  private static Map<Resource, PlanNode<Resource>> yagoShapeInstances(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> yagoSuperClassOf, PlanNode<Resource> yagoClasses, PlanNode<Resource> optionalThingSuperset, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     var wikidataInstancesForYagoClass = mapKeyToYago(
             partitionedStatements.getForKey(keyForIri(WDT_P31))
                     .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject())),
             wikidataToYagoUrisMapping
     ); //TODO: cache?
+
+    var optionalThingSupersetWithoutClasses = optionalThingSuperset == null
+            ? null
+            : optionalThingSuperset.subtract(yagoClasses); // We do not want classes
 
     return ShaclSchema.getSchema().getNodeShapes().flatMap(nodeShape -> {
       var fromYagoClasses = PlanNode.fromStream(Stream.concat(
@@ -266,9 +279,10 @@ public class Main {
       var wdInstances = wikidataInstancesForYagoClass
               .intersection(fromYagoClasses)
               .values();
-      var instances = mapToYago(wdInstances, wikidataToYagoUrisMapping)
-              .subtract(yagoClasses) // We do not want classes
-              .cache();
+      var instances = optionalThingSupersetWithoutClasses == null
+              ? mapToYago(wdInstances, wikidataToYagoUrisMapping).subtract(yagoClasses).cache() // We do not want classes
+              : mapToYago(wdInstances, wikidataToYagoUrisMapping).intersection(optionalThingSupersetWithoutClasses).cache();
+
       return nodeShape.getClasses().map(c -> Map.entry(c, instances));
     }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
