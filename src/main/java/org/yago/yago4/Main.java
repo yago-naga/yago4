@@ -455,8 +455,9 @@ public class Main {
   private static PlanNode<Statement> buildSameAs(PartitionedStatements partitionedStatements, PlanNode<Resource> yagoThings, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     // Wikidata
     PlanNode<Statement> wikidata = wikidataToYagoUrisMapping
+            .swap()
             .intersection(yagoThings)
-            .map((wd, yago) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, wd));
+            .map((yago, wd) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, wd));
 
     //dbPedia
     PlanNode<Statement> dbPedia = mapKeyToYago(partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
