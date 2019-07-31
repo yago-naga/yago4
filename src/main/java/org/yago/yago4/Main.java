@@ -160,7 +160,7 @@ public class Main {
   private static void generateFile(PlanNode<Statement> stream, Path outputDir, String fileName) {
     System.out.println("Generating " + fileName);
     var start = LocalDateTime.now();
-    evaluator.evaluateToNTriples(stream, outputDir.resolve(fileName));
+    evaluator.evaluateToNTriples(stream, outputDir.resolve(fileName + ".gz"));
     var end = LocalDateTime.now();
     System.out.println("Generation of " + fileName + " done in " + Duration.between(start, end));
   }
