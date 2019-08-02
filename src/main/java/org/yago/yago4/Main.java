@@ -205,7 +205,7 @@ public class Main {
     wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P279))
             .filter(t -> t.getSubject() instanceof IRI)
             .map(Statement::getSubject));
-    wikidataItems = wikidataItems.cache(); //TODO
+    wikidataItems = wikidataItems.distinct();
     */
 
     var mappingForNotLinkedToEnWikipedia = wikidataItems
@@ -222,7 +222,7 @@ public class Main {
    * 1. take all subClassOf (P279) from Wikidata and maps URIs to Yago
    * 2. take all subClassOf from schema.org ontology and shapes mapping
    * 3. remove from them the elements and subclasses of WD_BAD_CLASSES
-   * 4. construct class set by only keeping the classes that have instance or subclass of and are transitively subclasses of schema:Thing
+   * 4. construct class set by only keeping the classes that are transitively subclasses of schema:Thing and have transitively instances
    */
   private static Map.Entry<PlanNode<Resource>, PairPlanNode<Resource, Resource>> buildYagoClassesAndSuperClassOf(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279))
@@ -238,7 +238,7 @@ public class Main {
             .union(subClassOfFromYagoSchema())
             .swap();
 
-    var possibleSuperClassOf = possibleSuperClassOfFromWikidata.union(superClassOfFromSchema).cache(); //TODO: is it smart?
+    var possibleSuperClassOf = possibleSuperClassOfFromWikidata.union(superClassOfFromSchema).cache();
 
     var schemaThingSubClasses = PlanNode.fromCollection(Collections.singleton((Resource) SCHEMA_THING))
             .transitiveClosure(possibleSuperClassOf);
@@ -246,14 +246,12 @@ public class Main {
     var badClasses = mapToYago(PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c)), wikidataToYagoUrisMapping)
             .transitiveClosure(possibleSuperClassOf);
 
-    var instanceOfObjects = mapToYago(
+    var classesWithInstances = mapToYago(
             partitionedStatements.getForKey(keyForIri(WDT_P31)).map(t -> (Resource) t.getObject()),
             wikidataToYagoUrisMapping
-    );
+    ).transitiveClosure(possibleSuperClassOf.swap());
 
-    //TODO: change this to only keep classes that have instances recursively
-    var yagoClasses = instanceOfObjects
-            .union(possibleSuperClassOf.keys())
+    var yagoClasses = classesWithInstances
             .intersection(schemaThingSubClasses)
             .subtract(badClasses)
             .cache();
@@ -280,7 +278,7 @@ public class Main {
             partitionedStatements.getForKey(keyForIri(WDT_P31))
                     .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject())),
             wikidataToYagoUrisMapping
-    ).cache(); //TODO: cache?
+    ).cache();
 
     var optionalThingSupersetWithoutClasses = optionalThingSuperset == null
             ? null
