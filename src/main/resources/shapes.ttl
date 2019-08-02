@@ -98,6 +98,18 @@ ys:CreativeWork a sh:NodeShape ;
         ys:fromProperty wdt:P767 ;
     ] ;
     sh:property [
+        sh:path schema:copyrightHolder ;
+        sh:or (
+            [
+                sh:node ys:Organization
+            ]
+            [
+                sh:node ys:Person
+            ]
+        ) ;
+        ys:fromProperty wdt:P3931 ;
+    ] ;
+    sh:property [
         sh:path schema:creator ;
         sh:or (
             [
@@ -184,6 +196,11 @@ ys:CreativeWork a sh:NodeShape ;
         sh:path schema:material ;
         sh:node ys:Thing ;
         ys:fromProperty wdt:P186 ;
+    ] ;
+    sh:property [
+        sh:path schema:position ;
+        sh:datatype xsd:integer ;
+        ys:fromProperty wdt:P1545 ;
     ] ;
     sh:property [
         sh:path schema:producer ;
@@ -524,6 +541,16 @@ ys:VideoGameSeries a sh:NodeShape ;
     ] .
 
 
+ys:ComicStory a sh:NodeShape ;
+    sh:targetClass schema:ComicStory ;
+    ys:fromClass wd:Q1004 ;
+    sh:property [
+        sh:path schema:colorist ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P6338 ;
+    ] .
+
+
 ys:Episode a sh:NodeShape ;
     sh:targetClass schema:Episode ;
     ys:fromClass wd:Q1983062 ;
@@ -706,7 +733,12 @@ ys:PublicationVolume a sh:NodeShape ;
 
 ys:SoftwareApplication a sh:NodeShape ;
     sh:targetClass schema:SoftwareApplication ;
-    ys:fromClass wd:Q166142 .
+    ys:fromClass wd:Q166142 ;
+    sh:property [
+        sh:path schema:operatingSystem ;
+        sh:node ys:SoftwareApplication ;
+        ys:fromProperty wdt:P306 ;
+    ] .
 
 ys:VideoGame a sh:NodeShape ;
     sh:targetClass schema:VideoGame ;
@@ -734,6 +766,14 @@ ys:VideoGame a sh:NodeShape ;
         ys:fromProperty wdt:P86 ;
     ] .
 
+ys:VisualArtwork a sh:NodeShape ;
+    sh:targetClass schema:VisualArtwork ;
+    ys:fromClass wd:Q4502142 ;
+    sh:property [
+        sh:path schema:colorist ;
+        sh:node ys:Person ;
+        ys:fromProperty wdt:P6338 ;
+    ] .
 
 ys:Event a sh:NodeShape ;
     sh:targetClass schema:Event ;
@@ -950,6 +990,11 @@ ys:Organization a sh:NodeShape ;
         ys:fromProperty wdt:P740 ;
     ] ;
     sh:property [
+        sh:path schema:knowsLanguage ;
+        sh:node ys:Language ;
+        ys:fromProperty wdt:P1412 ;
+    ] ;
+    sh:property [
         sh:path schema:leiCode ;
         sh:datatype xsd:string ;
         sh:pattern "^[0-9A-Z]{18}[0-9]{2}$" ;
@@ -1035,6 +1080,11 @@ ys:MusicGroup a sh:NodeShape ;
 ys:Person a sh:NodeShape ;
     sh:targetClass schema:Person ;
     ys:fromClass wd:Q215627 , wd:Q5 ;
+    sh:property [
+        sh:path schema:affiliation ;
+        sh:node ys:Organization ;
+        ys:fromProperty wdt:P1416 ;
+    ] ;
     sh:property [
         sh:path schema:alumniOf ;
         sh:node ys:Organization ;
@@ -1131,6 +1181,11 @@ ys:Person a sh:NodeShape ;
         sh:path schema:homeLocation ;
         sh:node ys:Place ;
         ys:fromProperty wdt:P551 ;
+    ] ;
+    sh:property [
+        sh:path schema:knowsLanguage ;
+        sh:node ys:Language ;
+        ys:fromProperty wdt:P1412 ;
     ] ;
     sh:property [
         sh:path schema:memberOf ;
@@ -1237,6 +1292,20 @@ ys:Airport a sh:NodeShape ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P239 ;
     ] .
+
+ys:LocalBusiness a sh:NodeShape ;
+    sh:targetClass schema:LocalBusiness ;
+    ys:fromClass wd:Q62849941 .
+
+ys:FoodEstablishment a sh:NodeShape ;
+    sh:targetClass schema:FoodEstablishment ;
+    ys:fromClass wd:Q27038993 ;
+    sh:property [
+        sh:path schema:servesCuisine ;
+        sh:node ys:Thing ;
+        ys:fromProperty wdt:P2012 ;
+    ] .
+
 
 ys:Rating a sh:NodeShape ;
     sh:targetClass schema:Rating ;

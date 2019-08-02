@@ -56,7 +56,7 @@ public class ShaclSchema {
     RDFParser parser = Rio.createParser(RDFFormat.TURTLE, VALUE_FACTORY);
     parser.setRDFHandler(new StatementCollector(model));
     try {
-      parser.parse(new URL("https://schema.org/version/latest/schema.ttl").openStream(), "http://schema.org/");
+      parser.parse(new URL("https://schema.org/version/latest/all-layers.ttl").openStream(), "http://schema.org/");
       parser.parse(ShaclSchema.class.getResourceAsStream("/shapes.ttl"), "");
     } catch (IOException e) {
       throw new IllegalArgumentException("The provided schema is not valid JSON", e);
