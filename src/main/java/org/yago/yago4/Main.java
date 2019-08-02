@@ -71,6 +71,7 @@ public class Main {
   private static final Value WD_Q11574 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q11574");
   private static final Value WD_Q25235 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q25235");
   private static final Value WD_Q573 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q573");
+  private static final Value WD_Q199 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q199");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_INTANGIBLE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible");
   private static final IRI SCHEMA_STRUCTURED_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue");
@@ -359,10 +360,17 @@ public class Main {
             .distinct()
             .cache();
 
-    PairPlanNode<Resource, Value> cleanDurations = partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_AMOUNT))
+    var quantityAmountAndUnit = partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_AMOUNT))
             .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
-            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_UNIT)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_UNIT)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())));
+
+    PairPlanNode<Resource, Value> cleanDurations = quantityAmountAndUnit
             .flatMapPair((k, e) -> convertDurationQuantity(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
+            .distinct()
+            .cache();
+
+    PairPlanNode<Resource, Value> cleanIntegers = quantityAmountAndUnit
+            .flatMapPair((k, e) -> convertIntegerQuantity(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
             .distinct()
             .cache();
 
@@ -407,6 +415,13 @@ public class Main {
           subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
                   .swap()
                   .join(cleanDurations)
+                  .values()
+                  .mapToPair(t -> t);
+        } else if (dts.equals(Collections.singleton(XMLSchema.INTEGER))) {
+          //We clean up durations form Wikibase quantities by retrieving their full representation
+          subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
+                  .swap()
+                  .join(cleanIntegers)
                   .values()
                   .mapToPair(t -> t);
         } else {
@@ -644,7 +659,7 @@ public class Main {
       return Stream.empty();
     }
     try {
-      long value = ((Literal) amountNode).longValue();
+      long value = ((Literal) amountNode).decimalValue().longValueExact();
       if (unitNode.equals(WD_Q11574)) {
         return Stream.of(VALUE_FACTORY.createLiteral(Duration.ofSeconds(value)));
       } else if (unitNode.equals(WD_Q7727)) {
@@ -656,6 +671,18 @@ public class Main {
       } else {
         return Stream.empty();
       }
+    } catch (ArithmeticException | NumberFormatException e) {
+      return Stream.empty();
+    }
+  }
+
+  private static Stream<Value> convertIntegerQuantity(Value amountNode, Value unitNode) {
+    if (!unitNode.equals(WD_Q199) || !(amountNode instanceof Literal)) {
+      return Stream.empty();
+    }
+    try {
+      long value = ((Literal) amountNode).decimalValue().longValueExact();
+      return Stream.of(VALUE_FACTORY.createLiteral(value));
     } catch (ArithmeticException | NumberFormatException e) {
       return Stream.empty();
     }

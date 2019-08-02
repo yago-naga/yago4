@@ -293,8 +293,13 @@ ys:Book a sh:NodeShape ;
         sh:datatype xsd:string ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P212 , wdt:P957 ;
+    ] ;
+    sh:property [
+        sh:path schema:numberOfPages ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+        ys:fromProperty wdt:P1104 ;
     ] .
-
 
 
 ys:CreativeWorkSeason a sh:NodeShape ;
@@ -865,6 +870,11 @@ ys:Language a sh:NodeShape ;
     sh:targetClass schema:Language .
 
 
+ys:Occupation a sh:NodeShape ;
+    sh:targetClass schema:Occupation ;
+    ys:fromClass wd:Q12737077 .
+
+
 ys:Organization a sh:NodeShape ;
     sh:targetClass schema:Organization ;
     ys:fromClass wd:Q43229 ;
@@ -1111,6 +1121,11 @@ ys:Person a sh:NodeShape ;
         sh:node ys:Thing ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P21 ;
+    ] ;
+    sh:property [
+        sh:path schema:hasOccupation ;
+        sh:node ys:Occupation ;
+        ys:fromProperty wdt:P106 ;
     ] ;
     sh:property [
         sh:path schema:homeLocation ;
