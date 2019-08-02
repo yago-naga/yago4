@@ -226,8 +226,7 @@ public class Main {
     var schemaThingSubClasses = PlanNode.fromCollection(Collections.singleton((Resource) SCHEMA_THING))
             .transitiveClosure(possibleSuperClassOf);
 
-    var badClasses = PlanNode.fromCollection(WD_BAD_CLASSES)
-            .map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c))
+    var badClasses = mapToYago(PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c)), wikidataToYagoUrisMapping)
             .transitiveClosure(possibleSuperClassOf);
 
     var instanceOfObjects = mapToYago(
