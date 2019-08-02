@@ -19,8 +19,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.SignStyle;
+import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -32,6 +35,20 @@ public class Main {
   private static final YagoValueFactory VALUE_FACTORY = YagoValueFactory.getInstance();
   private static final JavaStreamEvaluator evaluator = new JavaStreamEvaluator(VALUE_FACTORY);
 
+  private static final DateTimeFormatter WIKIBASE_TIMESTAMP_FORMATTER = (new DateTimeFormatterBuilder())
+          .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NORMAL)
+          .appendLiteral('-')
+          .appendValue(ChronoField.MONTH_OF_YEAR, 2, 2, SignStyle.NORMAL)
+          .appendLiteral('-')
+          .appendValue(ChronoField.DAY_OF_MONTH, 2, 2, SignStyle.NORMAL)
+          .appendLiteral('T')
+          .appendValue(ChronoField.HOUR_OF_DAY, 2, 2, SignStyle.NORMAL)
+          .appendLiteral(':')
+          .appendValue(ChronoField.MINUTE_OF_HOUR, 2, 2, SignStyle.NORMAL)
+          .appendLiteral(':')
+          .appendValue(ChronoField.SECOND_OF_MINUTE, 2, 2, SignStyle.NORMAL)
+          .appendOffsetId()
+          .toFormatter();
 
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
@@ -583,24 +600,21 @@ public class Main {
       return Stream.empty();
     }
     try {
-      String[] parts = value.stringValue().split("(?<!\\A)[\\-:TZ]");
-      if (parts.length != 6) {
-        return Stream.empty();
-      }
+      OffsetDateTime offsetDateTime = OffsetDateTime.parse(value.stringValue(), WIKIBASE_TIMESTAMP_FORMATTER);
       int p = ((Literal) precision).intValue();
       switch (p) {
         case 9:
-          return Stream.of(VALUE_FACTORY.createLiteral(parts[0], XMLSchema.GYEAR));
+          return Stream.of(VALUE_FACTORY.createLiteral(Year.of(offsetDateTime.getYear())));
         case 10:
-          return Stream.of(VALUE_FACTORY.createLiteral(parts[0] + "-" + parts[1], XMLSchema.GYEARMONTH));
+          return Stream.of(VALUE_FACTORY.createLiteral(YearMonth.of(offsetDateTime.getYear(), offsetDateTime.getMonthValue())));
         case 11:
-          return Stream.of(VALUE_FACTORY.createLiteral(parts[0] + "-" + parts[1] + "-" + parts[2], XMLSchema.DATE));
+          return Stream.of(VALUE_FACTORY.createLiteral(offsetDateTime.toLocalDate()));
         case 14:
-          return Stream.of(VALUE_FACTORY.createLiteral(value.stringValue(), XMLSchema.DATETIME));
+          return Stream.of(VALUE_FACTORY.createLiteral(offsetDateTime));
         default:
           return Stream.empty();
       }
-    } catch (IllegalArgumentException e) {
+    } catch (DateTimeException | IllegalArgumentException e) {
       return Stream.empty();
     }
   }

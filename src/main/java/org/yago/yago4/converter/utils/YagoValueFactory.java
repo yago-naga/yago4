@@ -18,12 +18,19 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.Year;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.SignStyle;
+import java.time.temporal.ChronoField;
 import java.util.*;
 
 public class YagoValueFactory implements ValueFactory {
   private static final SimpleValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
   private static final DatatypeFactory DATATYPE_FACTORY;
-
   static {
     try {
       DATATYPE_FACTORY = DatatypeFactory.newInstance();
@@ -31,6 +38,36 @@ public class YagoValueFactory implements ValueFactory {
       throw new RuntimeException(e);
     }
   }
+
+  private static final DateTimeFormatter GYEAR_FORMATTER = (new DateTimeFormatterBuilder())
+          .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NORMAL)
+          .toFormatter();
+  private static final DateTimeFormatter GYEARMONTH_FORMATTER = (new DateTimeFormatterBuilder())
+          .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NORMAL)
+          .appendLiteral('-')
+          .appendValue(ChronoField.MONTH_OF_YEAR, 2, 2, SignStyle.NORMAL)
+          .toFormatter();
+  private static final DateTimeFormatter DATE_FORMATTER = (new DateTimeFormatterBuilder())
+          .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NORMAL)
+          .appendLiteral('-')
+          .appendValue(ChronoField.MONTH_OF_YEAR, 2, 2, SignStyle.NORMAL)
+          .appendLiteral('-')
+          .appendValue(ChronoField.DAY_OF_MONTH, 2, 2, SignStyle.NORMAL)
+          .toFormatter();
+  private static final DateTimeFormatter DATE_TIME_FORMATTER = (new DateTimeFormatterBuilder())
+          .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NORMAL)
+          .appendLiteral('-')
+          .appendValue(ChronoField.MONTH_OF_YEAR, 2, 2, SignStyle.NORMAL)
+          .appendLiteral('-')
+          .appendValue(ChronoField.DAY_OF_MONTH, 2, 2, SignStyle.NORMAL)
+          .appendLiteral('T')
+          .appendValue(ChronoField.HOUR_OF_DAY, 2, 2, SignStyle.NORMAL)
+          .appendLiteral(':')
+          .appendValue(ChronoField.MINUTE_OF_HOUR, 2, 2, SignStyle.NORMAL)
+          .appendLiteral(':')
+          .appendValue(ChronoField.SECOND_OF_MINUTE, 2, 2, SignStyle.NORMAL)
+          .appendOffsetId()
+          .toFormatter();
 
   private static final String[] NUMERIC_NAMESPACES = new String[]{
           "http://www.wikidata.org/Special:EntityData/",
@@ -297,6 +334,22 @@ public class YagoValueFactory implements ValueFactory {
     GregorianCalendar c = new GregorianCalendar();
     c.setTime(date);
     return createLiteral(DATATYPE_FACTORY.newXMLGregorianCalendar(c));
+  }
+
+  public Literal createLiteral(OffsetDateTime instant) {
+    return new TypedLiteral(instant.format(DATE_TIME_FORMATTER), XMLSchema.DATETIME);
+  }
+
+  public Literal createLiteral(LocalDate date) {
+    return new TypedLiteral(date.format(DATE_FORMATTER), XMLSchema.DATE);
+  }
+
+  public Literal createLiteral(Year year) {
+    return new TypedLiteral(year.format(GYEAR_FORMATTER), XMLSchema.GYEAR);
+  }
+
+  public Literal createLiteral(YearMonth yearMonth) {
+    return new TypedLiteral(yearMonth.format(GYEARMONTH_FORMATTER), XMLSchema.GYEARMONTH);
   }
 
   @Override
