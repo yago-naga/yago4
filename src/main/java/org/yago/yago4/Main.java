@@ -62,9 +62,15 @@ public class Main {
   private static final IRI WIKIBASE_BEST_RANK = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "BestRank");
   private static final IRI WIKIBASE_TIME_VALUE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timeValue");
   private static final IRI WIKIBASE_TIME_PRECISION = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timePrecision");
+  private static final IRI WIKIBASE_QUANTITY_AMOUNT = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityAmount");
+  private static final IRI WIKIBASE_QUANTITY_UNIT = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityUnit");
   private static final IRI WDT_P31 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P31");
   private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
   private static final IRI WDT_P646 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P646");
+  private static final IRI WD_Q7727 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q7727");
+  private static final Value WD_Q11574 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q11574");
+  private static final Value WD_Q25235 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q25235");
+  private static final Value WD_Q573 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q573");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_INTANGIBLE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible");
   private static final IRI SCHEMA_STRUCTURED_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue");
@@ -349,7 +355,14 @@ public class Main {
     PairPlanNode<Resource, Value> cleanTimes = partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE))
             .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
             .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
-            .flatMapPair((k, e) -> cleanupTime(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
+            .flatMapPair((k, e) -> convertTime(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
+            .distinct()
+            .cache();
+
+    PairPlanNode<Resource, Value> cleanDurations = partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_AMOUNT))
+            .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_UNIT)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .flatMapPair((k, e) -> convertDurationQuantity(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
             .distinct()
             .cache();
 
@@ -389,6 +402,13 @@ public class Main {
                   .join(cleanTimes)
                   .values()
                   .mapToPair(t -> t);
+        } else if (dts.equals(Collections.singleton(XMLSchema.DURATION))) {
+          //We clean up durations form Wikibase quantities by retrieving their full representation
+          subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
+                  .swap()
+                  .join(cleanDurations)
+                  .values()
+                  .mapToPair(t -> t);
         } else {
           subjectObjects = getPropertyValues(partitionedStatements, propertyShape)
                   .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()));
@@ -401,16 +421,7 @@ public class Main {
         ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
         Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
         if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
-          subjectObjects = innerSubjectObjects.flatMapValue(object -> {
-            //TODO: precision
-            Matcher matcher = WKT_COORDINATES_PATTERN.matcher(object.stringValue());
-            if (!matcher.matches()) {
-              return Stream.empty();
-            }
-            double longitude = Float.parseFloat(matcher.group(1));
-            double latitude = Float.parseFloat(matcher.group(2));
-            return Stream.of(VALUE_FACTORY.createIRI("geo:" + latitude + "," + longitude)); //TODO: description of geocoordinates
-          });
+          subjectObjects = innerSubjectObjects.flatMapValue(Main::convertWKTGeoPoint);
         } else {
           var objectSubjectsForRange = innerSubjectObjects.mapPair((k, v) -> Map.entry((Resource) v, k));
           objectSubjectsForRange = mapKeyToYago(objectSubjectsForRange, wikidataToYagoUrisMapping);
@@ -593,7 +604,7 @@ public class Main {
     }
   }
 
-  private static Stream<Value> cleanupTime(Value value, Value precision) {
+  private static Stream<Value> convertTime(Value value, Value precision) {
     if (!(value instanceof Literal) || !(precision instanceof Literal)) {
       return Stream.empty();
     }
@@ -613,6 +624,39 @@ public class Main {
           return Stream.empty();
       }
     } catch (DateTimeException | IllegalArgumentException e) {
+      return Stream.empty();
+    }
+  }
+
+  private static Stream<Value> convertWKTGeoPoint(Value value) {
+    //TODO: precision
+    Matcher matcher = WKT_COORDINATES_PATTERN.matcher(value.stringValue());
+    if (!matcher.matches()) {
+      return Stream.empty();
+    }
+    double longitude = Float.parseFloat(matcher.group(1));
+    double latitude = Float.parseFloat(matcher.group(2));
+    return Stream.of(VALUE_FACTORY.createIRI("geo:" + latitude + "," + longitude)); //TODO: description of geocoordinates
+  }
+
+  private static Stream<Value> convertDurationQuantity(Value amountNode, Value unitNode) {
+    if (!(amountNode instanceof Literal)) {
+      return Stream.empty();
+    }
+    try {
+      long value = ((Literal) amountNode).longValue();
+      if (unitNode.equals(WD_Q11574)) {
+        return Stream.of(VALUE_FACTORY.createLiteral(Duration.ofSeconds(value)));
+      } else if (unitNode.equals(WD_Q7727)) {
+        return Stream.of(VALUE_FACTORY.createLiteral(Duration.ofMinutes(value)));
+      } else if (unitNode.equals(WD_Q25235)) {
+        return Stream.of(VALUE_FACTORY.createLiteral(Duration.ofHours(value)));
+      } else if (unitNode.equals(WD_Q573)) {
+        return Stream.of(VALUE_FACTORY.createLiteral(Duration.ofDays(value)));
+      } else {
+        return Stream.empty();
+      }
+    } catch (ArithmeticException | NumberFormatException e) {
       return Stream.empty();
     }
   }

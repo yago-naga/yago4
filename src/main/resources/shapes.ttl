@@ -375,7 +375,6 @@ ys:MovieSeries a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -413,7 +412,6 @@ ys:RadioSeries a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -474,7 +472,6 @@ ys:TVSeries a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -501,7 +498,6 @@ ys:VideoGameSeries a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -546,7 +542,6 @@ ys:Episode a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -593,7 +588,6 @@ ys:MusicComposition a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -613,7 +607,6 @@ ys:MusicComposition a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P676 ;
     ] .
 
@@ -650,6 +643,11 @@ ys:Movie a sh:NodeShape ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
+        sh:path schema:duration ;
+        sh:datatype xsd:duration ;
+        ys:fromProperty wdt:P2047 ;
+    ] ;
+    sh:property [
         sh:path schema:musicBy ;
         sh:or (
             [
@@ -659,7 +657,6 @@ ys:Movie a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -729,7 +726,6 @@ ys:VideoGame a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] .
 
@@ -752,7 +748,6 @@ ys:Event a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -765,7 +760,6 @@ ys:Event a sh:NodeShape ;
                 sh:node ys:MusicGroup
             ]
         ) ;
-        sh:node ys:Person ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
@@ -779,6 +773,11 @@ ys:Event a sh:NodeShape ;
             ]
         ) ;
         ys:fromProperty wdt:P767 ;
+    ] ;
+    sh:property [
+        sh:path schema:duration ;
+        sh:datatype xsd:duration ;
+        ys:fromProperty wdt:P2047 ;
     ] ;
     sh:property [
         sh:path schema:location ;

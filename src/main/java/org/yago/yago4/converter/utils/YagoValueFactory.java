@@ -18,10 +18,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.Year;
-import java.time.YearMonth;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
@@ -357,6 +354,10 @@ public class YagoValueFactory implements ValueFactory {
 
   public Literal createLiteral(YearMonth yearMonth) {
     return new TypedLiteral(yearMonth.format(GYEARMONTH_FORMATTER), XMLSchema.GYEARMONTH);
+  }
+
+  public Literal createLiteral(Duration duration) {
+    return new TypedLiteral(duration.toString(), XMLSchema.DURATION);
   }
 
   @Override
