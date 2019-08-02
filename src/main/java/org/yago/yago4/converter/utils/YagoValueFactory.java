@@ -271,6 +271,13 @@ public class YagoValueFactory implements ValueFactory {
         // fall thought
       }
     }
+    if (XMLSchema.DECIMAL.equals(datatype)) {
+      try {
+        return new DecimalLiteral(XMLDatatypeUtil.parseDecimal(label));
+      } catch (NumberFormatException e) {
+        // fall thought
+      }
+    }
 
     return new TypedLiteral(label, datatype);
   }
@@ -311,8 +318,8 @@ public class YagoValueFactory implements ValueFactory {
   }
 
   @Override
-  public Literal createLiteral(BigDecimal bigDecimal) {
-    return new TypedLiteral(bigDecimal.toPlainString(), XMLSchema.DECIMAL);
+  public Literal createLiteral(BigDecimal value) {
+    return new DecimalLiteral(value);
   }
 
   @Override
@@ -763,6 +770,88 @@ public class YagoValueFactory implements ValueFactory {
     @Override
     public double doubleValue() {
       return value;
+    }
+  }
+
+  private static final class DecimalLiteral extends BasicLiteral {
+    private final BigDecimal value;
+
+    private DecimalLiteral(BigDecimal value) {
+      this.value = value;
+    }
+
+    @Override
+    public String getLabel() {
+      return value.toPlainString();
+    }
+
+    @Override
+    public Optional<String> getLanguage() {
+      return Optional.empty();
+    }
+
+    @Override
+    public IRI getDatatype() {
+      return XMLSchema.DECIMAL;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      } else if (o instanceof DecimalLiteral) {
+        return value.equals(((DecimalLiteral) o).value);
+      } else if (o instanceof Literal) {
+        Literal l = (Literal) o;
+        return l.getDatatype().equals(XMLSchema.DECIMAL) && l.getLabel().equals(getLabel());
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public int hashCode() {
+      return value.hashCode();
+    }
+
+    @Override
+    public byte byteValue() {
+      return value.byteValue();
+    }
+
+    @Override
+    public short shortValue() {
+      return value.shortValue();
+    }
+
+    @Override
+    public int intValue() {
+      return value.intValue();
+    }
+
+    @Override
+    public long longValue() {
+      return value.longValue();
+    }
+
+    @Override
+    public BigInteger integerValue() {
+      return value.toBigInteger();
+    }
+
+    @Override
+    public BigDecimal decimalValue() {
+      return value;
+    }
+
+    @Override
+    public float floatValue() {
+      return value.floatValue();
+    }
+
+    @Override
+    public double doubleValue() {
+      return value.longValue();
     }
   }
 

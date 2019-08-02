@@ -6,6 +6,7 @@ import org.eclipse.rdf4j.model.vocabulary.XMLSchema;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +33,7 @@ class RDFBinaryFormatTest {
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/name"), valueFactory.createLiteral("foo", "en")),
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/height"), valueFactory.createLiteral("1", valueFactory.createIRI("xsd:integer"))),
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/height"), valueFactory.createLiteral(BigInteger.valueOf(1))),
+            valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/height"), valueFactory.createLiteral(BigDecimal.valueOf(1.33))),
             valueFactory.createStatement(valueFactory.createIRI("http://foo"), valueFactory.createIRI("http://schema.org/latitude"), valueFactory.createLiteral(12.0d))
     );
 
@@ -55,6 +57,7 @@ class RDFBinaryFormatTest {
     assertEquals(valueFactory.createLiteral(1.0), valueFactory.createLiteral("1.0", XMLSchema.DOUBLE));
     assertEquals(valueFactory.createLiteral(1.0f), valueFactory.createLiteral("1.0", XMLSchema.DOUBLE));
     assertEquals(valueFactory.createLiteral(BigInteger.valueOf(1)), valueFactory.createLiteral("1", XMLSchema.INTEGER));
+    assertEquals(valueFactory.createLiteral(BigDecimal.valueOf(100)), valueFactory.createLiteral("100", XMLSchema.DECIMAL));
     assertEquals(valueFactory.createLiteral(1), valueFactory.createLiteral("1", XMLSchema.INTEGER));
   }
 
