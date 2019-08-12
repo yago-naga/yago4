@@ -1310,7 +1310,3 @@ ys:FoodEstablishment a sh:NodeShape ;
 ys:Rating a sh:NodeShape ;
     sh:targetClass schema:Rating ;
     ys:fromClass wd:Q23649976 .
-
-ys:Series a sh:NodeShape ;
-    sh:targetClass schema:Series ;
-    ys:fromClass wd:Q20937557 .
