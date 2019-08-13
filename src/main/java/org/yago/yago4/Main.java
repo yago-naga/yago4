@@ -80,6 +80,7 @@ public class Main {
   private static final IRI SCHEMA_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "name");
   private static final IRI SCHEMA_ALTERNATE_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName");
   private static final IRI SCHEMA_DESCRIPTION = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "description");
+  private static final IRI SCHEMA_SAME_AS = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "sameAs");
 
   private static final Set<IRI> CALENDAR_DT_SET = Set.of(XMLSchema.GYEAR, XMLSchema.GYEARMONTH, XMLSchema.DATE, XMLSchema.DATETIME);
 
@@ -515,7 +516,14 @@ public class Main {
             .mapValue(fb -> VALUE_FACTORY.createIRI("http://rdf.freebase.com/ns/", fb.stringValue().substring(1).replace("/", ".")))
             .map((yago, fp) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, fp));
 
-    return wikidata.union(dbPedia).union(freebase);
+    //Wikipedia
+    PlanNode<Statement> wikipedia = mapKeyToYago(partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+            .filter(t -> t.getSubject().stringValue().contains(".wikipedia.org/wiki/"))
+            .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject())), wikidataToYagoUrisMapping)
+            .intersection(yagoThings)
+            .map((yago, wp) -> VALUE_FACTORY.createStatement(yago, SCHEMA_SAME_AS, wp));
+
+    return wikidata.union(dbPedia).union(freebase).union(wikipedia);
   }
 
   private static PlanNode<Statement> buildYagoSchema() {
