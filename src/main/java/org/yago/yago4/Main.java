@@ -24,9 +24,9 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -62,6 +62,10 @@ public class Main {
   private static final IRI WIKIBASE_BEST_RANK = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "BestRank");
   private static final IRI WIKIBASE_TIME_VALUE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timeValue");
   private static final IRI WIKIBASE_TIME_PRECISION = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timePrecision");
+  private static final IRI WIKIBASE_GEO_LATITUDE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoLatitude");
+  private static final IRI WIKIBASE_GEO_LONGITUDE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoLongitude");
+  private static final IRI WIKIBASE_GEO_PRECISION = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoPrecision");
+  private static final IRI WIKIBASE_GEO_GLOBE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoGlobe");
   private static final IRI WIKIBASE_QUANTITY_AMOUNT = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityAmount");
   private static final IRI WIKIBASE_QUANTITY_UNIT = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityUnit");
   private static final IRI WDT_P31 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P31");
@@ -72,6 +76,7 @@ public class Main {
   private static final Value WD_Q25235 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q25235");
   private static final Value WD_Q573 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q573");
   private static final Value WD_Q199 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q199");
+  private static final Value WD_Q2 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q2");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_INTANGIBLE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible");
   private static final IRI SCHEMA_STRUCTURED_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue");
@@ -83,8 +88,6 @@ public class Main {
   private static final IRI SCHEMA_SAME_AS = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "sameAs");
 
   private static final Set<IRI> CALENDAR_DT_SET = Set.of(XMLSchema.GYEAR, XMLSchema.GYEARMONTH, XMLSchema.DATE, XMLSchema.DATETIME);
-
-  private static final Pattern WKT_COORDINATES_PATTERN = Pattern.compile("^POINT\\(([0-9.]+) +([0-9.]+)\\)$", Pattern.CASE_INSENSITIVE);
 
   private static final List<String> WD_BAD_CLASSES = List.of(
           "Q17379835", //Wikimedia page outside the main knowledge tree
@@ -361,6 +364,15 @@ public class Main {
             .distinct()
             .cache();
 
+    PairPlanNode<Resource, Value> cleanCoordinates = partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_LATITUDE))
+            .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_LONGITUDE)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_GLOBE)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .flatMapPair((k, e) -> convertGlobeCoordinates(e.getKey().getKey().getKey(), e.getKey().getKey().getValue(), e.getKey().getValue(), e.getValue()).map(t -> Map.entry(k, t)))
+            .distinct()
+            .cache();
+
     var quantityAmountAndUnit = partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_AMOUNT))
             .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
             .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_UNIT)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())));
@@ -432,14 +444,18 @@ public class Main {
         //TODO: quantity values
       } else if (propertyShape.getNodeShape().isPresent()) {
         // Range type filter
-        var innerSubjectObjects = getPropertyValues(partitionedStatements, propertyShape);
-
         ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
         Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
         if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
-          subjectObjects = innerSubjectObjects.flatMapValue(Main::convertWKTGeoPoint);
+          //We clean up globe coordinates by retrieving their full representation
+          subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
+                  .swap()
+                  .join(cleanCoordinates)
+                  .values()
+                  .mapToPair(t -> t);
         } else {
-          var objectSubjectsForRange = innerSubjectObjects.mapPair((k, v) -> Map.entry((Resource) v, k));
+          var objectSubjectsForRange = getPropertyValues(partitionedStatements, propertyShape)
+                  .mapPair((k, v) -> Map.entry((Resource) v, k));
           objectSubjectsForRange = mapKeyToYago(objectSubjectsForRange, wikidataToYagoUrisMapping);
           subjectObjects = nodeShape.getClasses()
                   .distinct()
@@ -521,7 +537,7 @@ public class Main {
             .filter(t -> t.getSubject().stringValue().contains(".wikipedia.org/wiki/"))
             .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject())), wikidataToYagoUrisMapping)
             .intersection(yagoThings)
-            .map((yago, wp) -> VALUE_FACTORY.createStatement(yago, SCHEMA_SAME_AS, wp));
+            .map((yago, wp) -> VALUE_FACTORY.createStatement(yago, SCHEMA_SAME_AS, VALUE_FACTORY.createLiteral(wp.stringValue(), XMLSchema.ANYURI)));
 
     return wikidata.union(dbPedia).union(freebase).union(wikipedia);
   }
@@ -632,17 +648,17 @@ public class Main {
       return Stream.empty();
     }
     try {
-      OffsetDateTime offsetDateTime = OffsetDateTime.parse(value.stringValue(), WIKIBASE_TIMESTAMP_FORMATTER);
+      TemporalAccessor input = WIKIBASE_TIMESTAMP_FORMATTER.parse(value.stringValue());
       int p = ((Literal) precision).intValue();
       switch (p) {
         case 9:
-          return Stream.of(VALUE_FACTORY.createLiteral(Year.of(offsetDateTime.getYear())));
+          return Stream.of(VALUE_FACTORY.createLiteral(Year.from(input)));
         case 10:
-          return Stream.of(VALUE_FACTORY.createLiteral(YearMonth.of(offsetDateTime.getYear(), offsetDateTime.getMonthValue())));
+          return Stream.of(VALUE_FACTORY.createLiteral(YearMonth.from(input)));
         case 11:
-          return Stream.of(VALUE_FACTORY.createLiteral(offsetDateTime.toLocalDate()));
+          return Stream.of(VALUE_FACTORY.createLiteral(LocalDate.from(input)));
         case 14:
-          return Stream.of(VALUE_FACTORY.createLiteral(offsetDateTime));
+          return Stream.of(VALUE_FACTORY.createLiteral(OffsetDateTime.from(input)));
         default:
           return Stream.empty();
       }
@@ -651,15 +667,29 @@ public class Main {
     }
   }
 
-  private static Stream<Value> convertWKTGeoPoint(Value value) {
-    //TODO: precision
-    Matcher matcher = WKT_COORDINATES_PATTERN.matcher(value.stringValue());
-    if (!matcher.matches()) {
+  private static Stream<Value> convertGlobeCoordinates(Value latitude, Value longitude, Value precision, Value globe) {
+    if (!globe.equals(WD_Q2)) {
+      return Stream.empty(); //Not earth
+    }
+    if (!(latitude instanceof Literal && longitude instanceof Literal && precision instanceof Literal)) {
       return Stream.empty();
     }
-    double longitude = Float.parseFloat(matcher.group(1));
-    double latitude = Float.parseFloat(matcher.group(2));
-    return Stream.of(VALUE_FACTORY.createIRI("geo:" + latitude + "," + longitude)); //TODO: description of geocoordinates
+
+    double lat = ((Literal) latitude).doubleValue();
+    double lon = ((Literal) longitude).doubleValue();
+    double prec = ((Literal) precision).doubleValue();
+
+    return Stream.of(VALUE_FACTORY.createIRI("geo:" + roundDegrees(lat, prec) + "," + roundDegrees(lon, prec))); //TODO: description of geocoordinates
+  }
+
+  /**
+   * From https://github.com/DataValues/Geo/blob/master/src/Formatters/LatLongFormatter.php
+   */
+  private static double roundDegrees(double degrees, double precision) {
+    double sign = (degrees > 0) ? 1 : -1;
+    long reduced = Math.round(Math.abs(degrees) / precision);
+    double expended = reduced * precision;
+    return sign * expended;
   }
 
   private static Stream<Value> convertDurationQuantity(Value amountNode, Value unitNode) {
