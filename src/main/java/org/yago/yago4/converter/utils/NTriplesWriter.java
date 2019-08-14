@@ -5,6 +5,7 @@ import org.apache.commons.io.FilenameUtils;
 import org.eclipse.rdf4j.model.Resource;
 import org.eclipse.rdf4j.model.Statement;
 import org.eclipse.rdf4j.rio.ntriples.NTriplesUtil;
+import org.yago.yago4.AnnotatedStatement;
 import org.yago.yago4.converter.EvaluationException;
 
 import java.io.*;
@@ -27,6 +28,27 @@ public class NTriplesWriter {
             writer.append(' ').append(NTriplesUtil.toNTriplesString(context));
           }
           writer.append(" .\n");
+        } catch (IOException e) {
+          throw new EvaluationException(e);
+        }
+      });
+    } catch (IOException e) {
+      throw new EvaluationException(e);
+    }
+  }
+
+  public void writeRdfStar(Stream<AnnotatedStatement> stream, Path filePath) {
+    try (BufferedWriter writer = openWriter(filePath)) {
+      stream.sequential().forEach(tuple -> {
+        try {
+          writer.append("<<")
+                  .append(NTriplesUtil.toNTriplesString(tuple.getSubject().getSubject())).append(' ')
+                  .append(NTriplesUtil.toNTriplesString(tuple.getSubject().getPredicate())).append(' ')
+                  .append(NTriplesUtil.toNTriplesString(tuple.getSubject().getObject()))
+                  .append(">> ")
+                  .append(NTriplesUtil.toNTriplesString(tuple.getPredicate())).append(' ')
+                  .append(NTriplesUtil.toNTriplesString(tuple.getObject()))
+                  .append(" .\n");
         } catch (IOException e) {
           throw new EvaluationException(e);
         }

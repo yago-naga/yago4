@@ -26,7 +26,6 @@ import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -53,7 +52,10 @@ public class Main {
   private static final String WD_PREFIX = "http://www.wikidata.org/entity/";
   private static final String WDT_PREFIX = "http://www.wikidata.org/prop/direct/";
   private static final String P_PREFIX = "http://www.wikidata.org/prop/";
+  private static final String PS_PREFIX = "http://www.wikidata.org/prop/statement/";
   private static final String PSV_PREFIX = "http://www.wikidata.org/prop/statement/value/";
+  private static final String PQ_PREFIX = "http://www.wikidata.org/prop/qualifier/";
+  private static final String PQV_PREFIX = "http://www.wikidata.org/prop/qualifier/value/";
   private static final String SCHEMA_PREFIX = "http://schema.org/";
   private static final String WIKIBASE_PREFIX = "http://wikiba.se/ontology#";
   private static final String YAGO_RESOURCE_PREFIX = "http://yago-knowledge.org/resource/";
@@ -87,6 +89,7 @@ public class Main {
   private static final IRI SCHEMA_ALTERNATE_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName");
   private static final IRI SCHEMA_DESCRIPTION = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "description");
   private static final IRI SCHEMA_SAME_AS = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "sameAs");
+  private static final Pattern WIKIDATA_PROPERTY_IRI_PATTERN = Pattern.compile("^http://www.wikidata.org/prop/[a-z\\-/]*P\\d+$");
 
   private static final Set<IRI> CALENDAR_DT_SET = Set.of(XMLSchema.GYEAR, XMLSchema.GYEARMONTH, XMLSchema.DATE, XMLSchema.DATETIME);
 
@@ -99,7 +102,6 @@ public class Main {
           "Q18340514" //article about events in a specific year or time period
   );
   private static final Set<IRI> LABEL_IRIS = Set.of(SCHEMA_NAME, SCHEMA_ALTERNATE_NAME, SCHEMA_DESCRIPTION);
-
 
   public static void main(String[] args) throws ParseException, IOException {
     Options options = new Options();
@@ -158,41 +160,49 @@ public class Main {
             enWikipediaOnly ? enWikipediaElements(partitionedStatements, wikidataToYagoUrisMapping) : null,
             wikidataToYagoUrisMapping);
 
-    generateFile(
+    generateNTFile(
             buildClassesDescription(yagoClasses, yagoSuperClassOf, partitionedStatements, wikidataToYagoUrisMapping),
             outputDir, "yago-wd-class.nt"
     );
 
-    generateFile(
+    generateNTFile(
             buildInstanceOf(yagoShapeInstances.get(SCHEMA_THING), yagoClasses, partitionedStatements, wikidataToYagoUrisMapping),
             outputDir, "yago-wd-types.nt"
     );
 
-    generateFile(
-            buildPropertiesFromSchema(partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping, LABEL_IRIS, null),
+    generateNTFile(
+            buildFactsFromRdfProperty(partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping, LABEL_IRIS, null),
             outputDir, "yago-wd-labels.nt"
     );
 
-    generateFile(
-            buildPropertiesFromSchema(partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping, null, LABEL_IRIS),
-            outputDir, "yago-wd-facts.nt"
-    );
+    var annotatedFacts = buildPropertiesFromSchema(partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping, null, LABEL_IRIS);
+    generateNTFile(annotatedFacts.getKey(), outputDir, "yago-wd-facts.nt");
+    generateNTStarFile(annotatedFacts.getValue(), outputDir, "yago-wd-facts-annotations.ntx");
 
-    generateFile(
+    generateNTFile(
             buildSameAs(partitionedStatements, yagoShapeInstances.get(SCHEMA_THING), wikidataToYagoUrisMapping),
             outputDir, "yago-wd-sameAs.nt"
     );
 
-    generateFile(buildYagoSchema(), outputDir, "yago-wd-schema.nt");
+    generateNTFile(buildYagoSchema(), outputDir, "yago-wd-schema.nt");
   }
 
-  private static void generateFile(PlanNode<Statement> stream, Path outputDir, String fileName) {
-    System.out.println("Generating " + fileName);
+  private static void generateNTFile(PlanNode<Statement> stream, Path outputDir, String fileName) {
+    System.out.println("Generating N-Triples file " + fileName);
     var start = LocalDateTime.now();
     evaluator.evaluateToNTriples(stream, outputDir.resolve(fileName + ".gz"));
     var end = LocalDateTime.now();
     System.out.println("Generation of " + fileName + " done in " + Duration.between(start, end));
   }
+
+  private static void generateNTStarFile(PlanNode<AnnotatedStatement> stream, Path outputDir, String fileName) {
+    System.out.println("Generating N-Triples* file " + fileName);
+    var start = LocalDateTime.now();
+    evaluator.evaluateToNTriplesStar(stream, outputDir.resolve(fileName + ".gz"));
+    var end = LocalDateTime.now();
+    System.out.println("Generation of " + fileName + " done in " + Duration.between(start, end));
+  }
+
 
   /**
    * Converts Wikidata URI to Yago URIs based on en.wikipedia article titles
@@ -207,7 +217,7 @@ public class Main {
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
 
-    /*TODO: bad hack for tests
+    //TODO: bad hack for tests
     wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P31))
             .filter(t -> t.getObject() instanceof IRI)
             .map(t -> (Resource) t.getObject()));
@@ -218,7 +228,7 @@ public class Main {
             .filter(t -> t.getSubject() instanceof IRI)
             .map(Statement::getSubject));
     wikidataItems = wikidataItems.distinct();
-    */
+    //
 
     var mappingForNotLinkedToEnWikipedia = wikidataItems
             .subtract(mapping.keys())
@@ -346,7 +356,66 @@ public class Main {
     return yagoSubClassOf.union(yagoRdfsClassTriple).union(yagoOwlClassTriple).union(rdfsLabel).union(rdfsComment);
   }
 
-  private static PlanNode<Statement> buildPropertiesFromSchema(
+  /**
+   * Builds yago facts from direct properties like rdfs:label
+   */
+  private static PlanNode<Statement> buildFactsFromRdfProperty(
+          PartitionedStatements partitionedStatements,
+          Map<Resource, PlanNode<Resource>> yagoShapeInstances,
+          PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping,
+          Set<IRI> onlyProperties,
+          Set<IRI> excludeProperties
+  ) {
+    return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
+      IRI yagoProperty = propertyShape.getProperty();
+      if (onlyProperties != null && !onlyProperties.contains(yagoProperty)) {
+        return PlanNode.<Statement>empty();
+      }
+      if (excludeProperties != null && excludeProperties.contains(yagoProperty)) {
+        return PlanNode.<Statement>empty();
+      }
+
+      PairPlanNode<Resource, Value> subjectObjects;
+      if (propertyShape.getDatatypes().isPresent()) {
+        var datatypes = propertyShape.getDatatypes().orElseGet(Collections::emptySet);
+        subjectObjects = getPropertyValues(partitionedStatements, propertyShape)
+                .filterValue(object -> object instanceof Literal && datatypes.contains(((Literal) object).getDatatype()));
+      } else if (propertyShape.getNodeShape().isPresent()) {
+        subjectObjects = filterObjectRange(
+                mapKeyToYago(getPropertyValues(partitionedStatements, propertyShape).mapPair((s, o) -> Map.entry((Resource) o, s)), wikidataToYagoUrisMapping),
+                yagoShapeInstances,
+                propertyShape
+        );
+      } else {
+        System.err.println("No range constraint found for property " + propertyShape.getProperty() + ". Ignoring it.");
+        return PlanNode.<Statement>empty();
+      }
+
+      //Regex
+      if (propertyShape.getPattern().isPresent()) {
+        Pattern pattern = propertyShape.getPattern().get();
+        subjectObjects = subjectObjects.filterValue(object -> pattern.matcher(object.stringValue()).matches());
+      }
+
+      // Domain type filter
+      subjectObjects = filterDomain(
+              mapKeyToYago(subjectObjects, wikidataToYagoUrisMapping),
+              yagoShapeInstances,
+              propertyShape
+      );
+
+      return subjectObjects.map((s, o) -> VALUE_FACTORY.createStatement(s, yagoProperty, o));
+    }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+  }
+
+  private static PairPlanNode<Resource, Value> getPropertyValues(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape) {
+    return propertyShape.getFromProperties()
+            .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
+            .reduce(PlanNode::union).orElseGet(PlanNode::empty)
+            .mapToPair(t -> Map.entry(t.getSubject(), t.getObject()));
+  }
+
+  private static Map.Entry<PlanNode<Statement>, PlanNode<AnnotatedStatement>> buildPropertiesFromSchema(
           PartitionedStatements partitionedStatements,
           Map<Resource, PlanNode<Resource>> yagoShapeInstances,
           PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping,
@@ -388,131 +457,172 @@ public class Main {
             .distinct()
             .cache();
 
+    var statementsWithAnnotations = ShaclSchema.getSchema().getAnnotationPropertyShapes().map(annotationShape ->
+            mapWikidataPropertyValue(annotationShape,
+                    partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping,
+                    cleanTimes, cleanDurations, cleanIntegers, cleanCoordinates,
+                    PQ_PREFIX, PQV_PREFIX
+            ).mapValue(v -> Map.entry(annotationShape.getProperty(), v))
+    ).reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty);
+
     return ShaclSchema.getSchema().getPropertyShapes().map(propertyShape -> {
       IRI yagoProperty = propertyShape.getProperty();
       if (onlyProperties != null && !onlyProperties.contains(yagoProperty)) {
-        return PlanNode.<Statement>empty();
+        return Map.entry(PlanNode.<Statement>empty(), PlanNode.<AnnotatedStatement>empty());
       }
       if (excludeProperties != null && excludeProperties.contains(yagoProperty)) {
-        return PlanNode.<Statement>empty();
+        return Map.entry(PlanNode.<Statement>empty(), PlanNode.<AnnotatedStatement>empty());
       }
 
-      PairPlanNode<Resource, Value> subjectObjects;
+      // We map the statement -> object relation
+      PairPlanNode<Resource, Value> statementObject = mapWikidataPropertyValue(propertyShape,
+              partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping,
+              cleanTimes, cleanDurations, cleanIntegers, cleanCoordinates,
+              PS_PREFIX, PSV_PREFIX
+      );
 
-      if (propertyShape.getDatatypes().isPresent()) {
-        if (propertyShape.getNodeShape().isPresent()) {
-          System.err.println("The property " + propertyShape.getProperty() + " could not have both a datatype domain and a node domain. Ignoring it.");
-          return PlanNode.<Statement>empty();
-        }
-        // Datatype filter
-        Set<IRI> dts = propertyShape.getDatatypes().get();
+      // We map the subject -> statement relation with domain filter
+      var subjectStatement = filterDomain(
+              mapKeyToYago(getSubjectStatement(partitionedStatements, propertyShape), wikidataToYagoUrisMapping),
+              yagoShapeInstances,
+              propertyShape
+      ).mapValue(s -> (Resource) s);
 
-        if (dts.equals(Collections.singleton(XMLSchema.ANYURI))) {
-          //We map IRIs to xsd:anyUri
-          subjectObjects = getPropertyValues(partitionedStatements, propertyShape).flatMapValue(object -> {
-            if (object instanceof IRI || (object instanceof Literal && XMLSchema.ANYURI.equals(((Literal) object).getDatatype()))) {
-              return normalizeUri(object.stringValue())
-                      .map(o -> VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI));
-            } else {
-              return Stream.of(object);
-            }
-          });
-        } else if (CALENDAR_DT_SET.containsAll(dts)) {
-          //We clean up times by retrieving their full representation
-          subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
-                  .swap()
-                  .join(cleanTimes)
-                  .values()
-                  .mapToPair(t -> t);
-        } else if (dts.equals(Collections.singleton(XMLSchema.DURATION))) {
-          //We clean up durations form Wikibase quantities by retrieving their full representation
-          subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
-                  .swap()
-                  .join(cleanDurations)
-                  .values()
-                  .mapToPair(t -> t);
-        } else if (dts.equals(Collections.singleton(XMLSchema.INTEGER))) {
-          //We clean up durations form Wikibase quantities by retrieving their full representation
-          subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
-                  .swap()
-                  .join(cleanIntegers)
-                  .values()
-                  .mapToPair(t -> t);
-        } else {
-          subjectObjects = getPropertyValues(partitionedStatements, propertyShape)
-                  .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()));
-        }
-        //TODO: quantity values
-      } else if (propertyShape.getNodeShape().isPresent()) {
-        // Range type filter
-        ShaclSchema.NodeShape nodeShape = propertyShape.getNodeShape().get();
-        Set<Resource> expectedClasses = nodeShape.getClasses().collect(Collectors.toSet());
-        if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
-          //We clean up globe coordinates by retrieving their full representation
-          subjectObjects = getBestMainSnakComplexValues(partitionedStatements, propertyShape, bestRanks)
-                  .swap()
-                  .join(cleanCoordinates)
-                  .values()
-                  .mapToPair(t -> t);
-        } else if (Collections.singleton(SCHEMA_IMAGE_OBJECT).equals(expectedClasses)) {
-          //We clean up globe coordinates by retrieving their full representation
-          subjectObjects = getPropertyValues(partitionedStatements, propertyShape)
-                  .filterValue(v -> v.stringValue().startsWith("http://commons.wikimedia.org/wiki/Special:FilePath/"));
-          //TODO: image descriptions
-        } else {
-          var objectSubjectsForRange = getPropertyValues(partitionedStatements, propertyShape)
-                  .mapPair((k, v) -> Map.entry((Resource) v, k));
-          objectSubjectsForRange = mapKeyToYago(objectSubjectsForRange, wikidataToYagoUrisMapping);
-          subjectObjects = nodeShape.getClasses()
-                  .distinct()
-                  .flatMap(cls -> Stream.ofNullable(yagoShapeInstances.get(cls)))
-                  .map(objectSubjectsForRange::intersection)
-                  .reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty)
-                  .mapPair((k, v) -> Map.entry(v, k));
-        }
+      var statementTriple = statementObject
+              .join(subjectStatement.swap())
+              .mapValue(e -> VALUE_FACTORY.createStatement(e.getValue(), yagoProperty, e.getKey()));
+
+      var mainFacts = statementTriple.intersection(bestRanks).values(); // We keep only best ranks
+
+      // Annotations
+      var annotations = statementTriple
+              .join(statementsWithAnnotations)
+              .map((s, e) -> new AnnotatedStatement(e.getKey(), e.getValue().getKey(), e.getValue().getValue()));
+
+      return Map.entry(mainFacts, annotations);
+    }).reduce((p1, p2) -> Map.entry(p1.getKey().union(p2.getKey()), p1.getValue().union(p2.getValue())))
+            .orElseGet(() -> Map.entry(PlanNode.empty(), PlanNode.empty()));
+  }
+
+  private static PairPlanNode<Resource, Value> mapWikidataPropertyValue(
+          ShaclSchema.PropertyShape propertyShape,
+          PartitionedStatements partitionedStatements,
+          Map<Resource, PlanNode<Resource>> yagoShapeInstances, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping,
+          PairPlanNode<Resource, Value> cleanTimes, PairPlanNode<Resource, Value> cleanDurations,
+          PairPlanNode<Resource, Value> cleanIntegers, PairPlanNode<Resource, Value> cleanCoordinates,
+          String simpleValuePrefix, String complexValuePrefix
+  ) {
+    PairPlanNode<Resource, Value> statementObject;
+    if (propertyShape.getDatatypes().isPresent()) {
+      if (propertyShape.getNodeShape().isPresent()) {
+        System.err.println("The property " + propertyShape.getProperty() + " could not have both a datatype domain and a node domain. Ignoring it.");
+        return PairPlanNode.empty();
+      }
+      // Datatype filter
+      Set<IRI> dts = propertyShape.getDatatypes().get();
+
+      if (dts.equals(Collections.singleton(XMLSchema.ANYURI))) {
+        //We map IRIs to xsd:anyUri
+        statementObject = getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix).flatMapValue(object -> {
+          if (object instanceof IRI || (object instanceof Literal && XMLSchema.ANYURI.equals(((Literal) object).getDatatype()))) {
+            return normalizeUri(object.stringValue())
+                    .map(o -> VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI));
+          } else {
+            return Stream.of(object);
+          }
+        });
+      } else if (CALENDAR_DT_SET.containsAll(dts)) {
+        //We clean up times by retrieving their full representation
+        statementObject = getAndConvertStatementsComplexValue(partitionedStatements, propertyShape, cleanTimes, complexValuePrefix);
+      } else if (dts.equals(Collections.singleton(XMLSchema.DURATION))) {
+        //We clean up durations form Wikibase quantities by retrieving their full representation
+        statementObject = getAndConvertStatementsComplexValue(partitionedStatements, propertyShape, cleanDurations, complexValuePrefix);
+      } else if (dts.equals(Collections.singleton(XMLSchema.INTEGER))) {
+        //We clean up durations form Wikibase quantities by retrieving their full representation
+        statementObject = getAndConvertStatementsComplexValue(partitionedStatements, propertyShape, cleanIntegers, complexValuePrefix);
       } else {
-        System.err.println("No range constraint found for property " + propertyShape.getProperty() + ". Ignoring it.");
+        statementObject = getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix)
+                .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()));
+      }
+      //TODO: quantity values
+    } else if (propertyShape.getNodeShape().isPresent()) {
+      // Range type filter
+      Set<Resource> expectedClasses = propertyShape.getNodeShape()
+              .map(ShaclSchema.NodeShape::getClasses)
+              .orElseGet(Stream::empty)
+              .collect(Collectors.toSet());
+      if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
+        //We clean up globe coordinates by retrieving their full representation
+        statementObject = getAndConvertStatementsComplexValue(partitionedStatements, propertyShape, cleanCoordinates, complexValuePrefix);
+      } else if (Collections.singleton(SCHEMA_IMAGE_OBJECT).equals(expectedClasses)) {
+        //We clean up image by retrieving their full representation
+        statementObject = getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix)
+                .filterValue(v -> v.stringValue().startsWith("http://commons.wikimedia.org/wiki/Special:FilePath/"));
+        //TODO: image descriptions
+      } else {
+        statementObject = filterObjectRange(
+                mapKeyToYago(getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix).mapPair((s, o) -> Map.entry((Resource) o, s)), wikidataToYagoUrisMapping),
+                yagoShapeInstances,
+                propertyShape
+        );
+      }
+    } else {
+      System.err.println("No range constraint found for property " + propertyShape.getProperty() + ". Ignoring it.");
+      return PairPlanNode.empty();
+    }
+
+    //Regex
+    if (propertyShape.getPattern().isPresent()) {
+      Pattern pattern = propertyShape.getPattern().get();
+      statementObject = statementObject.filterValue(object -> pattern.matcher(object.stringValue()).matches());
+    }
+
+    return statementObject;
+  }
+
+  private static PairPlanNode<Resource, Value> getAndConvertStatementsComplexValue(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape, PairPlanNode<Resource, Value> clean, String complexValuePrefix) {
+    return getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, complexValuePrefix)
+            .mapPair((k, v) -> Map.entry((Resource) v, k))
+            .join(clean)
+            .values()
+            .mapToPair(t -> t);
+  }
+
+  private static PairPlanNode<Resource, Value> getSubjectStatement(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape) {
+    return getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, P_PREFIX);
+  }
+
+  private static PairPlanNode<Resource, Value> getTriplesFromWikidataPropertyRelation(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape, String prefix) {
+    return propertyShape.getFromProperties().map(wikidataProperty -> {
+      if (WIKIDATA_PROPERTY_IRI_PATTERN.matcher(wikidataProperty.stringValue()).matches()) {
+        return partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(prefix, wikidataProperty.getLocalName())));
+      } else {
+        System.err.println("Invalid Wikidata property IRI: " + wikidataProperty);
         return PlanNode.<Statement>empty();
       }
-
-      //Regex
-      if (propertyShape.getPattern().isPresent()) {
-        Pattern pattern = propertyShape.getPattern().get();
-        subjectObjects = subjectObjects.filterValue(object -> pattern.matcher(object.stringValue()).matches());
-      }
-
-      // Domain type filter
-      var subjectObjectsForDomain = subjectObjects;
-      subjectObjectsForDomain = mapKeyToYago(subjectObjectsForDomain, wikidataToYagoUrisMapping);
-      subjectObjects = propertyShape.getParentShapes().stream()
-              .flatMap(Collection::stream)
-              .flatMap(ShaclSchema.NodeShape::getClasses)
-              .distinct()
-              .flatMap(cls -> Stream.ofNullable(yagoShapeInstances.get(cls)))
-              .map(subjectObjectsForDomain::intersection)
-              .reduce(PairPlanNode::union)
-              .orElseGet(PairPlanNode::empty);
-
-      return subjectObjects.map((s, o) -> VALUE_FACTORY.createStatement(s, yagoProperty, o));
-    }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+    }).reduce(PlanNode::union).orElseGet(PlanNode::empty).mapToPair(t -> Map.entry(t.getSubject(), t.getObject()));
   }
 
-  private static PairPlanNode<Resource, Value> getPropertyValues(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape) {
-    return propertyShape.getFromProperties()
-            .map(wikidataProperty -> partitionedStatements.getForKey(keyForIri(wikidataProperty)))
-            .reduce(PlanNode::union).orElseGet(PlanNode::empty)
-            .mapToPair(t -> Map.entry(t.getSubject(), t.getObject()));
+  private static PairPlanNode<Resource, Value> filterDomain(PairPlanNode<Resource, Value> subjectObjects, Map<Resource, PlanNode<Resource>> yagoShapeInstances, ShaclSchema.PropertyShape propertyShape) {
+    return propertyShape.getParentShapes().stream()
+            .flatMap(Collection::stream)
+            .flatMap(ShaclSchema.NodeShape::getClasses)
+            .distinct()
+            .flatMap(cls -> Stream.ofNullable(yagoShapeInstances.get(cls)))
+            .map(subjectObjects::intersection)
+            .reduce(PairPlanNode::union)
+            .orElseGet(PairPlanNode::empty);
   }
 
-  private static PairPlanNode<Resource, Resource> getBestMainSnakComplexValues(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape, PlanNode<Resource> bestRanks) {
-    return propertyShape.getFromProperties().map(wikidataProperty ->
-            partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(P_PREFIX, wikidataProperty.getLocalName())))
-                    .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject()))
-                    .intersection(bestRanks)
-                    .join(partitionedStatements.getForKey(keyForIri(VALUE_FACTORY.createIRI(PSV_PREFIX, wikidataProperty.getLocalName())))
-                            .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()))
-                    ).values().mapToPair(Function.identity())
-    ).reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty);
+  private static PairPlanNode<Resource, Value> filterObjectRange(PairPlanNode<Resource, Resource> objectSubjects, Map<Resource, PlanNode<Resource>> yagoShapeInstances, ShaclSchema.PropertyShape propertyShape) {
+    return propertyShape.getNodeShape()
+            .map(ShaclSchema.NodeShape::getClasses)
+            .orElseGet(Stream::empty)
+            .distinct()
+            .flatMap(cls -> Stream.ofNullable(yagoShapeInstances.get(cls)))
+            .map(objectSubjects::intersection)
+            .reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty)
+            .mapPair((k, v) -> Map.entry(v, k));
   }
 
   private static PlanNode<Statement> buildSameAs(PartitionedStatements partitionedStatements, PlanNode<Resource> yagoThings, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {

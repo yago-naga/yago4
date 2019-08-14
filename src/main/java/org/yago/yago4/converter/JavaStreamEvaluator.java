@@ -2,6 +2,7 @@ package org.yago.yago4.converter;
 
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import org.eclipse.rdf4j.model.Statement;
+import org.yago.yago4.AnnotatedStatement;
 import org.yago.yago4.converter.plan.*;
 import org.yago.yago4.converter.utils.*;
 import org.yago.yago4.converter.utils.stream.*;
@@ -31,6 +32,10 @@ public class JavaStreamEvaluator {
 
   public void evaluateToNTriples(PlanNode<Statement> plan, Path outputFilePath) {
     nTriplesWriter.write(toStream(plan), outputFilePath);
+  }
+
+  public void evaluateToNTriplesStar(PlanNode<AnnotatedStatement> plan, Path outputFilePath) {
+    nTriplesWriter.writeRdfStar(toStream(plan), outputFilePath);
   }
 
   public <T> List<T> evaluateToList(PlanNode<T> plan) {

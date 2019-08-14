@@ -4,8 +4,9 @@
 @prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 @prefix schema: <http://schema.org/> .
-@prefix wdt: <http://www.wikidata.org/prop/direct/> .
 @prefix wd: <http://www.wikidata.org/entity/> .
+@prefix wdt: <http://www.wikidata.org/prop/direct/> .
+@prefix wpq: <http://www.wikidata.org/prop/qualifier/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 @prefix ys: <http://yago-knowledge.org/schema#> .
@@ -1343,3 +1344,46 @@ ys:FoodEstablishment a sh:NodeShape ;
 ys:Rating a sh:NodeShape ;
     sh:targetClass schema:Rating ;
     ys:fromClass wd:Q23649976 .
+
+
+ys:AnnotationPropertyShape a rdfs:Property ;
+    rdfs:subPropertyOf sh:PropertyShape .
+
+
+ys:startDateAnnotation a ys:AnnotationPropertyShape ;
+    sh:path schema:startDate ;
+    sh:or (
+        [
+            sh:datatype xsd:dateTime
+        ]
+        [
+            sh:datatype xsd:date
+        ]
+        [
+            sh:datatype xsd:gYearMonth
+        ]
+        [
+            sh:datatype xsd:gYear
+        ]
+    ) ;
+    sh:maxCount 1 ;
+    ys:fromProperty wpq:P580 .
+
+ys:endDateAnnotation a ys:AnnotationPropertyShape ;
+    sh:path schema:endDate ;
+    sh:or (
+        [
+            sh:datatype xsd:dateTime
+        ]
+        [
+            sh:datatype xsd:date
+        ]
+        [
+            sh:datatype xsd:gYearMonth
+        ]
+        [
+            sh:datatype xsd:gYear
+        ]
+    ) ;
+    sh:maxCount 1 ;
+    ys:fromProperty wpq:P582 .

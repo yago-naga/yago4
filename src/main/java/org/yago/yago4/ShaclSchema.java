@@ -39,6 +39,7 @@ public class ShaclSchema {
   private static final IRI SH_UNIQUE_LANG = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#uniqueLang");
   private static final IRI YS_FROM_CLASS = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#fromClass");
   private static final IRI YS_FROM_PROPERTY = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#fromProperty");
+  private static final IRI YS_ANNOTATION_PROPERTY_SHAPE = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#AnnotationPropertyShape");
   private static final IRI SCHEMA_INVERSE_OF = VALUE_FACTORY.createIRI("http://schema.org/inverseOf");
   private static final ShaclSchema SINGLETON = new ShaclSchema(readSchemaModel());
   private Model model;
@@ -74,6 +75,10 @@ public class ShaclSchema {
             model.filter(null, RDF.TYPE, SH_PROPERTY_SHAPE).subjects().stream(),
             model.filter(null, SH_PROPERTY, null).objects().stream().map(t -> (Resource) t)
     ).distinct().map(PropertyShape::new);
+  }
+
+  public Stream<PropertyShape> getAnnotationPropertyShapes() {
+    return model.filter(null, RDF.TYPE, YS_ANNOTATION_PROPERTY_SHAPE).subjects().stream().map(PropertyShape::new);
   }
 
   public Stream<Resource> getSuperClasses(Resource subClass) {
