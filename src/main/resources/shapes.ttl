@@ -29,6 +29,11 @@ ys:Thing a sh:NodeShape ;
         ys:fromProperty schema:description ;
     ] ;
     sh:property [
+        sh:path schema:image ;
+        sh:node ys:ImageObject ;
+        ys:fromProperty wdt:P18 ;
+    ] ;
+    sh:property [
         sh:path schema:name ;
         sh:datatype rdf:langString ;
         sh:uniqueLang true ;
@@ -43,7 +48,12 @@ ys:Thing a sh:NodeShape ;
 
 ys:Brand a sh:NodeShape ;
     sh:targetClass schema:Brand ;
-    ys:fromClass wd:Q431289 .
+    ys:fromClass wd:Q431289 ;
+    sh:property [
+        sh:path schema:logo ;
+        sh:node ys:ImageObject ;
+        ys:fromProperty wdt:P154 ;
+    ] .
 
 ys:CreativeWork a sh:NodeShape ;
     sh:targetClass schema:CreativeWork ;
@@ -541,6 +551,19 @@ ys:VideoGameSeries a sh:NodeShape ;
     ] .
 
 
+ys:MediaObject a sh:NodeShape ;
+    sh:targetClass schema:MediaObject .
+
+ys:AudioObject a sh:NodeShape ;
+    sh:targetClass schema:AudioObject .
+
+ys:ImageObject a sh:NodeShape ;
+    sh:targetClass schema:ImageObject .
+
+ys:VideoObject a sh:NodeShape ;
+    sh:targetClass schema:VideoObject .
+
+
 ys:ComicStory a sh:NodeShape ;
     sh:targetClass schema:ComicStory ;
     ys:fromClass wd:Q1004 ;
@@ -1007,6 +1030,11 @@ ys:Organization a sh:NodeShape ;
         ys:fromProperty wdt:P276 ;
     ] ;
     sh:property [
+        sh:path schema:logo ;
+        sh:node ys:ImageObject ;
+        ys:fromProperty wdt:P154 ;
+    ] ;
+    sh:property [
         sh:path schema:memberOf ;
         sh:node ys:Organization ;
         ys:fromProperty wdt:P463 ;
@@ -1244,6 +1272,11 @@ ys:Place a sh:NodeShape ;
         sh:node ys:GeoCoordinates ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P625 ;
+    ] ;
+    sh:property [
+        sh:path schema:logo ;
+        sh:node ys:ImageObject ;
+        ys:fromProperty wdt:P154 ;
     ] ;
     sh:property [
         sh:path schema:telephone ;

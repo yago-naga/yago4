@@ -81,6 +81,7 @@ public class Main {
   private static final IRI SCHEMA_INTANGIBLE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible");
   private static final IRI SCHEMA_STRUCTURED_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue");
   private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
+  private static final IRI SCHEMA_IMAGE_OBJECT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "ImageObject");
   private static final IRI SCHEMA_ABOUT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "about");
   private static final IRI SCHEMA_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "name");
   private static final IRI SCHEMA_ALTERNATE_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName");
@@ -453,6 +454,11 @@ public class Main {
                   .join(cleanCoordinates)
                   .values()
                   .mapToPair(t -> t);
+        } else if (Collections.singleton(SCHEMA_IMAGE_OBJECT).equals(expectedClasses)) {
+          //We clean up globe coordinates by retrieving their full representation
+          subjectObjects = getPropertyValues(partitionedStatements, propertyShape)
+                  .filterValue(v -> v.stringValue().startsWith("http://commons.wikimedia.org/wiki/Special:FilePath/"));
+          //TODO: image descriptions
         } else {
           var objectSubjectsForRange = getPropertyValues(partitionedStatements, propertyShape)
                   .mapPair((k, v) -> Map.entry((Resource) v, k));
