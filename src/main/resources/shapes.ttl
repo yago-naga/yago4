@@ -58,7 +58,7 @@ ys:Brand a sh:NodeShape ;
 
 ys:CreativeWork a sh:NodeShape ;
     sh:targetClass schema:CreativeWork ;
-    ys:fromClass wd:Q17537576 , wd:Q3331189 ;
+    ys:fromClass wd:Q386724 , wd:Q3331189 ;
     sh:property [
         sh:path schema:about ;
         sh:node ys:Thing ;
@@ -131,6 +131,25 @@ ys:CreativeWork a sh:NodeShape ;
             ]
         ) ;
         ys:fromProperty wdt:P170 ;
+    ] ;
+    sh:property [
+        sh:path schema:dateCreated ;
+        sh:or (
+            [
+                sh:datatype xsd:dateTime
+            ]
+            [
+                sh:datatype xsd:date
+            ]
+            [
+                sh:datatype xsd:gYearMonth
+            ]
+            [
+                sh:datatype xsd:gYear
+            ]
+        ) ;
+        sh:maxCount 1 ;
+        ys:fromProperty wdt:P571 ;
     ] ;
     sh:property [
         sh:path schema:datePublished ;
@@ -851,7 +870,7 @@ ys:Event a sh:NodeShape ;
     sh:property [
         sh:path schema:location ;
         sh:node ys:Place ;
-        ys:fromProperty wdt:P276 ;
+        ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
     ] ;
     sh:property [
         sh:path schema:startDate ;
@@ -949,6 +968,14 @@ ys:Organization a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:brand ;
+        sh:or (
+           [
+                sh:node ys:Brand ;
+           ]
+           [
+                sh:node ys:Organization ;
+           ]
+        ) ;
         sh:node ys:Brand ;
         ys:fromProperty wdt:P1716 ;
     ] ;
@@ -974,7 +1001,7 @@ ys:Organization a sh:NodeShape ;
     sh:property [
         sh:path schema:duns ;
         sh:datatype xsd:string ;
-        sh:pattern "^[0-9]{9}$" ;
+        sh:pattern "^\d{9}$" ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P2771 ;
     ] ;
@@ -1028,7 +1055,7 @@ ys:Organization a sh:NodeShape ;
     sh:property [
         sh:path schema:location ;
         sh:node ys:Place ;
-        ys:fromProperty wdt:P276 ;
+        ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
     ] ;
     sh:property [
         sh:path schema:logo ;
@@ -1150,6 +1177,19 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P19 ;
     ] ;
     sh:property [
+        sh:path schema:brand ;
+        sh:or (
+           [
+                sh:node ys:Brand ;
+           ]
+           [
+                sh:node ys:Organization ;
+           ]
+        ) ;
+        sh:node ys:Brand ;
+        ys:fromProperty wdt:P1716 ;
+    ] ;
+    sh:property [
         sh:path schema:children ;
         sh:node ys:Person ;
        ys:fromProperty wdt:P40 ;
@@ -1227,6 +1267,11 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P27 ;
     ] ;
     sh:property [
+        sh:path schema:owns ;
+        sh:node ys:Product ;
+        ys:fromProperty wdt:P1830 ;
+    ] ;
+    sh:property [
         sh:path schema:parent ;
         sh:node ys:Person ;
         sh:maxCount 2 ;
@@ -1260,7 +1305,7 @@ ys:Place a sh:NodeShape ;
     sh:property [
         sh:path schema:containedInPlace ;
         sh:node ys:Place ;
-        ys:fromProperty wdt:P131 ;
+        ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
     ] ;
     sh:property [
         sh:path schema:faxNumber ;
@@ -1339,6 +1384,48 @@ ys:FoodEstablishment a sh:NodeShape ;
         sh:node ys:Thing ;
         ys:fromProperty wdt:P2012 ;
     ] .
+
+ys:Product a sh:NodeShape ;
+    sh:targetClass schema:Product ;
+    ys:fromClass wd:Q2424752 , wd:Q1485500 ;
+    sh:property [
+        sh:path schema:award ;
+        sh:node ys:Thing ;
+        ys:fromProperty wdt:P166 ;
+    ] ;
+    sh:property [
+        sh:path schema:brand ;
+        sh:or (
+           [
+                sh:node ys:Brand ;
+           ]
+           [
+                sh:node ys:Organization ;
+           ]
+        ) ;
+        sh:node ys:Brand ;
+        ys:fromProperty wdt:P1716 ;
+    ] ;
+    sh:property [
+        sh:path schema:gtin ;
+        sh:datatype xsd:string ;
+        sh:pattern "^\d{12,14}|\d{8}$" ;
+        ys:fromProperty wdt:P3962 ;
+    ] ;
+    sh:property [
+        sh:path schema:logo ;
+        sh:node ys:ImageObject ;
+        ys:fromProperty wdt:P154 ;
+    ] ;
+    sh:property [
+        sh:path schema:material ;
+        sh:node ys:Thing ;
+        ys:fromProperty wdt:P186 ;
+    ] .
+
+ys:ProductModel a sh:NodeShape ;
+    sh:targetClass schema:ProductModel ;
+    ys:fromClass wd:Q17444171 .
 
 
 ys:Rating a sh:NodeShape ;
