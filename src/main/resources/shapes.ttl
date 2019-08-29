@@ -1259,7 +1259,7 @@ ys:Person a sh:NodeShape ;
     sh:property [
         sh:path schema:memberOf ;
         sh:node ys:Organization ;
-        ys:fromProperty wdt:P463 ;
+        ys:fromProperty wdt:P463 , wdt:P54 , wdt:P102 ;
     ] ;
     sh:property [
         sh:path schema:nationality ;
