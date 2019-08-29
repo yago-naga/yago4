@@ -65,6 +65,10 @@ public abstract class PlanNode<T> {
     return new NTriplesReaderNode(filePath);
   }
 
+  public static PlanNode<String[]> readTSV(Path filePath) {
+    return new TSVReaderNode(filePath);
+  }
+
   public PlanNode<T> subtract(PlanNode<T> right) {
     return new SubtractNode<>(this, right);
   }

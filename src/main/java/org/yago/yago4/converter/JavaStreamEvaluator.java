@@ -7,6 +7,8 @@ import org.yago.yago4.converter.plan.*;
 import org.yago.yago4.converter.utils.*;
 import org.yago.yago4.converter.utils.stream.*;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -68,6 +70,8 @@ public class JavaStreamEvaluator {
       return (Stream<T>) toStream((NTriplesReaderNode) plan);
     } else if (plan instanceof RDFBinaryReaderNode) {
       return (Stream<T>) toStream((RDFBinaryReaderNode) plan);
+    } else if (plan instanceof TSVReaderNode) {
+      return (Stream<T>) toStream((TSVReaderNode) plan);
     } else if (plan instanceof SubtractNode) {
       return toStream((SubtractNode<T>) plan);
     } else if (plan instanceof TransitiveClosureNode) {
@@ -120,6 +124,16 @@ public class JavaStreamEvaluator {
 
   private Stream<Statement> toStream(RDFBinaryReaderNode plan) {
     return RDFBinaryFormat.read(plan.getFilePath());
+  }
+
+  private Stream<String[]> toStream(TSVReaderNode plan) {
+    try {
+      return Files.lines(plan.getFilePath())
+              .parallel()
+              .map(l -> l.split("\t"));
+    } catch (IOException e) {
+      throw new EvaluationException(e);
+    }
   }
 
   private <T> Stream<T> toStream(SubtractNode<T> plan) {
