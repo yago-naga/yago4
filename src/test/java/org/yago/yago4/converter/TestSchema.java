@@ -28,7 +28,9 @@ class TestSchema {
     doValidation(
             context.getResource("/shapes_shape.ttl"),
             new URL("https://schema.org/version/latest/all-layers.ttl"),
-            context.getResource("/shapes.ttl")
+            context.getResource("/bioschemas.ttl"),
+            context.getResource("/shapes.ttl"),
+            context.getResource("/shapes-bio.ttl")
     );
   }
 

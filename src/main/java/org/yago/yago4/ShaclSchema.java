@@ -58,7 +58,10 @@ public class ShaclSchema {
     parser.setRDFHandler(new StatementCollector(model));
     try {
       parser.parse(new URL("https://schema.org/version/latest/all-layers.ttl").openStream(), "http://schema.org/");
+      parser.parse(ShaclSchema.class.getResourceAsStream("/bioschemas.ttl"), "");
       parser.parse(ShaclSchema.class.getResourceAsStream("/shapes.ttl"), "");
+      parser.parse(ShaclSchema.class.getResourceAsStream("/shapes-bio.ttl"), "");
+
     } catch (IOException e) {
       throw new IllegalArgumentException("The provided schema is not valid JSON", e);
     }

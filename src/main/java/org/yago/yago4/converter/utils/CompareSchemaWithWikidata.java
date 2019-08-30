@@ -62,7 +62,7 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
       try (var results = connection.prepareTupleQuery("SELECT DISTINCT ?wd ?yago WHERE {\n" +
               "  ?p wdt:P1628|wdt:P2235|wdt:P2236 ?yago .\n" +
               "  ?p wikibase:directClaim ?wd .\n" +
-              "  FILTER(STRSTARTS(STR(?yago), \"http://schema.org/\"))\n" +
+              "  FILTER(STRSTARTS(STR(?yago), \"http://schema.org/\") || STRSTARTS(STR(?yago), \"http://bioschemas.org/\"))\n" +
               "}").evaluate()) {
         while (results.hasNext()) {  // iterate over the result
           var bindingSet = results.next();
@@ -78,7 +78,7 @@ public class CompareSchemaWithWikidata implements AutoCloseable {
     try (RepositoryConnection connection = repository.getConnection()) {
       try (var results = connection.prepareTupleQuery("SELECT DISTINCT ?wd ?yago WHERE {\n" +
               "  ?wd wdt:P1709|wdt:P3950 ?yago .\n" +
-              "  FILTER(STRSTARTS(STR(?yago), \"http://schema.org/\"))\n" +
+              "  FILTER(STRSTARTS(STR(?yago), \"http://schema.org/\") || STRSTARTS(STR(?yago), \"http://bioschemas.org/\"))\n" +
               "}").evaluate()) {
         while (results.hasNext()) {  // iterate over the result
           var bindingSet = results.next();

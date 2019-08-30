@@ -218,7 +218,7 @@ public class Main {
             .map(Statement::getSubject);
 
     //TODO: bad hack for tests
-    wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P31))
+    /*wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P31))
             .filter(t -> t.getObject() instanceof IRI)
             .map(t -> (Resource) t.getObject()));
     wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P279))
@@ -228,7 +228,7 @@ public class Main {
             .filter(t -> t.getSubject() instanceof IRI)
             .map(Statement::getSubject));
     wikidataItems = wikidataItems.distinct();
-    //
+    */
 
     var mappingForNotLinkedToEnWikipedia = wikidataItems
             .subtract(mapping.keys())

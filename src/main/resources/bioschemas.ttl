@@ -1,0 +1,130 @@
+# From https://bioschemas.org/
+
+@prefix bioschema: <http://bioschemas.org/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <http://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+bioschema:BioChemEntity a rdfs:Class ;
+    rdfs:subClassOf schema:Thing ;
+    rdfs:label "biology chemistry entity"@en ;
+    rdfs:comment "Any biological, chemical, or biochemical thing. For example: a protein; a gene; a chemical; a synthetic chemical."@en .
+
+bioschema:BioSample a rdfs:Class ;
+    rdfs:subClassOf bioschema:BioChemEntity ;
+    rdfs:label "biological sample"@en ;
+    rdfs:comment "A biological material entity that is representative of a whole."@en .
+
+bioschema:ChemicalSubstance a rdfs:Class ;
+    rdfs:subClassOf bioschema:BioChemEntity ;
+    rdfs:label "chemical substance"@en ;
+    rdfs:comment "A chemical substance."@en .
+
+bioschema:Gene a rdfs:Class ;
+    rdfs:subClassOf bioschema:BioChemEntity ;
+    rdfs:label "gene"@en ;
+    rdfs:comment "A discrete unit of inheritance which affects one or more biological traits ."@en .
+
+bioschema:MolecularEntity a rdfs:Class ;
+    rdfs:subClassOf bioschema:BioChemEntity ;
+    rdfs:label "molecular entity"@en ;
+    rdfs:comment "Any constitutionally or isotopically distinct atom, molecule, ion, ion pair, radical, radical ion, complex, conformer etc., identifiable as a separately distinguishable entity."@en .
+
+bioschema:Protein a rdfs:Class ;
+    rdfs:subClassOf bioschema:BioChemEntity ;
+    rdfs:label "protein"@en ;
+    rdfs:comment "Protein is here used in its widest possible definition, as classes of amino acid based molecules. Amyloid-beta Protein in human (UniProt P05067), eukaryota (e.g. an OrthoDB group) or even a single molecule that one can point to are all of type schema:Protein. A protein can thus be a subclass of another protein, e.g. schema:Protein as a UniProt record can have multiple isoforms inside it which would also be schema:Protein. They can be imagined, synthetic, hypothetical or naturally occurring."@en .
+
+bioschema:Taxon a rdfs:Class ;
+    rdfs:subClassOf schema:Thing ;
+    rdfs:label "taxon"@en ;
+    rdfs:comment "A set of organisms asserted to represent a natural cohesive biological unit."@en .
+
+
+
+bioschema:associatedDisease a rdf:Property .
+
+bioschema:bioChemInteraction a rdf:Property .
+
+bioschema:bioChemSimilarity a rdf:Property .
+
+bioschema:biogicalRole a rdf:Property .
+
+bioschema:hasBioChemEntityPart a rdf:Property ;
+    schema:subPropertyOf schema:hasPart ;
+    schema:inverseOf bioschema:isPartOfBioChemEntity .
+
+bioschema:hasMolecularFunction a rdf:Property .
+
+bioschema:hasRepresentation a rdf:Property .
+
+bioschema:isEncodedByBioChemEntity a rdf:Property ;
+    schema:inverseOf bioschema:encodesBioChemEntity .
+
+bioschema:isInvolvedInBiologicalProcess a rdf:Property .
+
+bioschema:isLocatedInSubcellularLocation a rdf:Property .
+
+bioschema:isPartOfBioChemEntity a rdf:Property ;
+    schema:subPropertyOf schema:isPartOf ;
+    schema:inverseOf bioschema:hasBioChemEntityPart .
+
+bioschema:taxonomicRange a rdf:Property .
+
+bioschema:hasMolecularFunction a rdf:Property .
+
+bioschema:hasMolecularFunction a rdf:Property .
+
+bioschema:hasMolecularFunction a rdf:Property .
+
+bioschema:hasMolecularFunction a rdf:Property .
+
+bioschema:collector a rdf:Property .
+
+bioschema:custodian a rdf:Property .
+
+bioschema:isControl a rdf:Property .
+
+bioschema:samplingAge a rdf:Property .
+
+bioschema:chemicalRole a rdf:Property .
+
+bioschema:molecularFormula a rdf:Property .
+
+bioschema:potentialUse a rdf:Property .
+
+bioschema:alternativeOf a rdf:Property .
+
+bioschema:encodesBioChemEntity a rdf:Property ;
+    schema:inverseOf bioschema:isEncodedByBioChemEntity .
+
+bioschema:expressedIn a rdf:Property .
+
+bioschema:hasSequence a rdf:Property .
+
+bioschema:hasStatus a rdf:Property .
+
+bioschema:chemicalRole a rdf:Property .
+
+bioschema:inChI a rdf:Property .
+
+bioschema:inChIKey a rdf:Property .
+
+bioschema:iupacName a rdf:Property .
+
+bioschema:molecularFormula a rdf:Property .
+
+bioschema:molecularWeight a rdf:Property .
+
+bioschema:monoisotopicMolecularWeight a rdf:Property .
+
+bioschema:smiles a rdf:Property .
+
+bioschema:childTaxon a rdf:Property .
+
+bioschema:parentTaxon a rdf:Property .
+
+bioschema:taxonRank a rdf:Property .
+
