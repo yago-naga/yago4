@@ -202,11 +202,16 @@ public class ShaclSchema {
               .orElseThrow(() -> new IllegalArgumentException("The sh:PropertyShape " + id + " should have a single property sh:path pointing to the IRI of a property"));
     }
 
-    public Optional<Set<NodeShape>> getParentShapes() {
-      Set<Resource> parentShapes = model.filter(null, SH_PROPERTY, id).subjects();
-      return parentShapes.isEmpty()
-              ? Optional.empty()
-              : Optional.of(parentShapes.stream().map(SingleNodeShape::new).collect(Collectors.toSet()));
+    public Optional<NodeShape> getParentShape() {
+      Set<Resource> shapes = model.filter(null, SH_PROPERTY, id).subjects();
+      switch (shapes.size()) {
+        case 0:
+          return Optional.empty();
+        case 1:
+          return Optional.of(new SingleNodeShape(shapes.iterator().next()));
+        default:
+          return Optional.of(new UnionNodeShape(shapes.stream().map(SingleNodeShape::new)));
+      }
     }
 
     public Optional<Set<IRI>> getDatatypes() {

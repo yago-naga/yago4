@@ -217,8 +217,8 @@ public class Main {
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
             .map(Statement::getSubject);
 
-    //TODO: bad hack for tests
-    /*wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P31))
+    /*TODO: bad hack for tests
+    wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P31))
             .filter(t -> t.getObject() instanceof IRI)
             .map(t -> (Resource) t.getObject()));
     wikidataItems = wikidataItems.union(partitionedStatements.getForKey(keyForIri(WDT_P279))
@@ -604,8 +604,7 @@ public class Main {
   }
 
   private static PairPlanNode<Resource, Value> filterDomain(PairPlanNode<Resource, Value> subjectObjects, Map<Resource, PlanNode<Resource>> yagoShapeInstances, ShaclSchema.PropertyShape propertyShape) {
-    return propertyShape.getParentShapes().stream()
-            .flatMap(Collection::stream)
+    return propertyShape.getParentShape().stream()
             .flatMap(ShaclSchema.NodeShape::getClasses)
             .distinct()
             .flatMap(cls -> Stream.ofNullable(yagoShapeInstances.get(cls)))
@@ -662,12 +661,15 @@ public class Main {
     Model yagoStatements = new LinkedHashModel();
     ShaclSchema schema = ShaclSchema.getSchema();
 
+    Map<Resource, Set<Resource>> domains = new HashMap<>();
+    Map<Resource, Set<Resource>> objectRanges = new HashMap<>();
+    Map<Resource, Set<Resource>> datatypeRanges = new HashMap<>();
+
     // Classes
     schema.getNodeShapes()
             .flatMap(ShaclSchema.NodeShape::getClasses)
             .flatMap(c -> schema.getClass(c).stream())
             .forEach(c -> {
-              yagoStatements.add(c.getTerm(), RDF.TYPE, RDFS.CLASS);
               yagoStatements.add(c.getTerm(), RDF.TYPE, OWL.CLASS);
               c.getLabels().forEach(l -> yagoStatements.add(c.getTerm(), RDFS.LABEL, VALUE_FACTORY.createLiteral(camlCaseToRegular(l.stringValue()), "en")));
               c.getComments().forEach(l -> yagoStatements.add(c.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue(), "en")));
@@ -677,6 +679,7 @@ public class Main {
                   yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, SCHEMA_THING);
                 } else if (cp.equals(SCHEMA_STRUCTURED_VALUE)) {
                   //schema:StructuredValue are not schema:Thing
+                  yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, OWL.THING);
                 } else { //We ignore schema:Intangible
                   yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, cp);
                 }
@@ -686,7 +689,6 @@ public class Main {
     // Properties
     schema.getPropertyShapes()
             .forEach(shape -> schema.getProperty(shape.getProperty()).ifPresent(p -> {
-              yagoStatements.add(p.getTerm(), RDF.TYPE, RDF.PROPERTY);
               if (shape.getNodeShape().isPresent() && shape.getDatatypes().isEmpty()) {
                 yagoStatements.add(p.getTerm(), RDF.TYPE, OWL.OBJECTPROPERTY);
               } else if (shape.getNodeShape().isEmpty() && shape.getDatatypes().isPresent()) {
@@ -704,11 +706,38 @@ public class Main {
                 }
               });
               p.getInverseProperties().forEach(cp -> yagoStatements.add(p.getTerm(), OWL.INVERSEOF, cp));
+              if (shape.getMaxCount() == 1) {
+                //TODO: enforce yagoStatements.add(p.getTerm(), RDF.TYPE, OWL.FUNCTIONALPROPERTY);
+              }
+
+              shape.getParentShape().ifPresent(subjectShape -> {
+                Set<Resource> target = domains.computeIfAbsent(p.getTerm(), (k) -> new HashSet<>());
+                subjectShape.getClasses().forEach(target::add);
+              });
+              shape.getNodeShape().ifPresent(objectShape -> {
+                Set<Resource> target = objectRanges.computeIfAbsent(p.getTerm(), (k) -> new HashSet<>());
+                objectShape.getClasses().forEach(target::add);
+              });
+              shape.getDatatypes().ifPresent(datatypes -> datatypeRanges.computeIfAbsent(p.getTerm(), (k) -> new HashSet<>()).addAll(datatypes));
             }));
+
+    // Domains
+    for (Map.Entry<Resource, Set<Resource>> e : domains.entrySet()) {
+      addUnionOfObject(yagoStatements, e.getKey(), RDFS.DOMAIN, e.getValue(), OWL.CLASS);
+    }
+    // Ranges
+    for (Map.Entry<Resource, Set<Resource>> e : objectRanges.entrySet()) {
+      addUnionOfObject(yagoStatements, e.getKey(), RDFS.RANGE, e.getValue(), OWL.CLASS);
+    }
+    for (Map.Entry<Resource, Set<Resource>> e : datatypeRanges.entrySet()) {
+      addUnionOfObject(yagoStatements, e.getKey(), RDFS.RANGE, e.getValue(), RDFS.DATATYPE);
+    }
 
     // Some hardcoded triples
     yagoStatements.add(SCHEMA_NAME, RDFS.SUBPROPERTYOF, RDFS.LABEL);
     yagoStatements.add(SCHEMA_DESCRIPTION, RDFS.SUBPROPERTYOF, RDFS.COMMENT);
+    yagoStatements.add(SCHEMA_THING, RDFS.SUBCLASSOF, OWL.THING);
+    yagoStatements.add(RDF.LANGSTRING, RDF.TYPE, RDFS.DATATYPE);
 
     return PlanNode.fromCollection(yagoStatements);
   }
@@ -732,7 +761,7 @@ public class Main {
   }
 
   private static String camlCaseToRegular(String txt) {
-    return StringUtils.join(StringUtils.splitByCharacterTypeCamelCase(txt), " ").toLowerCase();
+    return StringUtils.join(StringUtils.splitByCharacterTypeCamelCase(txt), " ").toLowerCase().replaceAll(" ", " ").replaceAll("  ", " ");
   }
 
   private static PlanNode<Resource> mapToYago(PlanNode<Resource> facts, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
@@ -840,5 +869,29 @@ public class Main {
     } catch (ArithmeticException | NumberFormatException e) {
       return Stream.empty();
     }
+  }
+
+  private static void addUnionOfObject(Model model, Resource subject, IRI predicate, Collection<? extends Value> objects, IRI type) {
+    if (objects.size() == 1) {
+      model.add(subject, predicate, objects.iterator().next());
+    } else {
+      Resource union = VALUE_FACTORY.createBNode();
+      model.add(subject, predicate, union);
+      model.add(union, RDF.TYPE, type);
+      addListObject(model, union, OWL.UNIONOF, objects);
+    }
+  }
+
+  private static void addListObject(Model model, Resource subject, IRI predicate, Collection<? extends Value> objects) {
+    ArrayList<Value> list = new ArrayList<>(objects);
+    Resource head = RDF.NIL;
+    while (!list.isEmpty()) {
+      Resource current = VALUE_FACTORY.createBNode();
+      model.add(current, RDF.REST, head);
+      model.add(current, RDF.FIRST, list.get(list.size() - 1));
+      list.remove(list.size() - 1);
+      head = current;
+    }
+    model.add(subject, predicate, head);
   }
 }

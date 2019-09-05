@@ -1433,6 +1433,10 @@ ys:Rating a sh:NodeShape ;
     ys:fromClass wd:Q23649976 .
 
 
+ys:Series a sh:NodeShape ;
+    sh:targetClass schema:Series .
+
+
 ys:AnnotationPropertyShape a rdfs:Property ;
     rdfs:subPropertyOf sh:PropertyShape .
 
