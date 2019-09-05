@@ -15,11 +15,20 @@ ys:
 	rdfs:label "Yago 4 shapes declaration"@en .
 
 
+# Disjoint classes
+schema:CreativeWork owl:disjointWith schema:Event , schema:Organization , schema:Person , schema:Place .
+schema:Event owl:disjointWith schema:CreativeWork , schema:Organization , schema:Person , schema:Place .
+schema:Organization owl:disjointWith schema:CreativeWork , schema:Event , schema:Person .
+schema:Person owl:disjointWith schema:CreativeWork , schema:Event , schema:Organization , schema:Place .
+schema:Place owl:disjointWith schema:CreativeWork , schema:Event , schema:Person .
+
+
 schema:Thing a sh:NodeShape ;
     ys:fromClass wd:Q35120 ;
     sh:property [
         sh:path schema:alternateName ;
         sh:datatype rdf:langString ;
+        sh:disjoint schema:name ;
         ys:fromProperty skos:altLabel ;
     ] ;
     sh:property [

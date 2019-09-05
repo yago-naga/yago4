@@ -81,6 +81,13 @@ public class ShaclSchema {
     }
   }
 
+  public Stream<Class> getClasses() {
+    return Stream.concat(
+            model.filter(null, RDF.TYPE, RDFS.CLASS).subjects().stream(),
+            model.filter(null, RDF.TYPE, OWL.CLASS).subjects().stream()
+    ).distinct().map(Class::new);
+  }
+
   public Optional<Property> getProperty(Resource term) {
     if (model.contains(term, RDF.TYPE, RDF.PROPERTY) || model.contains(term, RDF.TYPE, OWL.OBJECTPROPERTY) || model.contains(term, RDF.TYPE, OWL.DATATYPEPROPERTY)) {
       return Optional.of(new Property(term));
@@ -266,6 +273,13 @@ public class ShaclSchema {
     public Stream<Resource> getSuperClasses() {
       return Models.getPropertyResources(model, term, RDFS.SUBCLASSOF).stream();
     }
+
+    public Stream<Resource> getDisjointedClasses() {
+      return Stream.concat(
+              Models.getPropertyResources(model, term, OWL.DISJOINTWITH).stream(),
+              model.filter(null, OWL.DISJOINTWITH, term).stream().map(Statement::getSubject)
+      ).distinct();
+    }
   }
 
   public class Property extends OntologyElement {
@@ -279,9 +293,15 @@ public class ShaclSchema {
 
     public Stream<Resource> getInverseProperties() {
       return Stream.concat(
-              Models.getPropertyResources(model, term, OWL.INVERSEOF).stream(),
-              Models.getPropertyResources(model, term, SCHEMA_INVERSE_OF).stream()
-      );
+              Stream.concat(
+                      Models.getPropertyResources(model, term, OWL.INVERSEOF).stream(),
+                      Models.getPropertyResources(model, term, SCHEMA_INVERSE_OF).stream()
+              ),
+              Stream.concat(
+                      model.filter(null, OWL.INVERSEOF, term).stream().map(Statement::getSubject),
+                      model.filter(null, SCHEMA_INVERSE_OF, term).stream().map(Statement::getSubject)
+              )
+      ).distinct();
     }
   }
 }

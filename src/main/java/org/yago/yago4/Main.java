@@ -257,7 +257,7 @@ public class Main {
    * Algorithm:
    * 1. take all subClassOf (P279) from Wikidata and maps URIs to Yago
    * 2. take all subClassOf from schema.org ontology and shapes mapping
-   * 3. remove from them the elements and subclasses of WD_BAD_CLASSES
+   * 3. remove from them the elements and subclasses of WD_BAD_CLASSES or subclasses of disjoint classes
    * 4. construct class set by only keeping the classes that are transitively subclasses of schema:Thing and have transitively instances
    */
   private static Map.Entry<PlanNode<Resource>, PairPlanNode<Resource, Resource>> buildYagoClassesAndSuperClassOf(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
@@ -282,6 +282,13 @@ public class Main {
     var badClasses = mapToYago(PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c)), wikidataToYagoUrisMapping)
             .transitiveClosure(possibleSuperClassOf);
 
+    var subclassesOfDisjoint = schema.getClasses()
+            .flatMap(cls1 -> cls1.getDisjointedClasses().map(c2 -> Map.entry(cls1.getTerm(), c2)))
+            .map(e ->
+                    PlanNode.fromCollection(List.of(e.getKey())).transitiveClosure(possibleSuperClassOf)
+                            .intersection(PlanNode.fromCollection(List.of(e.getValue())).transitiveClosure(possibleSuperClassOf))
+            ).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+
     var classesWithInstances = mapToYago(
             partitionedStatements.getForKey(keyForIri(WDT_P31)).map(t -> (Resource) t.getObject()),
             wikidataToYagoUrisMapping
@@ -290,6 +297,7 @@ public class Main {
     var yagoClasses = classesWithInstances
             .intersection(schemaThingSubClasses)
             .subtract(badClasses)
+            .subtract(subclassesOfDisjoint)
             .cache();
 
     var yagoSuperClassOf = possibleSuperClassOf
@@ -310,6 +318,7 @@ public class Main {
   }
 
   private static Map<Resource, PlanNode<Resource>> yagoShapeInstances(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> yagoSuperClassOf, PlanNode<Resource> yagoClasses, PlanNode<Resource> optionalThingSuperset, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+    var schema = ShaclSchema.getSchema();
     var wikidataInstancesForYagoClass = mapKeyToYago(
             partitionedStatements.getForKey(keyForIri(WDT_P31))
                     .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject())),
@@ -320,7 +329,7 @@ public class Main {
             ? null
             : optionalThingSuperset.subtract(yagoClasses); // We do not want classes
 
-    return ShaclSchema.getSchema().getNodeShapes().flatMap(nodeShape -> {
+    return schema.getNodeShapes().flatMap(nodeShape -> {
       var fromYagoClasses = PlanNode.fromStream(Stream.concat(
               nodeShape.getClasses(),
               nodeShape.getFromClasses().map(t -> (Resource) t)
@@ -733,6 +742,7 @@ public class Main {
                   yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, cp);
                 }
               });
+              //TODO: enforce c.getDisjointedClasses().forEach(dc -> yagoStatements.add(c.getTerm(), OWL.DISJOINTWITH, dc));
             });
 
     // Properties

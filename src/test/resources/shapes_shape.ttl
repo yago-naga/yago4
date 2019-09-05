@@ -50,6 +50,7 @@ yss:PropertyShapeShape a sh:NodeShape ;
     sh:property [
         sh:path sh:datatype ;
         sh:class rdfs:Datatype ;
+        sh:maxCount 1 ;
     ] .
 
 
