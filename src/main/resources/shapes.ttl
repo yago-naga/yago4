@@ -816,6 +816,21 @@ ys:VisualArtwork a sh:NodeShape ;
         sh:path schema:colorist ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P6338 ;
+    ] ;
+    sh:property [
+        sh:path schema:depth ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P5524 ;
+    ] ;
+    sh:property [
+        sh:path schema:height ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2048 ;
+    ] ;
+    sh:property [
+        sh:path schema:width ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2049 ;
     ] .
 
 ys:Event a sh:NodeShape ;
@@ -933,18 +948,6 @@ ys:Event a sh:NodeShape ;
             ]
         ) ;
         ys:fromProperty wdt:P655 ;
-    ] .
-
-
-ys:GeoCoordinates a sh:NodeShape ;
-    sh:targetClass schema:GeoCoordinates ;
-    sh:property [
-        sh:path schema:latitude ;
-        sh:datatype xsd:double ;
-    ] ;
-    sh:property [
-        sh:path schema:longitude ;
-        sh:datatype xsd:double ;
     ] .
 
 
@@ -1247,6 +1250,11 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P106 ;
     ] ;
     sh:property [
+        sh:path schema:height ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2048 ;
+    ] ;
+    sh:property [
         sh:path schema:homeLocation ;
         sh:node ys:Place ;
         ys:fromProperty wdt:P551 ;
@@ -1289,10 +1297,15 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P1329 ;
     ] ;
     sh:property [
+        sh:path schema:weight ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2067 ;
+    ] ;
+    sh:property [
         sh:path schema:worksFor ;
         sh:node ys:Person ;
         ys:fromProperty wdt:P108 ;
-    ] . #TODO: height, weight netWorth
+    ] . #TODO: netWorth
 
 ys:Place a sh:NodeShape ;
     sh:targetClass schema:Place ;
@@ -1306,6 +1319,11 @@ ys:Place a sh:NodeShape ;
         sh:path schema:containedInPlace ;
         sh:node ys:Place ;
         ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
+    ] ;
+    sh:property [
+        sh:path schema:elevation ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2044 ;
     ] ;
     sh:property [
         sh:path schema:faxNumber ;
@@ -1407,10 +1425,20 @@ ys:Product a sh:NodeShape ;
         ys:fromProperty wdt:P1716 ;
     ] ;
     sh:property [
+        sh:path schema:depth ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P5524 ;
+    ] ;
+    sh:property [
         sh:path schema:gtin ;
         sh:datatype xsd:string ;
         sh:pattern "^\d{12,14}|\d{8}$" ;
         ys:fromProperty wdt:P3962 ;
+    ] ;
+    sh:property [
+        sh:path schema:height ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2048 ;
     ] ;
     sh:property [
         sh:path schema:logo ;
@@ -1421,6 +1449,16 @@ ys:Product a sh:NodeShape ;
         sh:path schema:material ;
         sh:node ys:Thing ;
         ys:fromProperty wdt:P186 ;
+    ] ;
+    sh:property [
+        sh:path schema:weight ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2067 ;
+    ] ;
+    sh:property [
+        sh:path schema:width ;
+        sh:node ys:QuantitativeValue ;
+        ys:fromProperty wdt:P2049 ;
     ] .
 
 ys:ProductModel a sh:NodeShape ;
@@ -1439,6 +1477,50 @@ ys:Series a sh:NodeShape ;
 
 ys:AnnotationPropertyShape a rdfs:Property ;
     rdfs:subPropertyOf sh:PropertyShape .
+
+
+ys:GeoCoordinates a sh:NodeShape ;
+    sh:targetClass schema:GeoCoordinates ;
+    sh:property [
+        sh:path schema:latitude ;
+        sh:datatype xsd:double ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path schema:longitude ;
+        sh:datatype xsd:double ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+
+ys:QuantitativeValue a sh:NodeShape ;
+    sh:targetClass schema:QuantitativeValue ;
+    sh:property [
+        sh:path schema:value ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path schema:minValue ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path schema:maxValue ;
+        sh:datatype xsd:decimal ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path schema:unitCode ;
+        sh:node ys:Thing ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
 
 
 ys:startDateAnnotation a ys:AnnotationPropertyShape ;

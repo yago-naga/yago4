@@ -36,6 +36,10 @@ public abstract class PairPlanNode<K, V> {
     return new FilterPairNode<>(this, (k, v) -> predicate.test(v));
   }
 
+  public <TO> PlanNode<TO> flatMap(BiFunction<K, V, Stream<TO>> function) {
+    return new FlatMapFromPairNode<>(this, function);
+  }
+
   public <KO, VO> PairPlanNode<KO, VO> flatMapPair(BiFunction<K, V, Stream<Map.Entry<KO, VO>>> function) {
     return new FlatMapPairNode<>(this, function);
   }

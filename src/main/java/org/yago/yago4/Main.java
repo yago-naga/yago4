@@ -59,6 +59,7 @@ public class Main {
   private static final String SCHEMA_PREFIX = "http://schema.org/";
   private static final String WIKIBASE_PREFIX = "http://wikiba.se/ontology#";
   private static final String YAGO_RESOURCE_PREFIX = "http://yago-knowledge.org/resource/";
+  private static final String YAGO_VALUE_PREFIX = "http://yago-knowledge.org/value/";
 
   private static final IRI WIKIBASE_ITEM = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "Item");
   private static final IRI WIKIBASE_BEST_RANK = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "BestRank");
@@ -69,6 +70,8 @@ public class Main {
   private static final IRI WIKIBASE_GEO_PRECISION = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoPrecision");
   private static final IRI WIKIBASE_GEO_GLOBE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoGlobe");
   private static final IRI WIKIBASE_QUANTITY_AMOUNT = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityAmount");
+  private static final IRI WIKIBASE_QUANTITY_UPPER_BOUND = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityUpperBound");
+  private static final IRI WIKIBASE_QUANTITY_LOWER_BOUND = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityLowerBound");
   private static final IRI WIKIBASE_QUANTITY_UNIT = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "quantityUnit");
   private static final IRI WDT_P31 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P31");
   private static final IRI WDT_P279 = VALUE_FACTORY.createIRI(WDT_PREFIX, "P279");
@@ -83,12 +86,19 @@ public class Main {
   private static final IRI SCHEMA_INTANGIBLE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible");
   private static final IRI SCHEMA_STRUCTURED_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue");
   private static final IRI SCHEMA_GEO_COORDINATES = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "GeoCoordinates");
+  private static final IRI SCHEMA_QUANTITATIVE_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "QuantitativeValue");
   private static final IRI SCHEMA_IMAGE_OBJECT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "ImageObject");
   private static final IRI SCHEMA_ABOUT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "about");
   private static final IRI SCHEMA_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "name");
   private static final IRI SCHEMA_ALTERNATE_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName");
   private static final IRI SCHEMA_DESCRIPTION = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "description");
   private static final IRI SCHEMA_SAME_AS = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "sameAs");
+  private static final IRI SCHEMA_MAX_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "maxValue");
+  private static final IRI SCHEMA_MIN_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "minValue");
+  private static final IRI SCHEMA_UNIT_CODE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "unitCode");
+  private static final IRI SCHEMA_LATITUDE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "latitude");
+  private static final IRI SCHEMA_LONGITUDE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "longitude");
+  private static final IRI SCHEMA_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "value");
   private static final Pattern WIKIDATA_PROPERTY_IRI_PATTERN = Pattern.compile("^http://www.wikidata.org/prop/[a-z\\-/]*P\\d+$");
 
   private static final Set<IRI> CALENDAR_DT_SET = Set.of(XMLSchema.GYEAR, XMLSchema.GYEARMONTH, XMLSchema.DATE, XMLSchema.DATETIME);
@@ -434,7 +444,7 @@ public class Main {
             .distinct()
             .cache();
 
-    PairPlanNode<Resource, Value> cleanCoordinates = partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_LATITUDE))
+    PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> cleanCoordinates = partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_LATITUDE))
             .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
             .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_LONGITUDE)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
             .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_GEO_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
@@ -457,10 +467,20 @@ public class Main {
             .distinct()
             .cache();
 
+    PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> cleanQuantities = mapKeyToYago(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_UNIT))
+            .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject())), wikidataToYagoUrisMapping)
+            .swap()
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_AMOUNT)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_LOWER_BOUND)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_QUANTITY_UPPER_BOUND)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .mapPair((k, e) -> Map.entry(k, convertQuantity(k, e.getKey().getKey().getKey(), e.getKey().getKey().getValue(), e.getKey().getValue(), e.getValue())))
+            .distinct()
+            .cache();
+
     var statementsWithAnnotations = ShaclSchema.getSchema().getAnnotationPropertyShapes().map(annotationShape ->
             mapWikidataPropertyValue(annotationShape,
                     partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping,
-                    cleanTimes, cleanDurations, cleanIntegers, cleanCoordinates,
+                    cleanTimes, cleanDurations, cleanIntegers, cleanQuantities, cleanCoordinates,
                     PQ_PREFIX, PQV_PREFIX
             ).mapValue(v -> Map.entry(annotationShape.getProperty(), v))
     ).reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty);
@@ -475,9 +495,9 @@ public class Main {
       }
 
       // We map the statement -> object relation
-      PairPlanNode<Resource, Value> statementObject = mapWikidataPropertyValue(propertyShape,
+      var statementObject = mapWikidataPropertyValue(propertyShape,
               partitionedStatements, yagoShapeInstances, wikidataToYagoUrisMapping,
-              cleanTimes, cleanDurations, cleanIntegers, cleanCoordinates,
+              cleanTimes, cleanDurations, cleanIntegers, cleanQuantities, cleanCoordinates,
               PS_PREFIX, PSV_PREFIX
       );
 
@@ -490,29 +510,37 @@ public class Main {
 
       var statementTriple = statementObject
               .join(subjectStatement.swap())
-              .mapValue(e -> VALUE_FACTORY.createStatement(e.getValue(), yagoProperty, e.getKey()));
+              .mapValue(e -> Map.entry(VALUE_FACTORY.createStatement(e.getValue(), yagoProperty, e.getKey().getKey()), e.getKey().getValue()));
 
-      var mainFacts = statementTriple.intersection(bestRanks).values(); // We keep only best ranks
+      var mainFacts = statementTriple.intersection(bestRanks).values().flatMap(e -> {
+        if (e.getValue().isEmpty()) {
+          return Stream.of(e.getKey());
+        } else {
+          return Stream.concat(Stream.of(e.getKey()), e.getValue().stream());
+        }
+      }); // We keep only best ranks
 
       // Annotations
+      //TODO: emit object annotations
       var annotations = statementTriple
               .join(statementsWithAnnotations)
-              .map((s, e) -> new AnnotatedStatement(e.getKey(), e.getValue().getKey(), e.getValue().getValue()));
+              .map((s, e) -> new AnnotatedStatement(e.getKey().getKey(), e.getValue().getKey(), e.getValue().getValue().getKey()));
 
       return Map.entry(mainFacts, annotations);
     }).reduce((p1, p2) -> Map.entry(p1.getKey().union(p2.getKey()), p1.getValue().union(p2.getValue())))
             .orElseGet(() -> Map.entry(PlanNode.empty(), PlanNode.empty()));
   }
 
-  private static PairPlanNode<Resource, Value> mapWikidataPropertyValue(
+  private static PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> mapWikidataPropertyValue(
           ShaclSchema.PropertyShape propertyShape,
           PartitionedStatements partitionedStatements,
           Map<Resource, PlanNode<Resource>> yagoShapeInstances, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping,
-          PairPlanNode<Resource, Value> cleanTimes, PairPlanNode<Resource, Value> cleanDurations,
-          PairPlanNode<Resource, Value> cleanIntegers, PairPlanNode<Resource, Value> cleanCoordinates,
+          PairPlanNode<Resource, Value> cleanTimes, PairPlanNode<Resource, Value> cleanDurations, PairPlanNode<Resource, Value> cleanIntegers,
+          PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> cleanQuantities,
+          PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> cleanCoordinates,
           String simpleValuePrefix, String complexValuePrefix
   ) {
-    PairPlanNode<Resource, Value> statementObject;
+    PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> statementObject;
     if (propertyShape.getDatatypes().isPresent()) {
       if (propertyShape.getNodeShape().isPresent()) {
         System.err.println("The property " + propertyShape.getProperty() + " could not have both a datatype domain and a node domain. Ignoring it.");
@@ -526,9 +554,9 @@ public class Main {
         statementObject = getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix).flatMapValue(object -> {
           if (object instanceof IRI || (object instanceof Literal && XMLSchema.ANYURI.equals(((Literal) object).getDatatype()))) {
             return normalizeUri(object.stringValue())
-                    .map(o -> VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI));
+                    .map(o -> Map.entry(VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI), Collections.emptyList()));
           } else {
-            return Stream.of(object);
+            return Stream.of(Map.entry(object, Collections.emptyList()));
           }
         });
       } else if (CALENDAR_DT_SET.containsAll(dts)) {
@@ -542,9 +570,9 @@ public class Main {
         statementObject = getAndConvertStatementsComplexValue(partitionedStatements, propertyShape, cleanIntegers, complexValuePrefix);
       } else {
         statementObject = getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix)
-                .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()));
+                .filterValue(object -> object instanceof Literal && dts.contains(((Literal) object).getDatatype()))
+                .mapValue(o -> Map.entry(o, Collections.emptyList()));
       }
-      //TODO: quantity values
     } else if (propertyShape.getNodeShape().isPresent()) {
       // Range type filter
       Set<Resource> expectedClasses = propertyShape.getNodeShape()
@@ -553,18 +581,21 @@ public class Main {
               .collect(Collectors.toSet());
       if (Collections.singleton(SCHEMA_GEO_COORDINATES).equals(expectedClasses)) {
         //We clean up globe coordinates by retrieving their full representation
-        statementObject = getAndConvertStatementsComplexValue(partitionedStatements, propertyShape, cleanCoordinates, complexValuePrefix);
+        statementObject = getAndConvertStatementsAnnotatedComplexValue(partitionedStatements, propertyShape, cleanCoordinates, complexValuePrefix);
+      } else if (Collections.singleton(SCHEMA_QUANTITATIVE_VALUE).equals(expectedClasses)) {
+        statementObject = getAndConvertStatementsAnnotatedComplexValue(partitionedStatements, propertyShape, cleanQuantities, complexValuePrefix);
       } else if (Collections.singleton(SCHEMA_IMAGE_OBJECT).equals(expectedClasses)) {
         //We clean up image by retrieving their full representation
         statementObject = getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix)
-                .filterValue(v -> v.stringValue().startsWith("http://commons.wikimedia.org/wiki/Special:FilePath/"));
+                .filterValue(v -> v.stringValue().startsWith("http://commons.wikimedia.org/wiki/Special:FilePath/"))
+                .mapValue(o -> Map.entry(o, Collections.emptyList()));
         //TODO: image descriptions
       } else {
         statementObject = filterObjectRange(
                 mapKeyToYago(getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix).mapPair((s, o) -> Map.entry((Resource) o, s)), wikidataToYagoUrisMapping),
                 yagoShapeInstances,
                 propertyShape
-        );
+        ).mapValue(o -> Map.entry(o, Collections.emptyList()));
       }
     } else {
       System.err.println("No range constraint found for property " + propertyShape.getProperty() + ". Ignoring it.");
@@ -574,13 +605,21 @@ public class Main {
     //Regex
     if (propertyShape.getPattern().isPresent()) {
       Pattern pattern = propertyShape.getPattern().get();
-      statementObject = statementObject.filterValue(object -> pattern.matcher(object.stringValue()).matches());
+      statementObject = statementObject.filterValue(o -> pattern.matcher(o.getKey().stringValue()).matches());
     }
 
     return statementObject;
   }
 
-  private static PairPlanNode<Resource, Value> getAndConvertStatementsComplexValue(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape, PairPlanNode<Resource, Value> clean, String complexValuePrefix) {
+  private static PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> getAndConvertStatementsComplexValue(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape, PairPlanNode<Resource, Value> clean, String complexValuePrefix) {
+    return getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, complexValuePrefix)
+            .mapPair((k, v) -> Map.entry((Resource) v, k))
+            .join(clean)
+            .values()
+            .mapToPair(t -> Map.entry(t.getKey(), Map.entry(t.getValue(), Collections.emptyList())));
+  }
+
+  private static PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> getAndConvertStatementsAnnotatedComplexValue(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape, PairPlanNode<Resource, Map.Entry<Value, List<Statement>>> clean, String complexValuePrefix) {
     return getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, complexValuePrefix)
             .mapPair((k, v) -> Map.entry((Resource) v, k))
             .join(clean)
@@ -812,7 +851,7 @@ public class Main {
     }
   }
 
-  private static Stream<Value> convertGlobeCoordinates(Value latitude, Value longitude, Value precision, Value globe) {
+  private static Stream<Map.Entry<Value, List<Statement>>> convertGlobeCoordinates(Value latitude, Value longitude, Value precision, Value globe) {
     if (!globe.equals(WD_Q2)) {
       return Stream.empty(); //Not earth
     }
@@ -824,7 +863,18 @@ public class Main {
     double lon = ((Literal) longitude).doubleValue();
     double prec = ((Literal) precision).doubleValue();
 
-    return Stream.of(VALUE_FACTORY.createIRI("geo:" + roundDegrees(lat, prec) + "," + roundDegrees(lon, prec))); //TODO: description of geocoordinates
+    double roundedLatitude = roundDegrees(lat, prec);
+    double roundedLongitude = roundDegrees(lon, prec);
+    IRI coordinates = VALUE_FACTORY.createIRI("geo:" + roundedLatitude + "," + roundedLongitude);
+
+    return Stream.of(Map.entry(
+            coordinates,
+            List.of(
+                    VALUE_FACTORY.createStatement(coordinates, RDF.TYPE, SCHEMA_GEO_COORDINATES),
+                    VALUE_FACTORY.createStatement(coordinates, SCHEMA_LATITUDE, VALUE_FACTORY.createLiteral(roundedLatitude)),
+                    VALUE_FACTORY.createStatement(coordinates, SCHEMA_LONGITUDE, VALUE_FACTORY.createLiteral(roundedLongitude))
+            )
+    ));
   }
 
   /**
@@ -869,6 +919,20 @@ public class Main {
     } catch (ArithmeticException | NumberFormatException e) {
       return Stream.empty();
     }
+  }
+
+  private static Map.Entry<Value, List<Statement>> convertQuantity(Value subject, Resource unit, Value amount, Value lowerBound, Value upperBound) {
+    IRI quantity = VALUE_FACTORY.createIRI(YAGO_VALUE_PREFIX, ((IRI) subject).getLocalName());
+    return Map.entry(
+            quantity,
+            List.of(
+                    VALUE_FACTORY.createStatement(quantity, RDF.TYPE, SCHEMA_QUANTITATIVE_VALUE),
+                    VALUE_FACTORY.createStatement(quantity, SCHEMA_VALUE, amount),
+                    VALUE_FACTORY.createStatement(quantity, SCHEMA_MIN_VALUE, lowerBound),
+                    VALUE_FACTORY.createStatement(quantity, SCHEMA_MAX_VALUE, upperBound),
+                    VALUE_FACTORY.createStatement(quantity, SCHEMA_UNIT_CODE, unit)
+            )
+    );
   }
 
   private static void addUnionOfObject(Model model, Resource subject, IRI predicate, Collection<? extends Value> objects, IRI type) {

@@ -58,6 +58,8 @@ public class JavaStreamEvaluator {
       return toStream((FilterNode<T>) plan);
     } else if (plan instanceof FlatMapNode) {
       return toStream((FlatMapNode<?, T>) plan);
+    } else if (plan instanceof FlatMapFromPairNode) {
+      return toStream((FlatMapFromPairNode<?, ?, T>) plan);
     } else if (plan instanceof IntersectionNode) {
       return toStream((IntersectionNode<T>) plan);
     } else if (plan instanceof KeysNode) {
@@ -95,6 +97,11 @@ public class JavaStreamEvaluator {
 
   private <TI, TO> Stream<TO> toStream(FlatMapNode<TI, TO> plan) {
     return toStream(plan.getParent()).flatMap(plan.getFunction());
+  }
+
+  private <KI, VI, TO> Stream<TO> toStream(FlatMapFromPairNode<KI, VI, TO> plan) {
+    BiFunction<KI, VI, Stream<TO>> fn = plan.getFunction();
+    return toStream(plan.getParent()).flatMap(e -> fn.apply(e.getKey(), e.getValue()));
   }
 
   private <T> Stream<T> toStream(IntersectionNode<T> plan) {
