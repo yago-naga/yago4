@@ -175,9 +175,11 @@ public class Main {
             outputDir, "yago-wd-class.nt"
     );
 
+    generateNTFile(buildSimpleInstanceOf(yagoShapeInstances), outputDir, "yago-wd-simple-types.nt");
+
     generateNTFile(
-            buildInstanceOf(yagoShapeInstances.get(SCHEMA_THING), yagoClasses, partitionedStatements, wikidataToYagoUrisMapping),
-            outputDir, "yago-wd-types.nt"
+            buildFullInstanceOf(yagoShapeInstances.get(SCHEMA_THING), yagoClasses, partitionedStatements, wikidataToYagoUrisMapping),
+            outputDir, "yago-wd-full-types.nt"
     );
 
     generateNTFile(
@@ -333,7 +335,14 @@ public class Main {
     }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  private static PlanNode<Statement> buildInstanceOf(PlanNode<Resource> yagoThings, PlanNode<Resource> yagoClasses, PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+  private static PlanNode<Statement> buildSimpleInstanceOf(Map<Resource, PlanNode<Resource>> yagoShapeInstances) {
+    return yagoShapeInstances.entrySet().stream().map(e -> {
+      Resource object = e.getKey();
+      return e.getValue().map(subject -> VALUE_FACTORY.createStatement(subject, RDF.TYPE, object));
+    }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
+  }
+
+  private static PlanNode<Statement> buildFullInstanceOf(PlanNode<Resource> yagoThings, PlanNode<Resource> yagoClasses, PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31))
             .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()));
 
