@@ -718,7 +718,7 @@ public class Main {
                   yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, SCHEMA_THING);
                 } else if (cp.equals(SCHEMA_STRUCTURED_VALUE)) {
                   //schema:StructuredValue are not schema:Thing
-                  yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, OWL.THING);
+                  //TODO: breaks Blazegraph yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, OWL.THING);
                 } else { //We ignore schema:Intangible
                   yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, cp);
                 }
@@ -775,7 +775,7 @@ public class Main {
     // Some hardcoded triples
     yagoStatements.add(SCHEMA_NAME, RDFS.SUBPROPERTYOF, RDFS.LABEL);
     yagoStatements.add(SCHEMA_DESCRIPTION, RDFS.SUBPROPERTYOF, RDFS.COMMENT);
-    yagoStatements.add(SCHEMA_THING, RDFS.SUBCLASSOF, OWL.THING);
+    //TODO: breaks Blazegraph yagoStatements.add(SCHEMA_THING, RDFS.SUBCLASSOF, OWL.THING);
     yagoStatements.add(RDF.LANGSTRING, RDF.TYPE, RDFS.DATATYPE);
 
     return PlanNode.fromCollection(yagoStatements);
