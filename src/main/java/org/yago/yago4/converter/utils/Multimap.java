@@ -66,6 +66,10 @@ public abstract class Multimap<K, V> {
     return entries;
   }
 
+  public Set<Map.Entry<K, Collection<V>>> groups() {
+    return inner.entrySet();
+  }
+
   private static final class Entries<K, V> implements Set<Map.Entry<K, V>> {
 
     private final Map<K, Collection<V>> inner;
