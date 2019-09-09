@@ -84,13 +84,6 @@ public class ShaclSchema {
     return model.filter(null, RDF.TYPE, YS_ANNOTATION_PROPERTY_SHAPE).subjects().stream().map(PropertyShape::new);
   }
 
-  public Stream<Resource> getSuperClasses(Resource subClass) {
-    return Stream.concat(
-            Stream.of(subClass),
-            Models.getPropertyResources(model, subClass, RDFS.SUBCLASSOF).stream().flatMap(this::getSuperClasses)
-    );
-  }
-
   public Optional<Class> getClass(Resource term) {
     if (model.contains(term, RDF.TYPE, RDFS.CLASS) || model.contains(term, RDF.TYPE, OWL.CLASS)) {
       return Optional.of(new Class(term));
@@ -137,8 +130,8 @@ public class ShaclSchema {
 
     @Override
     public Stream<Resource> getClasses() {
-      //TODO: simplify with rdfs:subClassOf
-      return Models.getPropertyResources(model, id, SH_TARGET_CLASS).stream();
+      var classes = Models.getPropertyResources(model, id, SH_TARGET_CLASS);
+      return classes.isEmpty() ? Stream.of(id) : classes.stream();
     }
 
     @Override

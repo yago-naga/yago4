@@ -12,8 +12,7 @@
 @prefix ys: <http://yago-knowledge.org/schema#> .
 
 
-ys:BioChemEntity a sh:NodeShape ;
-    sh:targetClass bioschema:BioChemEntity ;
+bioschema:BioChemEntity a sh:NodeShape ;
     sh:property [
         sh:path bioschema:bioChemInteraction ;
         sh:node ys:BioChemEntity ;
@@ -46,8 +45,7 @@ ys:BioChemEntity a sh:NodeShape ;
     ] .
 
 
-ys:ChemicalSubstance a sh:NodeShape ;
-    sh:targetClass bioschema:ChemicalSubstance ;
+bioschema:ChemicalSubstance a sh:NodeShape ;
     ys:fromClass wd:Q79529 ;
     sh:property [
         sh:path bioschema:molecularFormula ;
@@ -57,8 +55,7 @@ ys:ChemicalSubstance a sh:NodeShape ;
     ] .
 
 
-ys:Gene a sh:NodeShape ;
-    sh:targetClass bioschema:Gene ;
+bioschema:Gene a sh:NodeShape ;
     ys:fromClass wd:Q7187 ;
     sh:property [
         sh:path bioschema:encodesBioChemEntity ;
@@ -72,8 +69,7 @@ ys:Gene a sh:NodeShape ;
     ] .
 
 
-ys:MolecularEntity a sh:NodeShape ;
-    sh:targetClass bioschema:MolecularEntity ;
+bioschema:MolecularEntity a sh:NodeShape ;
     ys:fromClass wd:Q2393187 ;
     sh:property [
         sh:path bioschema:inChI ;
@@ -102,13 +98,11 @@ ys:MolecularEntity a sh:NodeShape ;
         ys:fromProperty wdt:P233 ;
     ] .
 
-ys:Protein a sh:NodeShape ;
-    sh:targetClass bioschema:Protein ;
+bioschema:Protein a sh:NodeShape ;
     ys:fromClass wd:Q8054 .
 
 
-ys:Taxon a sh:NodeShape ;
-    sh:targetClass bioschema:Taxon ;
+bioschema:Taxon a sh:NodeShape ;
     ys:fromClass wd:Q16521 ;
     sh:property [
         sh:path bioschema:parentTaxon ;

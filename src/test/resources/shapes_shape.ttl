@@ -12,12 +12,13 @@
 
 yss:NodeShapeShape a sh:NodeShape ;
     sh:targetClass sh:NodeShape ;
-    sh:closed true ;
+    sh:property [
+        sh:path rdf:type ;
+        sh:value rdfs:Class ;
+    ] ;
     sh:property [
         sh:path sh:targetClass ;
-        sh:class rdfs:Class ;
-        sh:minCount 1 ;
-        sh:maxCount 1 ;
+        sh:maxCount 0 ;
     ] ;
     sh:property [
         sh:path ys:fromClass ;

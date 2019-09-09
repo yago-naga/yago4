@@ -15,8 +15,7 @@ ys:
 	rdfs:label "Yago 4 shapes declaration"@en .
 
 
-ys:Thing a sh:NodeShape ;
-    sh:targetClass schema:Thing ;
+schema:Thing a sh:NodeShape ;
     ys:fromClass wd:Q35120 ;
     sh:property [
         sh:path schema:alternateName ;
@@ -47,8 +46,7 @@ ys:Thing a sh:NodeShape ;
         ys:fromProperty wdt:P856 ;
     ] .
 
-ys:Brand a sh:NodeShape ;
-    sh:targetClass schema:Brand ;
+schema:Brand a sh:NodeShape ;
     ys:fromClass wd:Q431289 ;
     sh:property [
         sh:path schema:logo ;
@@ -56,8 +54,7 @@ ys:Brand a sh:NodeShape ;
         ys:fromProperty wdt:P154 ;
     ] .
 
-ys:CreativeWork a sh:NodeShape ;
-    sh:targetClass schema:CreativeWork ;
+schema:CreativeWork a sh:NodeShape ;
     ys:fromClass wd:Q386724 , wd:Q3331189 ;
     sh:property [
         sh:path schema:about ;
@@ -304,8 +301,7 @@ ys:CreativeWork a sh:NodeShape ;
     ] .
 
 
-ys:Article a sh:NodeShape ;
-    sh:targetClass schema:Article ;
+schema:Article a sh:NodeShape ;
     ys:fromClass wd:Q191067 ;
     sh:property [
         sh:path schema:pagination ; # TODO: pattern
@@ -314,21 +310,17 @@ ys:Article a sh:NodeShape ;
     ] .
 
 
-ys:NewsArticle a sh:NodeShape ;
-    sh:targetClass schema:NewsArticle ;
+schema:NewsArticle a sh:NodeShape ;
     ys:fromClass wd:Q11032 .
 
 
-ys:ScholarlyArticle a sh:NodeShape ;
-    sh:targetClass schema:ScholarlyArticle ;
+schema:ScholarlyArticle a sh:NodeShape ;
     ys:fromClass wd:Q13442814 .
 
-ys:Blog a sh:NodeShape ;
-    sh:targetClass schema:Blog ;
+schema:Blog a sh:NodeShape ;
     ys:fromClass wd:Q30849 .
 
-ys:Book a sh:NodeShape ;
-    sh:targetClass schema:Book ;
+schema:Book a sh:NodeShape ;
     ys:fromClass wd:Q571 ;
     sh:property [
         sh:path schema:illustrator ;
@@ -349,8 +341,7 @@ ys:Book a sh:NodeShape ;
     ] .
 
 
-ys:CreativeWorkSeason a sh:NodeShape ;
-    sh:targetClass schema:CreativeWorkSeason ;
+schema:CreativeWorkSeason a sh:NodeShape ;
     sh:property [
         sh:path schema:actor ;
         sh:node ys:Person ;
@@ -373,8 +364,7 @@ ys:CreativeWorkSeason a sh:NodeShape ;
         ys:fromProperty wdt:P272 ;
     ] .
 
-ys:TVSeason a sh:NodeShape ;
-    sh:targetClass schema:TVSeason ;
+schema:TVSeason a sh:NodeShape ;
     ys:fromClass wd:Q3464665 ;
     sh:property [
         sh:path schema:countryOfOrigin ;
@@ -383,8 +373,7 @@ ys:TVSeason a sh:NodeShape ;
     ] .
 
 
-ys:CreativeWorkSeries a sh:NodeShape ;
-    sh:targetClass schema:CreativeWorkSeries ;
+schema:CreativeWorkSeries a sh:NodeShape ;
     ys:fromClass wd:Q7725310 ;
     sh:property [
         sh:path schema:issn ;
@@ -395,18 +384,15 @@ ys:CreativeWorkSeries a sh:NodeShape ;
     ] .
 
 
-ys:BookSeries a sh:NodeShape ;
-    sh:targetClass schema:BookSeries ;
+schema:BookSeries a sh:NodeShape ;
     ys:fromClass wd:Q277759 .
 
 
-ys:ComicSeries a sh:NodeShape ;
-    sh:targetClass schema:ComicSeries ;
+schema:ComicSeries a sh:NodeShape ;
     ys:fromClass wd:Q14406742 .
 
 
-ys:MovieSeries a sh:NodeShape ;
-    sh:targetClass schema:MovieSeries ;
+schema:MovieSeries a sh:NodeShape ;
     sh:property [
         sh:path schema:actor ;
         sh:node ys:Person ;
@@ -436,13 +422,11 @@ ys:MovieSeries a sh:NodeShape ;
     ] .
 
 
-ys:Periodical a sh:NodeShape ;
-    sh:targetClass schema:Periodical ;
+schema:Periodical a sh:NodeShape ;
     ys:fromClass wd:Q1002697 .
 
 
-ys:RadioSeries a sh:NodeShape ;
-    sh:targetClass schema:RadioSeries ;
+schema:RadioSeries a sh:NodeShape ;
     ys:fromClass wd:Q14623351 ;
     sh:property [
         sh:path schema:actor ;
@@ -485,8 +469,7 @@ ys:RadioSeries a sh:NodeShape ;
     ] .
 
 
-ys:TVSeries a sh:NodeShape ;
-    sh:targetClass schema:TVSeries ;
+schema:TVSeries a sh:NodeShape ;
     ys:fromClass wd:Q5398426 ;
     sh:property [
         sh:path schema:actor ;
@@ -532,8 +515,7 @@ ys:TVSeries a sh:NodeShape ;
         ys:fromProperty wdt:P272 ;
     ] .
 
-ys:VideoGameSeries a sh:NodeShape ;
-    sh:targetClass schema:VideoGameSeries ;
+schema:VideoGameSeries a sh:NodeShape ;
     ys:fromClass wd:Q7058673 ;
     sh:property [
         sh:path schema:director ;
@@ -571,21 +553,16 @@ ys:VideoGameSeries a sh:NodeShape ;
     ] .
 
 
-ys:MediaObject a sh:NodeShape ;
-    sh:targetClass schema:MediaObject .
+schema:MediaObject a sh:NodeShape .
 
-ys:AudioObject a sh:NodeShape ;
-    sh:targetClass schema:AudioObject .
+schema:AudioObject a sh:NodeShape .
 
-ys:ImageObject a sh:NodeShape ;
-    sh:targetClass schema:ImageObject .
+schema:ImageObject a sh:NodeShape .
 
-ys:VideoObject a sh:NodeShape ;
-    sh:targetClass schema:VideoObject .
+schema:VideoObject a sh:NodeShape .
 
 
-ys:ComicStory a sh:NodeShape ;
-    sh:targetClass schema:ComicStory ;
+schema:ComicStory a sh:NodeShape ;
     ys:fromClass wd:Q1004 ;
     sh:property [
         sh:path schema:colorist ;
@@ -594,8 +571,7 @@ ys:ComicStory a sh:NodeShape ;
     ] .
 
 
-ys:Episode a sh:NodeShape ;
-    sh:targetClass schema:Episode ;
+schema:Episode a sh:NodeShape ;
     ys:fromClass wd:Q1983062 ;
     sh:property [
         sh:path schema:actor ;
@@ -635,8 +611,7 @@ ys:Episode a sh:NodeShape ;
         ys:fromProperty wdt:P272 ;
     ] .
 
-ys:TVEpisode a sh:NodeShape ;
-    sh:targetClass schema:TVEpisode ;
+schema:TVEpisode a sh:NodeShape ;
     ys:fromClass wd:Q21191270 ;
     sh:property [
         sh:path schema:countryOfOrigin ;
@@ -645,13 +620,11 @@ ys:TVEpisode a sh:NodeShape ;
     ] .
 
 
-ys:Game a sh:NodeShape ;
-    sh:targetClass schema:Game ;
+schema:Game a sh:NodeShape ;
     ys:fromClass wd:Q11410 .
 
 
-ys:MusicComposition a sh:NodeShape ;
-    sh:targetClass schema:MusicComposition ;
+schema:MusicComposition a sh:NodeShape ;
     ys:fromClass wd:Q207628 ;
     sh:property [
         sh:path schema:composer ;
@@ -686,11 +659,9 @@ ys:MusicComposition a sh:NodeShape ;
     ] .
 
 
-ys:MusicPlaylist a sh:NodeShape ;
-   sh:targetClass schema:MusicPlaylist .
+schema:MusicPlaylist a sh:NodeShape .
 
-ys:MusicAlbum a sh:NodeShape ;
-   sh:targetClass schema:MusicAlbum ;
+schema:MusicAlbum a sh:NodeShape ;
    ys:fromClass wd:Q482994 ;
    sh:property [
        sh:path schema:byArtist ;
@@ -699,8 +670,7 @@ ys:MusicAlbum a sh:NodeShape ;
    ] .
 
 
-ys:Movie a sh:NodeShape ;
-    sh:targetClass schema:Movie ;
+schema:Movie a sh:NodeShape ;
     ys:fromClass wd:Q11424 ;
     sh:property [
         sh:path schema:actor ;
@@ -741,13 +711,11 @@ ys:Movie a sh:NodeShape ;
     ] .
 
 
-ys:Painting a sh:NodeShape ;
-    sh:targetClass schema:Painting ;
+schema:Painting a sh:NodeShape ;
     ys:fromClass wd:Q3305213 .
 
 
-ys:PublicationIssue a sh:NodeShape ;
-    sh:targetClass schema:PublicationIssue ;
+schema:PublicationIssue a sh:NodeShape ;
     sh:property [
         sh:path schema:pagination ;
         sh:datatype xsd:string ;
@@ -760,8 +728,7 @@ ys:PublicationIssue a sh:NodeShape ;
     ] .
 
 
-ys:PublicationVolume a sh:NodeShape ;
-    sh:targetClass schema:PublicationVolume ;
+schema:PublicationVolume a sh:NodeShape ;
     ys:fromClass wd:Q1238720 ;
     sh:property [
         sh:path schema:pagination ;
@@ -774,8 +741,7 @@ ys:PublicationVolume a sh:NodeShape ;
         ys:fromProperty wdt:P478 ;
     ] .
 
-ys:SoftwareApplication a sh:NodeShape ;
-    sh:targetClass schema:SoftwareApplication ;
+schema:SoftwareApplication a sh:NodeShape ;
     ys:fromClass wd:Q166142 ;
     sh:property [
         sh:path schema:operatingSystem ;
@@ -783,8 +749,7 @@ ys:SoftwareApplication a sh:NodeShape ;
         ys:fromProperty wdt:P306 ;
     ] .
 
-ys:VideoGame a sh:NodeShape ;
-    sh:targetClass schema:VideoGame ;
+schema:VideoGame a sh:NodeShape ;
     ys:fromClass wd:Q7889 ;
     sh:property [
         sh:path schema:actor ;
@@ -809,8 +774,7 @@ ys:VideoGame a sh:NodeShape ;
         ys:fromProperty wdt:P86 ;
     ] .
 
-ys:VisualArtwork a sh:NodeShape ;
-    sh:targetClass schema:VisualArtwork ;
+schema:VisualArtwork a sh:NodeShape ;
     ys:fromClass wd:Q4502142 ;
     sh:property [
         sh:path schema:colorist ;
@@ -833,8 +797,7 @@ ys:VisualArtwork a sh:NodeShape ;
         ys:fromProperty wdt:P2049 ;
     ] .
 
-ys:Event a sh:NodeShape ;
-    sh:targetClass schema:Event ;
+schema:Event a sh:NodeShape ;
     ys:fromClass wd:Q1656682 ;
     sh:property [
         sh:path schema:about ;
@@ -951,18 +914,15 @@ ys:Event a sh:NodeShape ;
     ] .
 
 
-ys:Language a sh:NodeShape ;
-    ys:fromClass wd:Q34770 ;
-    sh:targetClass schema:Language .
+schema:Language a sh:NodeShape ;
+    ys:fromClass wd:Q34770 .
 
 
-ys:Occupation a sh:NodeShape ;
-    sh:targetClass schema:Occupation ;
+schema:Occupation a sh:NodeShape ;
     ys:fromClass wd:Q12737077 .
 
 
-ys:Organization a sh:NodeShape ;
-    sh:targetClass schema:Organization ;
+schema:Organization a sh:NodeShape ;
     ys:fromClass wd:Q43229 ;
     sh:property [
         sh:path schema:award ;
@@ -1099,8 +1059,7 @@ ys:Organization a sh:NodeShape ;
         ys:fromProperty wdt:P1329 ;
     ] .
 
-ys:Airline a sh:NodeShape ;
-    sh:targetClass schema:Airline ;
+schema:Airline a sh:NodeShape ;
     ys:fromClass wd:Q46970 ;
     sh:property [
         sh:path schema:iataCode ;
@@ -1118,16 +1077,13 @@ ys:Airline a sh:NodeShape ;
     ] .
 
 
-ys:Corporation a sh:NodeShape ;
-    sh:targetClass schema:Corporation ;
+schema:Corporation a sh:NodeShape ;
     ys:fromClass wd:Q167037 .
 
 
-ys:PerformingGroup a sh:NodeShape ;
-    sh:targetClass schema:PerformingGroup .
+schema:PerformingGroup a sh:NodeShape .
 
-ys:MusicGroup a sh:NodeShape ;
-    sh:targetClass schema:MusicGroup ;
+schema:MusicGroup a sh:NodeShape ;
     ys:fromClass wd:Q215380 ;
     sh:property [
         sh:path schema:genre ;
@@ -1136,8 +1092,7 @@ ys:MusicGroup a sh:NodeShape ;
     ] .
 
 
-ys:Person a sh:NodeShape ;
-    sh:targetClass schema:Person ;
+schema:Person a sh:NodeShape ;
     ys:fromClass wd:Q215627 , wd:Q5 ;
     sh:property [
         sh:path schema:affiliation ;
@@ -1307,8 +1262,7 @@ ys:Person a sh:NodeShape ;
         ys:fromProperty wdt:P108 ;
     ] . #TODO: netWorth
 
-ys:Place a sh:NodeShape ;
-    sh:targetClass schema:Place ;
+schema:Place a sh:NodeShape ;
     ys:fromClass wd:Q17334923 ;
     sh:property [
         sh:path schema:containsPlace ;
@@ -1350,16 +1304,13 @@ ys:Place a sh:NodeShape ;
     ] . #TODO: address,
 
 
-ys:AdministrativeArea a sh:NodeShape ;
-    sh:targetClass schema:AdministrativeArea ;
+schema:AdministrativeArea a sh:NodeShape ;
     ys:fromClass wd:Q56061 .
 
-ys:Country a sh:NodeShape ;
-    sh:targetClass schema:Country ;
+schema:Country a sh:NodeShape ;
     ys:fromClass wd:Q6256 .
 
-ys:City a sh:NodeShape ;
-    sh:targetClass schema:City ;
+schema:City a sh:NodeShape ;
     ys:fromClass wd:Q515 ;
     sh:property [
         sh:path schema:iataCode ;
@@ -1369,11 +1320,9 @@ ys:City a sh:NodeShape ;
         ys:fromProperty wdt:P238 ;
     ] .
 
-ys:CivicStructure a sh:NodeShape ;
-    sh:targetClass schema:CivicStructure .
+schema:CivicStructure a sh:NodeShape .
 
-ys:Airport a sh:NodeShape ;
-    sh:targetClass schema:Airport ;
+schema:Airport a sh:NodeShape ;
     ys:fromClass wd:Q1248784 ;
     sh:property [
         sh:path schema:iataCode ;
@@ -1390,12 +1339,10 @@ ys:Airport a sh:NodeShape ;
         ys:fromProperty wdt:P239 ;
     ] .
 
-ys:LocalBusiness a sh:NodeShape ;
-    sh:targetClass schema:LocalBusiness ;
+schema:LocalBusiness a sh:NodeShape ;
     ys:fromClass wd:Q62849941 .
 
-ys:FoodEstablishment a sh:NodeShape ;
-    sh:targetClass schema:FoodEstablishment ;
+schema:FoodEstablishment a sh:NodeShape ;
     ys:fromClass wd:Q27038993 ;
     sh:property [
         sh:path schema:servesCuisine ;
@@ -1403,8 +1350,7 @@ ys:FoodEstablishment a sh:NodeShape ;
         ys:fromProperty wdt:P2012 ;
     ] .
 
-ys:Product a sh:NodeShape ;
-    sh:targetClass schema:Product ;
+schema:Product a sh:NodeShape ;
     ys:fromClass wd:Q2424752 , wd:Q1485500 ;
     sh:property [
         sh:path schema:award ;
@@ -1461,26 +1407,22 @@ ys:Product a sh:NodeShape ;
         ys:fromProperty wdt:P2049 ;
     ] .
 
-ys:ProductModel a sh:NodeShape ;
-    sh:targetClass schema:ProductModel ;
+schema:ProductModel a sh:NodeShape ;
     ys:fromClass wd:Q17444171 .
 
 
-ys:Rating a sh:NodeShape ;
-    sh:targetClass schema:Rating ;
+schema:Rating a sh:NodeShape ;
     ys:fromClass wd:Q23649976 .
 
 
-ys:Series a sh:NodeShape ;
-    sh:targetClass schema:Series .
+schema:Series a sh:NodeShape .
 
 
 ys:AnnotationPropertyShape a rdfs:Property ;
     rdfs:subPropertyOf sh:PropertyShape .
 
 
-ys:GeoCoordinates a sh:NodeShape ;
-    sh:targetClass schema:GeoCoordinates ;
+schema:GeoCoordinates a sh:NodeShape ;
     sh:property [
         sh:path schema:latitude ;
         sh:datatype xsd:double ;
@@ -1495,8 +1437,7 @@ ys:GeoCoordinates a sh:NodeShape ;
     ] .
 
 
-ys:QuantitativeValue a sh:NodeShape ;
-    sh:targetClass schema:QuantitativeValue ;
+schema:QuantitativeValue a sh:NodeShape ;
     sh:property [
         sh:path schema:value ;
         sh:datatype xsd:decimal ;
