@@ -355,7 +355,6 @@ public class Main {
   }
 
   private static PlanNode<Statement> buildClassesDescription(PlanNode<Resource> yagoClasses, PairPlanNode<Resource, Resource> yagoSuperClassOf, PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
-    var yagoRdfsClassTriple = yagoClasses.map(c -> VALUE_FACTORY.createStatement(c, RDF.TYPE, RDFS.CLASS));
     var yagoOwlClassTriple = yagoClasses.map(c -> VALUE_FACTORY.createStatement(c, RDF.TYPE, OWL.CLASS));
 
     var yagoSubClassOf = yagoSuperClassOf.map((o, s) -> VALUE_FACTORY.createStatement(s, RDFS.SUBCLASSOF, o));
@@ -372,7 +371,7 @@ public class Main {
             .intersection(yagoClasses)
             .map((s, o) -> VALUE_FACTORY.createStatement(s, RDFS.COMMENT, o));
 
-    return yagoSubClassOf.union(yagoRdfsClassTriple).union(yagoOwlClassTriple).union(rdfsLabel).union(rdfsComment);
+    return yagoSubClassOf.union(yagoOwlClassTriple).union(rdfsLabel).union(rdfsComment);
   }
 
   /**
