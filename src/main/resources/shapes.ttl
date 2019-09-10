@@ -30,7 +30,7 @@ schema:Thing a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:image ;
-        sh:node ys:ImageObject ;
+        sh:node schema:ImageObject ;
         ys:fromProperty wdt:P18 ;
     ] ;
     sh:property [
@@ -50,7 +50,7 @@ schema:Brand a sh:NodeShape ;
     ys:fromClass wd:Q431289 ;
     sh:property [
         sh:path schema:logo ;
-        sh:node ys:ImageObject ;
+        sh:node schema:ImageObject ;
         ys:fromProperty wdt:P154 ;
     ] .
 
@@ -58,49 +58,49 @@ schema:CreativeWork a sh:NodeShape ;
     ys:fromClass wd:Q386724 , wd:Q3331189 ;
     sh:property [
         sh:path schema:about ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P921 ;
     ] ;
     sh:property [
         sh:path schema:award ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P166 ;
     ] ;
     sh:property [
         sh:path schema:author ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P50 ;
     ] ;
     sh:property [
         sh:path schema:citation ;
-        sh:node ys:CreativeWork ;
+        sh:node schema:CreativeWork ;
         ys:fromProperty wdt:P2860 ;
     ] ;
     sh:property [
         sh:path schema:character ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P674 ;
     ] ;
     sh:property [
         sh:path schema:contentLocation ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P840 ;
     ] ;
     sh:property [
         sh:path schema:contributor ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P767 ;
@@ -109,10 +109,10 @@ schema:CreativeWork a sh:NodeShape ;
         sh:path schema:copyrightHolder ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P3931 ;
@@ -121,10 +121,10 @@ schema:CreativeWork a sh:NodeShape ;
         sh:path schema:creator ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P170 ;
@@ -169,12 +169,12 @@ schema:CreativeWork a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:editor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P98 ;
     ] ;
     sh:property [
         sh:path schema:exampleOfWork ;
-        sh:node ys:CreativeWork ;
+        sh:node schema:CreativeWork ;
         ys:fromProperty wdt:P629 ;
     ] ;
     sh:property [
@@ -186,42 +186,42 @@ schema:CreativeWork a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:genre ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P136 ;
     ] ;
     sh:property [
         sh:path schema:hasPart ;
-        sh:node ys:CreativeWork ;
+        sh:node schema:CreativeWork ;
         ys:fromProperty wdt:P527 ;
     ] ;
     sh:property [
         sh:path schema:inLanguage ;
-        sh:node ys:Language ;
+        sh:node schema:Language ;
         ys:fromProperty wdt:P407 ;
     ] ;
     sh:property [
         sh:path schema:isBasedOn ;
-        sh:node ys:CreativeWork ;
+        sh:node schema:CreativeWork ;
         ys:fromProperty wdt:P144 ;
     ] ;
     sh:property [
         sh:path schema:isPartOf ;
-        sh:node ys:CreativeWork ;
+        sh:node schema:CreativeWork ;
         ys:fromProperty wdt:P195 , wdt:P361 , wdt:P1433 ; # TODO: map with P195 (collection?)
     ] ;
     sh:property [
         sh:path schema:license ;
-        sh:node ys:CreativeWork ;
+        sh:node schema:CreativeWork ;
         ys:fromProperty wdt:P275 ;
     ] ;
     sh:property [
         sh:path schema:locationCreated ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P1071 ;
     ] ;
     sh:property [
         sh:path schema:material ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P186 ;
     ] ;
     sh:property [
@@ -233,10 +233,10 @@ schema:CreativeWork a sh:NodeShape ;
         sh:path schema:producer ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P162 ;
@@ -245,10 +245,10 @@ schema:CreativeWork a sh:NodeShape ;
         sh:path schema:provider ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P176 ;
@@ -257,27 +257,27 @@ schema:CreativeWork a sh:NodeShape ;
         sh:path schema:publisher ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P123 ;
     ] ;
     sh:property [
         sh:path schema:contentRating ;
-        sh:node ys:Rating ;
+        sh:node schema:Rating ;
         ys:fromProperty wdt:P1657 , wdt:P1981 , wdt:P2747 , wdt:P5970 , wdt:P6452 ;
     ] ;
     sh:property [
         sh:path schema:sponsor ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P859 ;
@@ -286,17 +286,17 @@ schema:CreativeWork a sh:NodeShape ;
         sh:path schema:translator ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P655 ;
     ] ;
     sh:property [
         sh:path schema:workExample ;
-        sh:node ys:CreativeWork ;
+        sh:node schema:CreativeWork ;
         ys:fromProperty wdt:P747 ;
     ] .
 
@@ -324,7 +324,7 @@ schema:Book a sh:NodeShape ;
     ys:fromClass wd:Q571 ;
     sh:property [
         sh:path schema:illustrator ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P110 ;
     ] ;
     sh:property [ #TODO: pattern
@@ -344,7 +344,7 @@ schema:Book a sh:NodeShape ;
 schema:CreativeWorkSeason a sh:NodeShape ;
     sh:property [
         sh:path schema:actor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
@@ -355,12 +355,12 @@ schema:CreativeWorkSeason a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:partOfSeries ;
-        sh:node ys:CreativeWorkSeries ;
+        sh:node schema:CreativeWorkSeries ;
         ys:fromProperty wdt:P179 ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P272 ;
     ] .
 
@@ -368,7 +368,7 @@ schema:TVSeason a sh:NodeShape ;
     ys:fromClass wd:Q3464665 ;
     sh:property [
         sh:path schema:countryOfOrigin ;
-        sh:node ys:Country ;
+        sh:node schema:Country ;
         ys:fromProperty wdt:P495 ;
     ] .
 
@@ -395,29 +395,29 @@ schema:ComicSeries a sh:NodeShape ;
 schema:MovieSeries a sh:NodeShape ;
     sh:property [
         sh:path schema:actor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
         sh:path schema:director ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
         sh:path schema:musicBy ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P272 ;
     ] .
 
@@ -430,22 +430,22 @@ schema:RadioSeries a sh:NodeShape ;
     ys:fromClass wd:Q14623351 ;
     sh:property [
         sh:path schema:actor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
         sh:path schema:director ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
         sh:path schema:musicBy ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
@@ -464,7 +464,7 @@ schema:RadioSeries a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P272 ;
     ] .
 
@@ -473,17 +473,17 @@ schema:TVSeries a sh:NodeShape ;
     ys:fromClass wd:Q5398426 ;
     sh:property [
         sh:path schema:actor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
         sh:path schema:countryOfOrigin ;
-        sh:node ys:Country ;
+        sh:node schema:Country ;
         ys:fromProperty wdt:P495 ;
     ] ;
     sh:property [
         sh:path schema:director ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
     ] ;
     sh:property [
         sh:path schema:numberOfEpisodes ;
@@ -501,17 +501,17 @@ schema:TVSeries a sh:NodeShape ;
         sh:path schema:musicBy ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P272 ;
     ] .
 
@@ -519,17 +519,17 @@ schema:VideoGameSeries a sh:NodeShape ;
     ys:fromClass wd:Q7058673 ;
     sh:property [
         sh:path schema:director ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
         sh:path schema:musicBy ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
@@ -548,7 +548,7 @@ schema:VideoGameSeries a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P272 ;
     ] .
 
@@ -566,7 +566,7 @@ schema:ComicStory a sh:NodeShape ;
     ys:fromClass wd:Q1004 ;
     sh:property [
         sh:path schema:colorist ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P6338 ;
     ] .
 
@@ -575,39 +575,39 @@ schema:Episode a sh:NodeShape ;
     ys:fromClass wd:Q1983062 ;
     sh:property [
         sh:path schema:actor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
         sh:path schema:director ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
         sh:path schema:musicBy ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
         sh:path schema:partOfSeason ;
-        sh:node ys:CreativeWorkSeason ;
+        sh:node schema:CreativeWorkSeason ;
         ys:fromProperty wdt:P4908 ;
     ] ;
     sh:property [
         sh:path schema:partOfSeries ;
-        sh:node ys:CreativeWorkSeries ;
+        sh:node schema:CreativeWorkSeries ;
         ys:fromProperty wdt:P179 ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P272 ;
     ] .
 
@@ -615,7 +615,7 @@ schema:TVEpisode a sh:NodeShape ;
     ys:fromClass wd:Q21191270 ;
     sh:property [
         sh:path schema:countryOfOrigin ;
-        sh:node ys:Country ;
+        sh:node schema:Country ;
         ys:fromProperty wdt:P495 ;
     ] .
 
@@ -630,10 +630,10 @@ schema:MusicComposition a sh:NodeShape ;
         sh:path schema:composer ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
@@ -649,10 +649,10 @@ schema:MusicComposition a sh:NodeShape ;
         sh:path schema:lyricist ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P676 ;
@@ -665,7 +665,7 @@ schema:MusicAlbum a sh:NodeShape ;
    ys:fromClass wd:Q482994 ;
    sh:property [
        sh:path schema:byArtist ;
-       sh:node ys:MusicGroup ;
+       sh:node schema:MusicGroup ;
        ys:fromProperty wdt:P175 ;
    ] .
 
@@ -674,17 +674,17 @@ schema:Movie a sh:NodeShape ;
     ys:fromClass wd:Q11424 ;
     sh:property [
         sh:path schema:actor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
         sh:path schema:countryOfOrigin ;
-        sh:node ys:Country ;
+        sh:node schema:Country ;
         ys:fromProperty wdt:P495 ;
     ] ;
     sh:property [
         sh:path schema:director ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
@@ -696,17 +696,17 @@ schema:Movie a sh:NodeShape ;
         sh:path schema:musicBy ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
     ] ;
     sh:property [
         sh:path schema:productionCompany ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P272 ;
     ] .
 
@@ -745,7 +745,7 @@ schema:SoftwareApplication a sh:NodeShape ;
     ys:fromClass wd:Q166142 ;
     sh:property [
         sh:path schema:operatingSystem ;
-        sh:node ys:SoftwareApplication ;
+        sh:node schema:SoftwareApplication ;
         ys:fromProperty wdt:P306 ;
     ] .
 
@@ -753,22 +753,22 @@ schema:VideoGame a sh:NodeShape ;
     ys:fromClass wd:Q7889 ;
     sh:property [
         sh:path schema:actor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P161 ;
     ] ;
     sh:property [
         sh:path schema:director ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P57 ;
     ] ;
     sh:property [
         sh:path schema:musicBy ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
@@ -778,22 +778,22 @@ schema:VisualArtwork a sh:NodeShape ;
     ys:fromClass wd:Q4502142 ;
     sh:property [
         sh:path schema:colorist ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P6338 ;
     ] ;
     sh:property [
         sh:path schema:depth ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P5524 ;
     ] ;
     sh:property [
         sh:path schema:height ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2048 ;
     ] ;
     sh:property [
         sh:path schema:width ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2049 ;
     ] .
 
@@ -801,17 +801,17 @@ schema:Event a sh:NodeShape ;
     ys:fromClass wd:Q1656682 ;
     sh:property [
         sh:path schema:about ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P921 ;
     ] ;
     sh:property [
         sh:path schema:composer ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
@@ -820,10 +820,10 @@ schema:Event a sh:NodeShape ;
         sh:path schema:composer ;
         sh:or (
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
             [
-                sh:node ys:MusicGroup
+                sh:node schema:MusicGroup
             ]
         ) ;
         ys:fromProperty wdt:P86 ;
@@ -832,10 +832,10 @@ schema:Event a sh:NodeShape ;
         sh:path schema:contributor ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P767 ;
@@ -847,7 +847,7 @@ schema:Event a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:location ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
     ] ;
     sh:property [
@@ -892,10 +892,10 @@ schema:Event a sh:NodeShape ;
         sh:path schema:sponsor ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P859 ;
@@ -904,10 +904,10 @@ schema:Event a sh:NodeShape ;
         sh:path schema:translator ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P655 ;
@@ -926,20 +926,20 @@ schema:Organization a sh:NodeShape ;
     ys:fromClass wd:Q43229 ;
     sh:property [
         sh:path schema:award ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P166 ;
     ] ;
     sh:property [
         sh:path schema:brand ;
         sh:or (
            [
-                sh:node ys:Brand ;
+                sh:node schema:Brand ;
            ]
            [
-                sh:node ys:Organization ;
+                sh:node schema:Organization ;
            ]
         ) ;
-        sh:node ys:Brand ;
+        sh:node schema:Brand ;
         ys:fromProperty wdt:P1716 ;
     ] ;
     sh:property [
@@ -976,7 +976,7 @@ schema:Organization a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:founder ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P112 ;
     ] ;
     sh:property [
@@ -1000,12 +1000,12 @@ schema:Organization a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:foundingLocation ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P740 ;
     ] ;
     sh:property [
         sh:path schema:knowsLanguage ;
-        sh:node ys:Language ;
+        sh:node schema:Language ;
         ys:fromProperty wdt:P1412 ;
     ] ;
     sh:property [
@@ -1017,39 +1017,39 @@ schema:Organization a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:location ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
     ] ;
     sh:property [
         sh:path schema:logo ;
-        sh:node ys:ImageObject ;
+        sh:node schema:ImageObject ;
         ys:fromProperty wdt:P154 ;
     ] ;
     sh:property [
         sh:path schema:memberOf ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P463 ;
     ] ;
     sh:property [
         sh:path schema:parentOrganization ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P749 ;
     ] ;
     sh:property [
         sh:path schema:sponsor ;
         sh:or (
             [
-                sh:node ys:Organization
+                sh:node schema:Organization
             ]
             [
-                sh:node ys:Person
+                sh:node schema:Person
             ]
         ) ;
         ys:fromProperty wdt:P859 ;
     ] ;
     sh:property [
         sh:path schema:subOrganization ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P355 ;
     ] ;
     sh:property [
@@ -1087,7 +1087,7 @@ schema:MusicGroup a sh:NodeShape ;
     ys:fromClass wd:Q215380 ;
     sh:property [
         sh:path schema:genre ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P136 ;
     ] .
 
@@ -1096,17 +1096,17 @@ schema:Person a sh:NodeShape ;
     ys:fromClass wd:Q215627 , wd:Q5 ;
     sh:property [
         sh:path schema:affiliation ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P1416 ;
     ] ;
     sh:property [
         sh:path schema:alumniOf ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P69 ;
     ] ;
     sh:property [
         sh:path schema:award ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P166 ;
     ] ;
     sh:property [
@@ -1130,7 +1130,7 @@ schema:Person a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:birthPlace ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P19 ;
     ] ;
@@ -1138,18 +1138,18 @@ schema:Person a sh:NodeShape ;
         sh:path schema:brand ;
         sh:or (
            [
-                sh:node ys:Brand ;
+                sh:node schema:Brand ;
            ]
            [
-                sh:node ys:Organization ;
+                sh:node schema:Organization ;
            ]
         ) ;
-        sh:node ys:Brand ;
+        sh:node schema:Brand ;
         ys:fromProperty wdt:P1716 ;
     ] ;
     sh:property [
         sh:path schema:children ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
        ys:fromProperty wdt:P40 ;
     ] ;
     sh:property [
@@ -1173,7 +1173,7 @@ schema:Person a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:deathPlace ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P20 ;
     ] ;
@@ -1185,64 +1185,64 @@ schema:Person a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:familyName ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P734 ;
     ] ;
     sh:property [
         sh:path schema:givenName ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P735 ;
     ] ;
     sh:property [
         sh:path schema:gender ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P21 ;
     ] ;
     sh:property [
         sh:path schema:hasOccupation ;
-        sh:node ys:Occupation ;
+        sh:node schema:Occupation ;
         ys:fromProperty wdt:P106 ;
     ] ;
     sh:property [
         sh:path schema:height ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2048 ;
     ] ;
     sh:property [
         sh:path schema:homeLocation ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P551 ;
     ] ;
     sh:property [
         sh:path schema:knowsLanguage ;
-        sh:node ys:Language ;
+        sh:node schema:Language ;
         ys:fromProperty wdt:P1412 ;
     ] ;
     sh:property [
         sh:path schema:memberOf ;
-        sh:node ys:Organization ;
+        sh:node schema:Organization ;
         ys:fromProperty wdt:P463 , wdt:P54 , wdt:P102 ;
     ] ;
     sh:property [
         sh:path schema:nationality ;
-        sh:node ys:Country ;
+        sh:node schema:Country ;
         ys:fromProperty wdt:P27 ;
     ] ;
     sh:property [
         sh:path schema:owns ;
-        sh:node ys:Product ;
+        sh:node schema:Product ;
         ys:fromProperty wdt:P1830 ;
     ] ;
     sh:property [
         sh:path schema:parent ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         sh:maxCount 2 ;
         ys:fromProperty wdt:P22 , wdt:P25 ;
     ] ;
     sh:property [
         sh:path schema:spouse ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P26 ;
     ] ;
     sh:property [
@@ -1253,12 +1253,12 @@ schema:Person a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:weight ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2067 ;
     ] ;
     sh:property [
         sh:path schema:worksFor ;
-        sh:node ys:Person ;
+        sh:node schema:Person ;
         ys:fromProperty wdt:P108 ;
     ] . #TODO: netWorth
 
@@ -1266,17 +1266,17 @@ schema:Place a sh:NodeShape ;
     ys:fromClass wd:Q17334923 ;
     sh:property [
         sh:path schema:containsPlace ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P150 ;
     ] ;
     sh:property [
         sh:path schema:containedInPlace ;
-        sh:node ys:Place ;
+        sh:node schema:Place ;
         ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
     ] ;
     sh:property [
         sh:path schema:elevation ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2044 ;
     ] ;
     sh:property [
@@ -1287,13 +1287,13 @@ schema:Place a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:geo ;
-        sh:node ys:GeoCoordinates ;
+        sh:node schema:GeoCoordinates ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P625 ;
     ] ;
     sh:property [
         sh:path schema:logo ;
-        sh:node ys:ImageObject ;
+        sh:node schema:ImageObject ;
         ys:fromProperty wdt:P154 ;
     ] ;
     sh:property [
@@ -1346,7 +1346,7 @@ schema:FoodEstablishment a sh:NodeShape ;
     ys:fromClass wd:Q27038993 ;
     sh:property [
         sh:path schema:servesCuisine ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P2012 ;
     ] .
 
@@ -1354,25 +1354,25 @@ schema:Product a sh:NodeShape ;
     ys:fromClass wd:Q2424752 , wd:Q1485500 ;
     sh:property [
         sh:path schema:award ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P166 ;
     ] ;
     sh:property [
         sh:path schema:brand ;
         sh:or (
            [
-                sh:node ys:Brand ;
+                sh:node schema:Brand ;
            ]
            [
-                sh:node ys:Organization ;
+                sh:node schema:Organization ;
            ]
         ) ;
-        sh:node ys:Brand ;
+        sh:node schema:Brand ;
         ys:fromProperty wdt:P1716 ;
     ] ;
     sh:property [
         sh:path schema:depth ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P5524 ;
     ] ;
     sh:property [
@@ -1383,27 +1383,27 @@ schema:Product a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:height ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2048 ;
     ] ;
     sh:property [
         sh:path schema:logo ;
-        sh:node ys:ImageObject ;
+        sh:node schema:ImageObject ;
         ys:fromProperty wdt:P154 ;
     ] ;
     sh:property [
         sh:path schema:material ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P186 ;
     ] ;
     sh:property [
         sh:path schema:weight ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2067 ;
     ] ;
     sh:property [
         sh:path schema:width ;
-        sh:node ys:QuantitativeValue ;
+        sh:node schema:QuantitativeValue ;
         ys:fromProperty wdt:P2049 ;
     ] .
 
@@ -1458,7 +1458,7 @@ schema:QuantitativeValue a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path schema:unitCode ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         sh:minCount 1 ;
         sh:maxCount 1 ;
     ] .

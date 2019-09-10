@@ -15,32 +15,32 @@
 bioschema:BioChemEntity a sh:NodeShape ;
     sh:property [
         sh:path bioschema:bioChemInteraction ;
-        sh:node ys:BioChemEntity ;
+        sh:node bioschema:BioChemEntity ;
         ys:fromProperty wdt:P769 ;
     ] ;
     sh:property [
         sh:path bioschema:hasMolecularFunction ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P680 ;
     ] ;
     sh:property [
         sh:path bioschema:isEncodedByBioChemEntity ;
-        sh:node ys:Gene ;
+        sh:node bioschema:Gene ;
         ys:fromProperty wdt:P702 ;
     ] ;
     sh:property [
         sh:path bioschema:isInvolvedInBiologicalProcess ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P682 ;
     ] ;
     sh:property [
         sh:path bioschema:isLocatedInSubcellularLocation ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P681 ;
     ] ;
     sh:property [
         sh:path bioschema:isLocatedInSubcellularLocation ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P681 ;
     ] .
 
@@ -59,12 +59,12 @@ bioschema:Gene a sh:NodeShape ;
     ys:fromClass wd:Q7187 ;
     sh:property [
         sh:path bioschema:encodesBioChemEntity ;
-        sh:node ys:BioChemEntity ;
+        sh:node bioschema:BioChemEntity ;
         ys:fromProperty wdt:P688 ;
     ] ;
     sh:property [
         sh:path bioschema:expressedIn ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P5572 ;
     ] .
 
@@ -106,11 +106,11 @@ bioschema:Taxon a sh:NodeShape ;
     ys:fromClass wd:Q16521 ;
     sh:property [
         sh:path bioschema:parentTaxon ;
-        sh:node ys:Taxon ;
+        sh:node bioschema:Taxon ;
         ys:fromProperty wdt:P171 ;
     ] ;
     sh:property [
         sh:path bioschema:taxonRank ;
-        sh:node ys:Thing ;
+        sh:node schema:Thing ;
         ys:fromProperty wdt:P105 ;
     ] .
