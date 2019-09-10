@@ -197,6 +197,8 @@ public class Main {
     );
 
     generateNTFile(buildYagoSchema(), outputDir, "yago-wd-schema.nt");
+
+    generateNTFile(buildYagoShapes(), outputDir, "yago-wd-shapes.nt");
   }
 
   private static void generateNTFile(PlanNode<Statement> stream, Path outputDir, String fileName) {
@@ -786,6 +788,53 @@ public class Main {
     //TODO: breaks Blazegraph yagoStatements.add(SCHEMA_THING, RDFS.SUBCLASSOF, OWL.THING);
     yagoStatements.add(RDF.LANGSTRING, RDF.TYPE, RDFS.DATATYPE);
 
+    return PlanNode.fromCollection(yagoStatements);
+  }
+
+  private static PlanNode<Statement> buildYagoShapes() {
+    Model yagoStatements = new LinkedHashModel();
+
+    ShaclSchema.getSchema().getNodeShapes().forEach(shape -> shape.getClasses().forEach(cls -> {
+              yagoStatements.add(cls, RDF.TYPE, SHACL.NODE_SHAPE);
+              shape.getProperties().forEach(prop -> {
+                Resource propShapeSubject = VALUE_FACTORY.createBNode();
+                yagoStatements.add(cls, SHACL.PROPERTY, propShapeSubject);
+                yagoStatements.add(propShapeSubject, RDF.TYPE, SHACL.PROPERTY_SHAPE);
+                yagoStatements.add(propShapeSubject, SHACL.PATH, prop.getProperty());
+
+                prop.getDatatypes().ifPresent(datatypes -> {
+                  if (datatypes.size() <= 1) {
+                    for (IRI datatype : datatypes) {
+                      yagoStatements.add(propShapeSubject, SHACL.DATATYPE, datatype);
+                    }
+                  } else {
+                    addListObject(yagoStatements, propShapeSubject, SHACL.OR, datatypes.stream().map(datatype -> {
+                      Resource subject = VALUE_FACTORY.createBNode();
+                      yagoStatements.add(subject, SHACL.DATATYPE, datatype);
+                      return subject;
+                    }).collect(Collectors.toList()));
+                  }
+                });
+
+                prop.getNodeShape().ifPresent(nodeShape -> {
+                  List<Resource> nodes = nodeShape.getClasses().collect(Collectors.toList());
+                  if (nodes.size() <= 1) {
+                    for (Resource node : nodes) {
+                      yagoStatements.add(propShapeSubject, SHACL.NODE, node);
+                    }
+                  } else {
+                    addListObject(yagoStatements, propShapeSubject, SHACL.OR, nodes.stream().map(node -> {
+                      Resource subject = VALUE_FACTORY.createBNode();
+                      yagoStatements.add(subject, SHACL.NODE, node);
+                      return subject;
+                    }).collect(Collectors.toList()));
+                  }
+                });
+
+                prop.getPattern().ifPresent(pattern -> yagoStatements.add(propShapeSubject, SHACL.PATTERN, VALUE_FACTORY.createLiteral(pattern.toString())));
+              });
+            })
+    );
     return PlanNode.fromCollection(yagoStatements);
   }
 

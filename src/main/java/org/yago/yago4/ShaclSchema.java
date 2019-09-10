@@ -7,6 +7,7 @@ import org.eclipse.rdf4j.model.util.RDFCollections;
 import org.eclipse.rdf4j.model.vocabulary.OWL;
 import org.eclipse.rdf4j.model.vocabulary.RDF;
 import org.eclipse.rdf4j.model.vocabulary.RDFS;
+import org.eclipse.rdf4j.model.vocabulary.SHACL;
 import org.eclipse.rdf4j.rio.RDFFormat;
 import org.eclipse.rdf4j.rio.RDFParser;
 import org.eclipse.rdf4j.rio.Rio;
@@ -25,18 +26,6 @@ import java.util.stream.Stream;
 public class ShaclSchema {
 
   private static final ValueFactory VALUE_FACTORY = YagoValueFactory.getInstance();
-  private static final IRI SH_DATATYPE = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#datatype");
-  private static final IRI SH_MIN_COUNT = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#minCount");
-  private static final IRI SH_MAX_COUNT = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#maxCount");
-  private static final IRI SH_NODE = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#node");
-  private static final IRI SH_NODE_SHAPE = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#NodeShape");
-  private static final IRI SH_OR = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#or");
-  private static final IRI SH_PATTERN = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#pattern");
-  private static final IRI SH_PATH = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#path");
-  private static final IRI SH_PROPERTY = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#property");
-  private static final IRI SH_PROPERTY_SHAPE = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#PropertyShape");
-  private static final IRI SH_TARGET_CLASS = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#targetClass");
-  private static final IRI SH_UNIQUE_LANG = VALUE_FACTORY.createIRI("http://www.w3.org/ns/shacl#uniqueLang");
   private static final IRI YS_FROM_CLASS = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#fromClass");
   private static final IRI YS_FROM_PROPERTY = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#fromProperty");
   private static final IRI YS_ANNOTATION_PROPERTY_SHAPE = VALUE_FACTORY.createIRI("http://yago-knowledge.org/schema#AnnotationPropertyShape");
@@ -69,14 +58,14 @@ public class ShaclSchema {
   }
 
   public Stream<NodeShape> getNodeShapes() {
-    return model.filter(null, RDF.TYPE, SH_NODE_SHAPE).subjects().stream()
+    return model.filter(null, RDF.TYPE, SHACL.NODE_SHAPE).subjects().stream()
             .map(SingleNodeShape::new);
   }
 
   public Stream<PropertyShape> getPropertyShapes() {
     return Stream.concat(
-            model.filter(null, RDF.TYPE, SH_PROPERTY_SHAPE).subjects().stream(),
-            model.filter(null, SH_PROPERTY, null).objects().stream().map(t -> (Resource) t)
+            model.filter(null, RDF.TYPE, SHACL.PROPERTY_SHAPE).subjects().stream(),
+            model.filter(null, SHACL.PROPERTY, null).objects().stream().map(t -> (Resource) t)
     ).distinct().map(PropertyShape::new);
   }
 
@@ -119,7 +108,7 @@ public class ShaclSchema {
 
     @Override
     public String getName() {
-      return Models.getPropertyResource(model, id, SH_TARGET_CLASS)
+      return Models.getPropertyResource(model, id, SHACL.TARGET_CLASS)
               .flatMap(target -> Models.getPropertyString(model, target, RDFS.LABEL))
               .orElseGet(() ->
                       Models.getPropertyString(model, id, RDFS.LABEL).orElseGet(() ->
@@ -130,13 +119,13 @@ public class ShaclSchema {
 
     @Override
     public Stream<Resource> getClasses() {
-      var classes = Models.getPropertyResources(model, id, SH_TARGET_CLASS);
+      var classes = Models.getPropertyResources(model, id, SHACL.TARGET_CLASS);
       return classes.isEmpty() ? Stream.of(id) : classes.stream();
     }
 
     @Override
     public Stream<PropertyShape> getProperties() {
-      return Models.getPropertyResources(model, id, SH_PROPERTY).stream().map(PropertyShape::new);
+      return Models.getPropertyResources(model, id, SHACL.PROPERTY).stream().map(PropertyShape::new);
     }
 
     @Override
@@ -191,12 +180,15 @@ public class ShaclSchema {
     }
 
     public IRI getProperty() {
-      return Models.getPropertyIRI(model, id, SH_PATH)
+      return Models.getPropertyIRI(model, id, SHACL.PATH)
               .orElseThrow(() -> new IllegalArgumentException("The sh:PropertyShape " + id + " should have a single property sh:path pointing to the IRI of a property"));
     }
 
     public Optional<NodeShape> getParentShape() {
-      Set<Resource> shapes = model.filter(null, SH_PROPERTY, id).subjects();
+      return nodeShapeUnion(model.filter(null, SHACL.PROPERTY, id).subjects());
+    }
+
+    private Optional<NodeShape> nodeShapeUnion(Set<Resource> shapes) {
       switch (shapes.size()) {
         case 0:
           return Optional.empty();
@@ -210,43 +202,35 @@ public class ShaclSchema {
     public Optional<Set<IRI>> getDatatypes() {
       Set<IRI> datatypes = Stream.concat(
               Stream.of(id),
-              Models.getPropertyResources(model, id, SH_OR).stream()
+              Models.getPropertyResources(model, id, SHACL.OR).stream()
                       .flatMap(head -> RDFCollections.asValues(model, head, new ArrayList<>()).stream().map(v -> (Resource) v))
-      ).flatMap(node -> Models.getPropertyIRIs(model, node, SH_DATATYPE).stream())
+      ).flatMap(node -> Models.getPropertyIRIs(model, node, SHACL.DATATYPE).stream())
               .collect(Collectors.toSet());
       return datatypes.isEmpty() ? Optional.empty() : Optional.of(datatypes);
     }
 
     public Optional<NodeShape> getNodeShape() {
-      Set<Resource> shapes = Stream.concat(
+      return nodeShapeUnion(Stream.concat(
               Stream.of(id),
-              Models.getPropertyResources(model, id, SH_OR).stream()
+              Models.getPropertyResources(model, id, SHACL.OR).stream()
                       .flatMap(head -> RDFCollections.asValues(model, head, new ArrayList<>()).stream().map(v -> (Resource) v))
-      ).flatMap(node -> Models.getPropertyResources(model, node, SH_NODE).stream()).collect(Collectors.toSet());
-      switch (shapes.size()) {
-        case 0:
-          return Optional.empty();
-        case 1:
-          return Optional.of(new SingleNodeShape(shapes.iterator().next()));
-        default:
-          return Optional.of(new UnionNodeShape(shapes.stream().map(SingleNodeShape::new)));
-      }
+      ).flatMap(node -> Models.getPropertyResources(model, node, SHACL.NODE).stream()).collect(Collectors.toSet()));
     }
 
     public int getMinCount() {
-      return Models.getPropertyLiteral(model, id, SH_MIN_COUNT).map(Literal::intValue).orElse(0);
+      return Models.getPropertyLiteral(model, id, SHACL.MIN_COUNT).map(Literal::intValue).orElse(0);
     }
 
     public int getMaxCount() {
-      return Models.getPropertyLiteral(model, id, SH_MAX_COUNT).map(Literal::intValue).orElse(Integer.MAX_VALUE);
+      return Models.getPropertyLiteral(model, id, SHACL.MAX_COUNT).map(Literal::intValue).orElse(Integer.MAX_VALUE);
     }
 
     public boolean isUniqueLang() {
-      return model.contains(id, SH_UNIQUE_LANG, VALUE_FACTORY.createLiteral(true));
+      return model.contains(id, SHACL.UNIQUE_LANG, VALUE_FACTORY.createLiteral(true));
     }
 
     public Optional<Pattern> getPattern() {
-      return Models.getPropertyLiteral(model, id, SH_PATTERN).map(t -> Pattern.compile(t.stringValue()));
+      return Models.getPropertyLiteral(model, id, SHACL.PATTERN).map(t -> Pattern.compile(t.stringValue()));
     }
 
     public Stream<IRI> getFromProperties() {
