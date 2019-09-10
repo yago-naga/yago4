@@ -40,10 +40,18 @@ schema:Thing a sh:NodeShape ;
         ys:fromProperty skos:prefLabel ;
     ] ;
     sh:property [
+        sh:path schema:sameAs ;
+        sh:datatype xsd:anyURI ;
+    ] ;
+    sh:property [
         sh:path schema:url ;
         sh:datatype xsd:anyURI ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P856 ;
+    ] ;
+    sh:property [
+        sh:path owl:sameAs ;
+        sh:nodeKind sh:IRI ;
     ] .
 
 schema:Brand a sh:NodeShape ;
