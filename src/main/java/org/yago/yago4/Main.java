@@ -329,7 +329,7 @@ public class Main {
             ? null
             : optionalThingSuperset.subtract(yagoClasses); // We do not want classes
 
-    return schema.getNodeShapes().flatMap(nodeShape -> {
+    var instancesWithoutIntersectionRemoval = schema.getNodeShapes().flatMap(nodeShape -> {
       var fromYagoClasses = PlanNode.fromStream(Stream.concat(
               nodeShape.getClasses(),
               nodeShape.getFromClasses().map(t -> (Resource) t)
@@ -339,11 +339,21 @@ public class Main {
               .intersection(fromYagoClasses)
               .values();
       var instances = optionalThingSupersetWithoutClasses == null
-              ? mapToYago(wdInstances, wikidataToYagoUrisMapping).subtract(yagoClasses).cache() // We do not want classes
-              : mapToYago(wdInstances, wikidataToYagoUrisMapping).intersection(optionalThingSupersetWithoutClasses).cache();
+              ? mapToYago(wdInstances, wikidataToYagoUrisMapping).subtract(yagoClasses) // We do not want classes
+              : mapToYago(wdInstances, wikidataToYagoUrisMapping).intersection(optionalThingSupersetWithoutClasses);
 
-      return nodeShape.getClasses().map(c -> Map.entry(c, instances));
+      return nodeShape.getClasses().map(c -> Map.entry(c, instances.cache()));
     }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+    var instancesInDisjointIntersections = schema.getClasses()
+            .flatMap(cls1 -> cls1.getDisjointedClasses().map(c2 -> Map.entry(cls1.getTerm(), c2)))
+            .map(e -> instancesWithoutIntersectionRemoval.get(e.getKey()).intersection(instancesWithoutIntersectionRemoval.get(e.getValue())))
+            .reduce(PlanNode::union).orElseGet(PlanNode::empty)
+            .cache();
+
+    return instancesWithoutIntersectionRemoval.entrySet().stream()
+            .map(e -> Map.entry(e.getKey(), e.getValue().subtract(instancesInDisjointIntersections).cache()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   private static PlanNode<Statement> buildSimpleInstanceOf(Map<Resource, PlanNode<Resource>> yagoShapeInstances) {
@@ -742,7 +752,7 @@ public class Main {
                   yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, cp);
                 }
               });
-              //TODO: enforce c.getDisjointedClasses().forEach(dc -> yagoStatements.add(c.getTerm(), OWL.DISJOINTWITH, dc));
+              c.getDisjointedClasses().forEach(dc -> yagoStatements.add(c.getTerm(), OWL.DISJOINTWITH, dc));
             });
 
     // Properties
