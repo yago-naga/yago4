@@ -721,7 +721,7 @@ public class Main {
             .forEach(c -> {
               yagoStatements.add(c.getTerm(), RDF.TYPE, OWL.CLASS);
               c.getLabels().forEach(l -> yagoStatements.add(c.getTerm(), RDFS.LABEL, VALUE_FACTORY.createLiteral(camlCaseToRegular(l.stringValue()), "en")));
-              c.getComments().forEach(l -> yagoStatements.add(c.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue(), "en")));
+              c.getComments().forEach(l -> yagoStatements.add(c.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue().replaceAll("<[^>]+>", ""), "en")));
               c.getSuperClasses().forEach(cp -> {
                 if (cp.equals(SCHEMA_INTANGIBLE)) {
                   //We ignore schema:Intangible
@@ -746,7 +746,7 @@ public class Main {
                 System.err.println("Not sure if " + p.getTerm() + " is an object or a datatype property.");
               }
               p.getLabels().forEach(l -> yagoStatements.add(p.getTerm(), RDFS.LABEL, VALUE_FACTORY.createLiteral(camlCaseToRegular(l.stringValue()), "en")));
-              p.getComments().forEach(l -> yagoStatements.add(p.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue(), "en")));
+              p.getComments().forEach(l -> yagoStatements.add(p.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue().replaceAll("<[^>]+>", ""), "en")));
               p.getSuperProperties().forEach(cp -> {
                 if (cp.equals(VALUE_FACTORY.createIRI("rdfs:label"))) {
                   // dirty fix for https://github.com/schemaorg/schemaorg/pull/2312
