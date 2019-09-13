@@ -5,6 +5,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
+import org.eclipse.rdf4j.common.net.ParsedIRI;
 import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
 import org.eclipse.rdf4j.model.vocabulary.*;
@@ -15,7 +16,6 @@ import org.yago.yago4.converter.utils.NTriplesReader;
 import org.yago.yago4.converter.utils.YagoValueFactory;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -123,7 +123,8 @@ public class Main {
 
     // Processing
     options.addOption("yago", "buildYago", false, "Build Yago");
-    options.addOption("small", "smallOnly", false, "Only introduces resources that are mapped to English Wikipedia");
+    options.addOption("enWiki", "onlyEnWikipedia", false, "Only introduces resources that are mapped to English Wikipedia");
+    options.addOption("wikis", "onlyWikipedia", false, "Only introduces resources that are mapped to a Wikipedia");
     options.addOption("yagoDir", "yagoDir", true, "Path to the directory where Yago N-Triples files should be built");
 
     CommandLine params = (new DefaultParser()).parse(options, args);
@@ -142,7 +143,7 @@ public class Main {
       Path yagoDir = Path.of(params.getOptionValue("yagoDir"));
 
       System.out.println("Generating Yago N-Triples dump to " + yagoDir);
-      buildYago(partitionedStatements, yagoDir, params.hasOption("smallOnly"));
+      buildYago(partitionedStatements, yagoDir, params.hasOption("onlyEnWikipedia"), params.hasOption("onlyWikipedia"));
     }
   }
 
@@ -157,7 +158,7 @@ public class Main {
     return IRIShortener.shortened(iri).replace('/', '-').replace(':', '/');
   }
 
-  private static void buildYago(PartitionedStatements partitionedStatements, Path outputDir, boolean enWikipediaOnly) throws IOException {
+  private static void buildYago(PartitionedStatements partitionedStatements, Path outputDir, boolean enWikipediaOnly, boolean wikipediaOnly) throws IOException {
     Files.createDirectories(outputDir);
 
     var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements);
@@ -167,7 +168,9 @@ public class Main {
     var yagoSuperClassOf = t.getValue();
 
     var yagoShapeInstances = yagoShapeInstances(partitionedStatements, yagoSuperClassOf, yagoClasses,
-            enWikipediaOnly ? enWikipediaElements(partitionedStatements, wikidataToYagoUrisMapping) : null,
+            enWikipediaOnly
+                    ? enWikipediaElements(partitionedStatements, wikidataToYagoUrisMapping)
+                    : (wikipediaOnly ? wikipediaElements(partitionedStatements, wikidataToYagoUrisMapping) : null),
             wikidataToYagoUrisMapping);
 
     generateNTFile(
@@ -225,7 +228,8 @@ public class Main {
     var mapping = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
             .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
             .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject()))
-            .mapPair((wikidata, wikipedia) -> Map.entry(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.stringValue().replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))));
+            .flatMapValue(wikipedia -> normalizeIri(wikipedia.stringValue()))
+            .mapPair((wikidata, wikipedia) -> Map.entry(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))));
 
     var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
@@ -308,6 +312,13 @@ public class Main {
             .cache();
 
     return Map.entry(yagoClasses, yagoSuperClassOf);
+  }
+
+  private static PlanNode<Resource> wikipediaElements(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+    var wikidataLinkedToEnWikipedia = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+            .filter(t -> t.getSubject().stringValue().contains(".wikipedia.org/wiki/"))
+            .map(t -> (Resource) t.getObject());
+    return mapToYago(wikidataLinkedToEnWikipedia, wikidataToYagoUrisMapping);
   }
 
   private static PlanNode<Resource> enWikipediaElements(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
@@ -582,7 +593,7 @@ public class Main {
         //We map IRIs to xsd:anyUri
         statementObject = getTriplesFromWikidataPropertyRelation(partitionedStatements, propertyShape, simpleValuePrefix).flatMapValue(object -> {
           if (object instanceof IRI || (object instanceof Literal && XMLSchema.ANYURI.equals(((Literal) object).getDatatype()))) {
-            return normalizeUri(object.stringValue())
+            return normalizeIri(object.stringValue())
                     .map(o -> Map.entry(VALUE_FACTORY.createLiteral(o, XMLSchema.ANYURI), Collections.emptyList()));
           } else {
             return Stream.of(Map.entry(object, Collections.emptyList()));
@@ -720,7 +731,8 @@ public class Main {
             .filter(t -> t.getSubject().stringValue().contains(".wikipedia.org/wiki/"))
             .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject())), wikidataToYagoUrisMapping)
             .intersection(yagoThings)
-            .map((yago, wp) -> VALUE_FACTORY.createStatement(yago, SCHEMA_SAME_AS, VALUE_FACTORY.createLiteral(wp.stringValue(), XMLSchema.ANYURI)));
+            .flatMapValue(iri -> normalizeIri(iri.stringValue()))
+            .map((yago, wp) -> VALUE_FACTORY.createStatement(yago, SCHEMA_SAME_AS, VALUE_FACTORY.createLiteral(wp, XMLSchema.ANYURI)));
 
     return wikidata.union(dbPedia).union(freebase).union(wikipedia);
   }
@@ -892,13 +904,9 @@ public class Main {
             .mapPair((subject, pair) -> Map.entry(pair.getValue(), pair.getKey()));
   }
 
-  private static Stream<String> normalizeUri(String uri) {
+  private static Stream<String> normalizeIri(String uri) {
     try {
-      URI parsedURI = new URI(uri).normalize();
-      if ((parsedURI.getScheme().equals("http") || parsedURI.getScheme().equals("https")) && parsedURI.getPath().isEmpty()) {
-        parsedURI = parsedURI.resolve("/"); //We make sure there is always a path
-      }
-      return Stream.of(parsedURI.toString());
+      return Stream.of(new ParsedIRI(uri).normalize().toString());
     } catch (URISyntaxException e) {
       return Stream.empty();
     }
