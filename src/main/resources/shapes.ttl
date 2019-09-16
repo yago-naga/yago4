@@ -244,6 +244,7 @@ schema:CreativeWork a sh:NodeShape ;
     sh:property [
         sh:path schema:position ;
         sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P1545 ;
     ] ;
     sh:property [
@@ -615,6 +616,7 @@ schema:Episode a sh:NodeShape ;
     sh:property [
         sh:path schema:partOfSeason ;
         sh:node schema:CreativeWorkSeason ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P4908 ;
     ] ;
     sh:property [
@@ -806,11 +808,13 @@ schema:VisualArtwork a sh:NodeShape ;
     sh:property [
         sh:path schema:height ;
         sh:node schema:QuantitativeValue ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P2048 ;
     ] ;
     sh:property [
         sh:path schema:width ;
         sh:node schema:QuantitativeValue ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P2049 ;
     ] .
 
@@ -1224,6 +1228,7 @@ schema:Person a sh:NodeShape ;
     sh:property [
         sh:path schema:height ;
         sh:node schema:QuantitativeValue ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P2048 ;
     ] ;
     sh:property [
@@ -1401,6 +1406,7 @@ schema:Product a sh:NodeShape ;
     sh:property [
         sh:path schema:height ;
         sh:node schema:QuantitativeValue ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P2048 ;
     ] ;
     sh:property [
@@ -1416,11 +1422,13 @@ schema:Product a sh:NodeShape ;
     sh:property [
         sh:path schema:weight ;
         sh:node schema:QuantitativeValue ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P2067 ;
     ] ;
     sh:property [
         sh:path schema:width ;
         sh:node schema:QuantitativeValue ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P2049 ;
     ] .
 

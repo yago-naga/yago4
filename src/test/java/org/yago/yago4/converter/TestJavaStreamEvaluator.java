@@ -169,8 +169,8 @@ class TestJavaStreamEvaluator {
   @Test
   void testAggregateByKey() {
     assertEq(
-            List.of(1L, 2L),
-            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 'a'), Map.entry(2, 'b'), Map.entry(1, 'b'))).aggregateByKey().map((k, v) -> v.count()))
+            List.of(1, 2),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 'a'), Map.entry(2, 'b'), Map.entry(1, 'b'))).aggregateByKey().map((k, v) -> v.size()))
     );
   }
 }

@@ -552,16 +552,30 @@ public class Main {
               .join(subjectStatement.swap())
               .mapValue(e -> Map.entry(VALUE_FACTORY.createStatement(e.getValue(), yagoProperty, e.getKey().getKey()), e.getKey().getValue()));
 
-      var mainFacts = statementTriple.intersection(bestRanks).values().flatMap(e -> {
+      var bestMainFacts = statementTriple.intersection(bestRanks).values();  // We keep only best ranks
+
+      if (propertyShape.getMaxCount().isPresent()) {
+        var maxCount = propertyShape.getMaxCount().getAsInt();
+        bestMainFacts = bestMainFacts.mapToPair(s -> Map.entry(s.getKey().getSubject(), s)).aggregateByKey().flatMap((k, values) -> {
+          if (values.size() <= maxCount) {
+            return values.stream();
+          } else {
+            return Stream.empty();
+          }
+        });
+      }
+
+      var mainFacts = bestMainFacts.flatMap(e -> {
         if (e.getValue().isEmpty()) {
           return Stream.of(e.getKey());
         } else {
           return Stream.concat(Stream.of(e.getKey()), e.getValue().stream());
         }
-      }); // We keep only best ranks
+      });
 
       // Annotations
       //TODO: emit object annotations
+      //TODO maxCount on annotations
       var annotations = statementTriple
               .join(statementsWithAnnotations)
               .map((s, e) -> new AnnotatedStatement(e.getKey().getKey(), e.getValue().getKey(), e.getValue().getValue().getKey()));
@@ -787,9 +801,9 @@ public class Main {
                 }
               });
               p.getInverseProperties().forEach(cp -> yagoStatements.add(p.getTerm(), OWL.INVERSEOF, cp));
-              if (shape.getMaxCount() == 1) {
-                //TODO: enforce yagoStatements.add(p.getTerm(), RDF.TYPE, OWL.FUNCTIONALPROPERTY);
-              }
+              shape.getMaxCount().ifPresent(maxCount ->
+                      yagoStatements.add(p.getTerm(), OWL.MAXCARDINALITY, VALUE_FACTORY.createLiteral(maxCount))
+              );
 
               shape.getParentShape().ifPresent(subjectShape -> {
                 Set<Resource> target = domains.computeIfAbsent(p.getTerm(), (k) -> new HashSet<>());

@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -224,12 +225,12 @@ public class ShaclSchema {
       ).flatMap(node -> Models.getPropertyResources(model, node, SHACL.NODE).stream()).collect(Collectors.toSet()));
     }
 
-    public int getMinCount() {
-      return Models.getPropertyLiteral(model, id, SHACL.MIN_COUNT).map(Literal::intValue).orElse(0);
+    public OptionalInt getMinCount() {
+      return Models.getPropertyLiterals(model, id, SHACL.MIN_COUNT).stream().mapToInt(Literal::intValue).findFirst();
     }
 
-    public int getMaxCount() {
-      return Models.getPropertyLiteral(model, id, SHACL.MAX_COUNT).map(Literal::intValue).orElse(Integer.MAX_VALUE);
+    public OptionalInt getMaxCount() {
+      return Models.getPropertyLiterals(model, id, SHACL.MAX_COUNT).stream().mapToInt(Literal::intValue).findFirst();
     }
 
     public boolean isUniqueLang() {

@@ -1,8 +1,8 @@
 package org.yago.yago4.converter.plan;
 
-import java.util.stream.Stream;
+import java.util.Collection;
 
-public class AggregateByKeyNode<K, V> extends PairPlanNode<K, Stream<V>> {
+public class AggregateByKeyNode<K, V> extends PairPlanNode<K, Collection<V>> {
   private final PairPlanNode<K, V> parent;
 
   AggregateByKeyNode(PairPlanNode<K, V> parent) {

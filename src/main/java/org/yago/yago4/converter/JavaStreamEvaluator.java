@@ -194,8 +194,8 @@ public class JavaStreamEvaluator {
     }
   }
 
-  private <K, V> Stream<Map.Entry<K, Stream<V>>> toStream(AggregateByKeyNode<K, V> plan) {
-    return toMap(plan.getParent()).groups().stream().map(e -> Map.entry(e.getKey(), e.getValue().stream()));
+  private <K, V> Stream<Map.Entry<K, Collection<V>>> toStream(AggregateByKeyNode<K, V> plan) {
+    return toMap(plan.getParent()).groups().stream();
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(FilterPairNode<K, V> plan) {

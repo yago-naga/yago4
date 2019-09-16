@@ -89,6 +89,7 @@ bioschema:MolecularEntity a sh:NodeShape ;
         sh:path bioschema:molecularFormula ;
         sh:datatype xsd:string ;
         # TODO: sh:pattern
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P274 ;
     ] ;
     sh:property [
@@ -112,5 +113,6 @@ bioschema:Taxon a sh:NodeShape ;
     sh:property [
         sh:path bioschema:taxonRank ;
         sh:node schema:Thing ;
+        sh:maxCount 1 ;
         ys:fromProperty wdt:P105 ;
     ] .

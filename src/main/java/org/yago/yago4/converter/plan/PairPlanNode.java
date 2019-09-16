@@ -12,7 +12,7 @@ import java.util.stream.Stream;
 
 public abstract class PairPlanNode<K, V> {
 
-  public PairPlanNode<K, Stream<V>> aggregateByKey() {
+  public PairPlanNode<K, Collection<V>> aggregateByKey() {
     return new AggregateByKeyNode<>(this);
   }
 
