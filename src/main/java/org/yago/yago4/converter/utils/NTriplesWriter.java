@@ -21,15 +21,15 @@ public class NTriplesWriter {
       stream.sequential().forEach(tuple -> {
         try {
           write(tuple.getSubject(), writer);
-          writer.append(' ');
+          writer.append('\t');
           write(tuple.getPredicate(), writer);
-          writer.append(' ');
+          writer.append('\t');
           write(tuple.getObject(), writer);
-          writer.append(' ');
+          writer.append('\t');
           Resource context = tuple.getContext();
           if (context != null) {
             write(context, writer);
-            writer.append(' ');
+            writer.append('\t');
           }
           writer.append(".\n");
         } catch (IOException e) {
@@ -45,17 +45,17 @@ public class NTriplesWriter {
     try (BufferedWriter writer = openWriter(filePath)) {
       stream.sequential().forEach(tuple -> {
         try {
-          writer.append("<<");
+          writer.append("<<\t");
           write(tuple.getSubject().getSubject(), writer);
-          writer.append(' ');
+          writer.append('\t');
           write(tuple.getSubject().getPredicate(), writer);
-          writer.append(' ');
+          writer.append('\t');
           write(tuple.getSubject().getObject(), writer);
-          writer.append(">> ");
+          writer.append("\t>>\t");
           write(tuple.getPredicate(), writer);
-          writer.append(' ');
+          writer.append('\t');
           write(tuple.getObject(), writer);
-          writer.append(" .\n");
+          writer.append("\t.\n");
         } catch (IOException e) {
           throw new EvaluationException(e);
         }
@@ -105,6 +105,8 @@ public class NTriplesWriter {
         writer.append("\\n");
       } else if (c == '\r') {
         writer.append("\\r");
+      } else if (c == '\t') {
+        writer.append("\\t");
       } else {
         writer.append(c);
       }
