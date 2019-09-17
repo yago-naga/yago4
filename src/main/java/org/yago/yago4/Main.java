@@ -112,6 +112,7 @@ public class Main {
           "Q18340514" //article about events in a specific year or time period
   );
   private static final Set<IRI> LABEL_IRIS = Set.of(SCHEMA_NAME, SCHEMA_ALTERNATE_NAME, SCHEMA_DESCRIPTION);
+  private static final int MIN_NUMBER_OF_INSTANCES = 10;
 
   public static void main(String[] args) throws ParseException, IOException {
     Options options = new Options();
@@ -261,8 +262,9 @@ public class Main {
    * Algorithm:
    * 1. take all subClassOf (P279) from Wikidata and maps URIs to Yago
    * 2. take all subClassOf from schema.org ontology and shapes mapping
-   * 3. remove from them the elements and subclasses of WD_BAD_CLASSES or subclasses of disjoint classes
-   * 4. construct class set by only keeping the classes that are transitively subclasses of schema:Thing and have transitively instances
+   * 3. Only keep the elements that are transitively subclasses of schema:Thing
+   * 4. Only keep the elements that have/have a subclass with at least 10 instances
+   * 5. remove from them the elements and subclasses of WD_BAD_CLASSES or subclasses of disjoint classes
    */
   private static Map.Entry<PlanNode<Resource>, PairPlanNode<Resource, Resource>> buildYagoClassesAndSuperClassOf(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279))
@@ -293,10 +295,14 @@ public class Main {
                             .intersection(PlanNode.fromCollection(List.of(e.getValue())).transitiveClosure(possibleSuperClassOf))
             ).reduce(PlanNode::union).orElseGet(PlanNode::empty);
 
-    var classesWithInstances = mapToYago(
-            partitionedStatements.getForKey(keyForIri(WDT_P31)).map(t -> (Resource) t.getObject()),
-            wikidataToYagoUrisMapping
-    ).transitiveClosure(possibleSuperClassOf.swap());
+    var wikidataClassesWithAtLeastMinCountInstances = partitionedStatements.getForKey(keyForIri(WDT_P31))
+            .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject()))
+            .aggregateByKey()
+            .filterValue(v -> v.size() >= MIN_NUMBER_OF_INSTANCES)
+            .keys();
+
+    var classesWithInstances = mapToYago(wikidataClassesWithAtLeastMinCountInstances, wikidataToYagoUrisMapping)
+            .transitiveClosure(possibleSuperClassOf.swap());
 
     var yagoClasses = classesWithInstances
             .intersection(schemaThingSubClasses)
