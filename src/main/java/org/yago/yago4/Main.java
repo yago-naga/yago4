@@ -801,9 +801,12 @@ public class Main {
                 }
               });
               p.getInverseProperties().forEach(cp -> yagoStatements.add(p.getTerm(), OWL.INVERSEOF, cp));
-              shape.getMaxCount().ifPresent(maxCount ->
-                      yagoStatements.add(p.getTerm(), OWL.MAXCARDINALITY, VALUE_FACTORY.createLiteral(maxCount))
-              );
+              shape.getMaxCount().ifPresent(maxCount -> {
+                if (maxCount == 1) {
+                  yagoStatements.add(p.getTerm(), RDF.TYPE, OWL.FUNCTIONALPROPERTY);
+                }
+                //TODO: owl:maxCardinality
+              });
 
               shape.getParentShape().ifPresent(subjectShape -> {
                 Set<Resource> target = domains.computeIfAbsent(p.getTerm(), (k) -> new HashSet<>());
@@ -876,6 +879,7 @@ public class Main {
                 });
 
                 prop.getPattern().ifPresent(pattern -> yagoStatements.add(propShapeSubject, SHACL.PATTERN, VALUE_FACTORY.createLiteral(pattern.toString())));
+                prop.getMaxCount().ifPresent(maxCount -> yagoStatements.add(propShapeSubject, SHACL.MAX_COUNT, VALUE_FACTORY.createLiteral(maxCount)));
               });
             })
     );
