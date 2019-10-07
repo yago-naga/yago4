@@ -65,6 +65,7 @@ public class Main {
   private static final IRI WIKIBASE_BEST_RANK = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "BestRank");
   private static final IRI WIKIBASE_TIME_VALUE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timeValue");
   private static final IRI WIKIBASE_TIME_PRECISION = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timePrecision");
+  private static final IRI WIKIBASE_TIME_CALENDAR_MODEL = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "timeCalendarModel");
   private static final IRI WIKIBASE_GEO_LATITUDE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoLatitude");
   private static final IRI WIKIBASE_GEO_LONGITUDE = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoLongitude");
   private static final IRI WIKIBASE_GEO_PRECISION = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "geoPrecision");
@@ -82,6 +83,7 @@ public class Main {
   private static final Value WD_Q573 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q573");
   private static final Value WD_Q199 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q199");
   private static final Value WD_Q2 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q2");
+  private static final Value WD_Q1985727 = VALUE_FACTORY.createIRI(WD_PREFIX, "Q1985727");
   private static final IRI SCHEMA_THING = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Thing");
   private static final IRI SCHEMA_INTANGIBLE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "Intangible");
   private static final IRI SCHEMA_STRUCTURED_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "StructuredValue");
@@ -486,7 +488,8 @@ public class Main {
     PairPlanNode<Resource, Value> cleanTimes = partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_VALUE))
             .mapToPair(s -> Map.entry(s.getSubject(), s.getObject()))
             .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_PRECISION)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
-            .flatMapPair((k, e) -> convertTime(e.getKey(), e.getValue()).map(t -> Map.entry(k, t)))
+            .join(partitionedStatements.getForKey(keyForIri(WIKIBASE_TIME_CALENDAR_MODEL)).mapToPair(s -> Map.entry(s.getSubject(), s.getObject())))
+            .flatMapPair((k, e) -> convertTime(e.getKey().getKey(), e.getKey().getValue(), e.getValue()).map(t -> Map.entry(k, t)))
             .distinct()
             .cache();
 
@@ -934,12 +937,19 @@ public class Main {
     }
   }
 
-  private static Stream<Value> convertTime(Value value, Value precision) {
+  private static Stream<Value> convertTime(Value value, Value precision, Value calendarModel) {
     if (!(value instanceof Literal) || !(precision instanceof Literal)) {
       return Stream.empty();
     }
+    if (!WD_Q1985727.equals(calendarModel)) {
+      return Stream.empty(); //TODO: add julian calendar support
+    }
+
     try {
       TemporalAccessor input = WIKIBASE_TIMESTAMP_FORMATTER.parse(value.stringValue());
+      if (input.get(ChronoField.YEAR) <= 0) {
+        return Stream.empty(); //TODO: add negative years support
+      }
       int p = ((Literal) precision).intValue();
       switch (p) {
         case 9:
