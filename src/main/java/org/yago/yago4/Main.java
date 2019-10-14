@@ -8,6 +8,7 @@ import org.apache.commons.lang.StringUtils;
 import org.eclipse.rdf4j.common.net.ParsedIRI;
 import org.eclipse.rdf4j.model.*;
 import org.eclipse.rdf4j.model.impl.LinkedHashModel;
+import org.eclipse.rdf4j.model.impl.SimpleNamespace;
 import org.eclipse.rdf4j.model.vocabulary.*;
 import org.yago.yago4.converter.JavaStreamEvaluator;
 import org.yago.yago4.converter.plan.PairPlanNode;
@@ -60,6 +61,14 @@ public class Main {
   private static final String WIKIBASE_PREFIX = "http://wikiba.se/ontology#";
   private static final String YAGO_RESOURCE_PREFIX = "http://yago-knowledge.org/resource/";
   private static final String YAGO_VALUE_PREFIX = "http://yago-knowledge.org/value/";
+
+
+  private static final Set<Namespace> NAMESPACES = Set.of(
+          RDF.NS, RDFS.NS, XMLSchema.NS, OWL.NS, SHACL.NS, SKOS.NS,
+          new SimpleNamespace("schema", SCHEMA_PREFIX),
+          new SimpleNamespace("yago", YAGO_RESOURCE_PREFIX),
+          new SimpleNamespace("wd", WD_PREFIX)
+  );
 
   private static final IRI WIKIBASE_ITEM = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "Item");
   private static final IRI WIKIBASE_BEST_RANK = VALUE_FACTORY.createIRI(WIKIBASE_PREFIX, "BestRank");
@@ -761,7 +770,7 @@ public class Main {
   }
 
   private static PlanNode<Statement> buildYagoSchema() {
-    Model yagoStatements = new LinkedHashModel();
+    Model yagoStatements = new LinkedHashModel(NAMESPACES);
     ShaclSchema schema = ShaclSchema.getSchema();
 
     Map<Resource, Set<Resource>> domains = new HashMap<>();
@@ -848,12 +857,12 @@ public class Main {
   }
 
   private static PlanNode<Statement> buildYagoShapes() {
-    Model yagoStatements = new LinkedHashModel();
+    Model yagoStatements = new LinkedHashModel(NAMESPACES);
 
     ShaclSchema.getSchema().getNodeShapes().forEach(shape -> shape.getClasses().forEach(cls -> {
               yagoStatements.add(cls, RDF.TYPE, SHACL.NODE_SHAPE);
               shape.getProperties().forEach(prop -> {
-                Resource propShapeSubject = VALUE_FACTORY.createBNode();
+                Resource propShapeSubject = VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "shape-prop-" + stringName(yagoStatements, cls) + "-" + stringName(yagoStatements, prop.getProperty()));
                 yagoStatements.add(cls, SHACL.PROPERTY, propShapeSubject);
                 yagoStatements.add(propShapeSubject, RDF.TYPE, SHACL.PROPERTY_SHAPE);
                 yagoStatements.add(propShapeSubject, SHACL.PATH, prop.getProperty());
@@ -865,10 +874,10 @@ public class Main {
                     }
                   } else {
                     addListObject(yagoStatements, propShapeSubject, SHACL.OR, datatypes.stream().map(datatype -> {
-                      Resource subject = VALUE_FACTORY.createBNode();
+                      Resource subject = VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "sh:datatype-" + stringName(yagoStatements, datatype));
                       yagoStatements.add(subject, SHACL.DATATYPE, datatype);
                       return subject;
-                    }).collect(Collectors.toList()));
+                    }).sorted(Comparator.comparing(Value::stringValue)).collect(Collectors.toList()));
                   }
                 });
 
@@ -880,10 +889,10 @@ public class Main {
                     }
                   } else {
                     addListObject(yagoStatements, propShapeSubject, SHACL.OR, nodes.stream().map(node -> {
-                      Resource subject = VALUE_FACTORY.createBNode();
+                      Resource subject = VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "sh:node-" + stringName(yagoStatements, node));
                       yagoStatements.add(subject, SHACL.NODE, node);
                       return subject;
-                    }).collect(Collectors.toList()));
+                    }).sorted(Comparator.comparing(Value::stringValue)).collect(Collectors.toList()));
                   }
                 });
 
@@ -1052,27 +1061,48 @@ public class Main {
     );
   }
 
-  private static void addUnionOfObject(Model model, Resource subject, IRI predicate, Collection<? extends Value> objects, IRI type) {
+  private static void addUnionOfObject(Model model, Resource subject, IRI predicate, Collection<? extends Resource> objects, IRI type) {
     if (objects.size() == 1) {
       model.add(subject, predicate, objects.iterator().next());
     } else {
-      Resource union = VALUE_FACTORY.createBNode();
+      List<Value> list = objects.stream().sorted(Comparator.comparing(Value::stringValue)).collect(Collectors.toList());
+      Resource union = VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "owl:unionOf-" + stringName(model, list));
       model.add(subject, predicate, union);
       model.add(union, RDF.TYPE, type);
-      addListObject(model, union, OWL.UNIONOF, objects);
+      addListObject(model, union, OWL.UNIONOF, list);
     }
   }
 
   private static void addListObject(Model model, Resource subject, IRI predicate, Collection<? extends Value> objects) {
-    ArrayList<Value> list = new ArrayList<>(objects);
-    Resource head = RDF.NIL;
-    while (!list.isEmpty()) {
-      Resource current = VALUE_FACTORY.createBNode();
-      model.add(current, RDF.REST, head);
-      model.add(current, RDF.FIRST, list.get(list.size() - 1));
-      list.remove(list.size() - 1);
-      head = current;
+    List<Value> list = new ArrayList<>(objects);
+    Resource current = RDF.NIL;
+    for (int i = list.size() - 1; i >= 0; i--) {
+      Resource newCurrent = VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "list-" + stringName(model, list.subList(i, list.size())));
+      model.add(newCurrent, RDF.REST, current);
+      model.add(newCurrent, RDF.FIRST, list.get(i));
+      current = newCurrent;
     }
-    model.add(subject, predicate, head);
+    model.add(subject, predicate, current);
+  }
+
+  private static String stringName(Model model, Value value) {
+    if (value instanceof IRI) {
+      var iri = (IRI) value;
+      return model.getNamespaces().stream()
+              .filter(t -> t.getName().equals(iri.getNamespace()))
+              .findAny()
+              .map(ns -> ns.getPrefix() + ":" + iri.getLocalName())
+              .orElseGet(iri::stringValue);
+    } else if (value instanceof BNode) {
+      return ((BNode) value).getID();
+    } else if (value instanceof Literal) {
+      return value.stringValue(); //TODO: improve
+    } else {
+      throw new IllegalArgumentException("Invalid resource: " + value);
+    }
+  }
+
+  private static String stringName(Model model, Collection<? extends Value> values) {
+    return values.stream().map(v -> stringName(model, v)).collect(Collectors.joining("-"));
   }
 }
