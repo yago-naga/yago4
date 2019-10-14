@@ -18,6 +18,8 @@ import org.yago.yago4.converter.utils.YagoValueFactory;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.*;
@@ -237,11 +239,20 @@ public class Main {
    * Converts Wikidata URI to Yago URIs based on en.wikipedia article titles
    */
   private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements) {
-    var mapping = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+    var fromWikipediaMapping = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
             .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
             .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject()))
             .flatMapValue(wikipedia -> normalizeIri(wikipedia.stringValue()))
-            .mapPair((wikidata, wikipedia) -> Map.entry(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))));
+            .mapPair((wikidata, wikipedia) -> Map.entry(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))))
+            .cache();
+
+    var optEn = Optional.of("en");
+    var fromLabelMapping = partitionedStatements.getForKey(keyForIri(SKOS.PREF_LABEL))
+            .filter(t -> t.getObject() instanceof Literal && ((Literal) t.getObject()).getLanguage().equals(optEn))
+            .mapToPair(s -> Map.entry(s.getSubject(), s.getObject().stringValue()))
+            .subtract(fromWikipediaMapping.keys())
+            .flatMapPair((wd, label) -> normalizeIri(YAGO_RESOURCE_PREFIX + URLEncoder.encode(label.replace(' ', '_'), StandardCharsets.UTF_8) + '_' + ((IRI) wd).getLocalName()).map(yago -> Map.entry(wd, (Resource) VALUE_FACTORY.createIRI(yago))))
+            .cache();
 
     var wikidataItems = partitionedStatements.getForKey(keyForIri(RDF.TYPE))
             .filter(t -> WIKIBASE_ITEM.equals(t.getObject()))
@@ -260,11 +271,12 @@ public class Main {
     wikidataItems = wikidataItems.distinct();
     */
 
-    var mappingForNotLinkedToEnWikipedia = wikidataItems
-            .subtract(mapping.keys())
-            .mapToPair(e -> Map.entry(e, (Resource) VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "wikidata_" + ((IRI) e).getLocalName())));
+    var fallbackMapping = wikidataItems
+            .subtract(fromWikipediaMapping.keys())
+            .subtract(fromLabelMapping.keys())
+            .mapToPair(e -> Map.entry(e, (Resource) VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "_" + ((IRI) e).getLocalName())));
 
-    return mapping.union(mappingForNotLinkedToEnWikipedia).cache();
+    return fromWikipediaMapping.union(fromLabelMapping).union(fallbackMapping).cache();
   }
 
   /**
