@@ -72,7 +72,7 @@ schema:Brand a sh:NodeShape ;
     ] .
 
 schema:CreativeWork a sh:NodeShape ;
-    ys:fromClass wd:Q386724 , wd:Q3331189 ;
+    ys:fromClass wd:Q386724 ;
     sh:property [
         sh:path schema:about ;
         sh:node schema:Thing ;
@@ -329,7 +329,7 @@ schema:Article a sh:NodeShape ;
 
 
 schema:NewsArticle a sh:NodeShape ;
-    ys:fromClass wd:Q11032 .
+    ys:fromClass wd:Q5707594 .
 
 
 schema:ScholarlyArticle a sh:NodeShape ;
@@ -360,6 +360,7 @@ schema:Book a sh:NodeShape ;
 
 
 schema:CreativeWorkSeason a sh:NodeShape ;
+    ys:fromClass wd:Q70990126 ;
     sh:property [
         sh:path schema:actor ;
         sh:node schema:Person ;
@@ -735,6 +736,7 @@ schema:Painting a sh:NodeShape ;
 
 
 schema:PublicationIssue a sh:NodeShape ;
+    ys:fromClass wd:Q28869365 ;
     sh:property [
         sh:path schema:pagination ;
         sh:datatype xsd:string ;
@@ -1114,7 +1116,7 @@ schema:MusicGroup a sh:NodeShape ;
 
 
 schema:Person a sh:NodeShape ;
-    ys:fromClass wd:Q215627 , wd:Q5 ;
+    ys:fromClass wd:Q215627 ;
     sh:property [
         sh:path schema:affiliation ;
         sh:node schema:Organization ;
@@ -1373,7 +1375,7 @@ schema:FoodEstablishment a sh:NodeShape ;
     ] .
 
 schema:Product a sh:NodeShape ;
-    ys:fromClass wd:Q2424752 , wd:Q1485500 ;
+    ys:fromClass wd:Q2424752 ;
     sh:property [
         sh:path schema:award ;
         sh:node schema:Thing ;
@@ -1440,7 +1442,8 @@ schema:Rating a sh:NodeShape ;
     ys:fromClass wd:Q23649976 .
 
 
-schema:Series a sh:NodeShape .
+schema:Series a sh:NodeShape ;
+    ys:fromClass wd:Q20937557 .
 
 
 ys:AnnotationPropertyShape a rdfs:Property ;

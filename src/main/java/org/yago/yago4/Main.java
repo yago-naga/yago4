@@ -239,9 +239,15 @@ public class Main {
    * Converts Wikidata URI to Yago URIs based on en.wikipedia article titles
    */
   private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements) {
+    var fromSchemaMapping = PairPlanNode.fromStream(ShaclSchema.getSchema()
+            .getNodeShapes()
+            .flatMap(shape -> shape.getClasses().flatMap(toCls -> shape.getFromClasses().map(fromCls -> Map.entry((Resource) fromCls, toCls)))))
+            .cache();
+
     var fromWikipediaMapping = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
             .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
             .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject()))
+            .subtract(fromSchemaMapping.keys())
             .flatMapValue(wikipedia -> normalizeIri(wikipedia.stringValue()))
             .mapPair((wikidata, wikipedia) -> Map.entry(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))))
             .cache();
@@ -250,6 +256,7 @@ public class Main {
     var fromLabelMapping = partitionedStatements.getForKey(keyForIri(SKOS.PREF_LABEL))
             .filter(t -> t.getObject() instanceof Literal && ((Literal) t.getObject()).getLanguage().equals(optEn))
             .mapToPair(s -> Map.entry(s.getSubject(), s.getObject().stringValue()))
+            .subtract(fromSchemaMapping.keys())
             .subtract(fromWikipediaMapping.keys())
             .flatMapPair((wd, label) -> normalizeIri(YAGO_RESOURCE_PREFIX + URLEncoder.encode(label.replace(' ', '_'), StandardCharsets.UTF_8) + '_' + ((IRI) wd).getLocalName()).map(yago -> Map.entry(wd, (Resource) VALUE_FACTORY.createIRI(yago))))
             .cache();
@@ -272,11 +279,12 @@ public class Main {
     */
 
     var fallbackMapping = wikidataItems
+            .subtract(fromSchemaMapping.keys())
             .subtract(fromWikipediaMapping.keys())
             .subtract(fromLabelMapping.keys())
             .mapToPair(e -> Map.entry(e, (Resource) VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "_" + ((IRI) e).getLocalName())));
 
-    return fromWikipediaMapping.union(fromLabelMapping).union(fallbackMapping).cache();
+    return fromSchemaMapping.union(fromWikipediaMapping).union(fromLabelMapping).union(fallbackMapping).cache();
   }
 
   /**
@@ -294,14 +302,7 @@ public class Main {
             .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()));
     var possibleSuperClassOfFromWikidata = mapKeyToYago(mapKeyToYago(wikidataSubClassOf, wikidataToYagoUrisMapping).swap(), wikidataToYagoUrisMapping);
 
-    ShaclSchema schema = ShaclSchema.getSchema();
-    var wikidataToSchemaSubClassOf = PairPlanNode.fromStream(schema.getNodeShapes().flatMap(nodeShape ->
-            nodeShape.getFromClasses().flatMap(sourceClass ->
-                    nodeShape.getClasses()
-                            .map(yagoClass -> Map.entry((Resource) sourceClass, yagoClass)))));
-    var superClassOfFromSchema = mapKeyToYago(wikidataToSchemaSubClassOf, wikidataToYagoUrisMapping)
-            .union(subClassOfFromYagoSchema())
-            .swap();
+    var superClassOfFromSchema = subClassOfFromYagoSchema().swap();
 
     var possibleSuperClassOf = possibleSuperClassOfFromWikidata.union(superClassOfFromSchema).cache();
 
@@ -311,7 +312,7 @@ public class Main {
     var badClasses = mapToYago(PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c)), wikidataToYagoUrisMapping)
             .transitiveClosure(possibleSuperClassOf);
 
-    var subclassesOfDisjoint = schema.getClasses()
+    var subclassesOfDisjoint = ShaclSchema.getSchema().getClasses()
             .flatMap(cls1 -> cls1.getDisjointedClasses().map(c2 -> Map.entry(cls1.getTerm(), c2)))
             .map(e ->
                     PlanNode.fromCollection(List.of(e.getKey())).transitiveClosure(possibleSuperClassOf)
@@ -370,10 +371,7 @@ public class Main {
             : optionalThingSuperset.subtract(yagoClasses); // We do not want classes
 
     var instancesWithoutIntersectionRemoval = schema.getNodeShapes().flatMap(nodeShape -> {
-      var fromYagoClasses = PlanNode.fromStream(Stream.concat(
-              nodeShape.getClasses(),
-              nodeShape.getFromClasses().map(t -> (Resource) t)
-      )).transitiveClosure(yagoSuperClassOf);
+      var fromYagoClasses = PlanNode.fromStream(nodeShape.getClasses()).transitiveClosure(yagoSuperClassOf);
 
       var wdInstances = wikidataInstancesForYagoClass
               .intersection(fromYagoClasses)

@@ -23,6 +23,7 @@ yss:NodeShapeShape a sh:NodeShape ;
     sh:property [
         sh:path ys:fromClass ;
         sh:nodeKind sh:IRI ;
+        sh:maxCount 1 ;
     ] ;
     sh:property [
         sh:path sh:property ;
