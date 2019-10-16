@@ -821,13 +821,7 @@ public class Main {
               }
               p.getLabels().forEach(l -> yagoStatements.add(p.getTerm(), RDFS.LABEL, VALUE_FACTORY.createLiteral(camlCaseToRegular(l.stringValue()), "en")));
               p.getComments().forEach(l -> yagoStatements.add(p.getTerm(), RDFS.COMMENT, VALUE_FACTORY.createLiteral(l.stringValue().replaceAll("<[^>]+>", ""), "en")));
-              p.getSuperProperties().forEach(cp -> {
-                if (cp.equals(VALUE_FACTORY.createIRI("rdfs:label"))) {
-                  // dirty fix for https://github.com/schemaorg/schemaorg/pull/2312
-                } else {
-                  yagoStatements.add(p.getTerm(), RDFS.SUBPROPERTYOF, cp);
-                }
-              });
+              p.getSuperProperties().forEach(cp -> yagoStatements.add(p.getTerm(), RDFS.SUBPROPERTYOF, cp));
               p.getInverseProperties().forEach(cp -> yagoStatements.add(p.getTerm(), OWL.INVERSEOF, cp));
               shape.getMaxCount().ifPresent(maxCount -> {
                 if (maxCount == 1) {
