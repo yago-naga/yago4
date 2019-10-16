@@ -305,18 +305,16 @@ public class JavaStreamEvaluator {
   }
 
   private <T> Set<T> toSet(TransitiveClosureNode<T> plan) {
-    Set<T> closure = toStream(plan.getLeftParent()).collect(toSetCollector());
-
     Multimap<T, T> right = toMap(plan.getRightParent());
-    List<T> iteration = new ArrayList<>(closure); //TODO: avoid list
-    while (!iteration.isEmpty()) {
-      iteration = StreamSupport.stream(new StreamMapJoinSpliterator<>(
-              iteration.spliterator(),
-              right
-      ), false)
-              .map(Map.Entry::getValue)
-              .filter(closure::add)
-              .collect(Collectors.toList());
+
+    Set<T> closure = toStream(plan.getLeftParent()).collect(toSetCollector());
+    List<T> toDo = new ArrayList<>(closure);
+    while (!toDo.isEmpty()) {
+      for (var newElement : right.get(toDo.remove(toDo.size() - 1))) {
+        if (closure.add(newElement)) {
+          toDo.add(newElement);
+        }
+      }
     }
     return closure;
   }
@@ -354,18 +352,17 @@ public class JavaStreamEvaluator {
   }
 
   private <K, V> Multimap<K, V> toMap(TransitiveClosurePairNode<K, V> plan) {
-    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(toMultimapCollector());
-
     Multimap<V, V> right = toMap(plan.getRightParent());
-    List<Map.Entry<K, V>> iteration = new ArrayList<>(closure.entries()); //TODO: avoid list
-    while (!iteration.isEmpty()) {
-      iteration = StreamSupport.stream(new PairStreamMapJoinSpliterator<>(
-              iteration.stream().map(t -> Map.entry(t.getValue(), t.getKey())).spliterator(),
-              right
-      ), false)
-              .map(Map.Entry::getValue)
-              .filter(t -> closure.put(t.getKey(), t.getValue()))
-              .collect(Collectors.toList());
+
+    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(toMultimapCollector());
+    List<Map.Entry<K, V>> toDo = new ArrayList<>(closure.entries());
+    while (!toDo.isEmpty()) {
+      var oldElement = toDo.remove(toDo.size() - 1);
+      for (var rightElement : right.get(oldElement.getValue())) {
+        if (closure.put(oldElement.getKey(), rightElement)) {
+          toDo.add(Map.entry(oldElement.getKey(), rightElement));
+        }
+      }
     }
     return closure;
   }
