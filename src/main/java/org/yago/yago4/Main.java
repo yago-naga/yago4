@@ -278,26 +278,40 @@ public class Main {
    * Builds the class set and class hierarchy from Wikidata, schema.org ontology and shapes
    * <p>
    * Algorithm:
-   * 1. take all subClassOf (P279) from Wikidata and maps URIs to Yago
-   * 2. take all subClassOf from schema.org ontology and shapes mapping
-   * 3. Only keep the elements that are transitively subclasses of schema:Thing
-   * 4. Only keep the elements that have/have a subclass with at least 10 instances
-   * 5. remove from them the elements and subclasses of WD_BAD_CLASSES or subclasses of disjoint classes
+   * 1. Take all subClassOf (P279) from Wikidata
+   * 2. Only keep the classes that are sub class of a Yago defined class
+   * 3. Only keep the elements that have/have a subclass with at least 10 instances
+   * 4. Remove the bad classes
+   * 5. Remove the classes that are sub class of two disjoint classes
    */
   private static Map.Entry<PlanNode<Resource>, PairPlanNode<Resource, Resource>> buildYagoClassesAndSuperClassOf(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279))
             .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()));
-    var possibleSuperClassOfFromWikidata = mapKeyToYago(mapKeyToYago(wikidataSubClassOf, wikidataToYagoUrisMapping).swap(), wikidataToYagoUrisMapping);
+    var wikidataSuperClassOf = wikidataSubClassOf.swap().cache();
 
+    var possibleSuperClassOfFromWikidata = mapKeyToYago(mapKeyToYago(wikidataSuperClassOf, wikidataToYagoUrisMapping).swap(), wikidataToYagoUrisMapping).swap();
     var superClassOfFromSchema = subClassOfFromYagoSchema().swap();
-
     var possibleSuperClassOf = possibleSuperClassOfFromWikidata.union(superClassOfFromSchema).cache();
 
-    var schemaThingSubClasses = PlanNode.fromCollection(Collections.singleton((Resource) SCHEMA_THING))
-            .transitiveClosure(possibleSuperClassOf);
+    var yagoSchemaClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getClasses));
+    var yagoSchemaFromClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getFromClasses).map(c -> (Resource) c));
 
-    var badClasses = mapToYago(PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c)), wikidataToYagoUrisMapping)
-            .transitiveClosure(possibleSuperClassOf);
+    var wikidataBadClasses = PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c))
+            .transitiveClosure(wikidataSuperClassOf);
+
+    var wikidataClassesWithAtLeastMinCountInstances = partitionedStatements.getForKey(keyForIri(WDT_P31))
+            .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject()))
+            .aggregateByKey()
+            .filterValue(v -> v.size() >= MIN_NUMBER_OF_INSTANCES)
+            .keys()
+            .transitiveClosure(wikidataSubClassOf);
+
+    var yagoClassesSubClasses = yagoSchemaFromClasses.transitiveClosure(wikidataSuperClassOf);
+
+    var wikidataClassesToKeep = yagoClassesSubClasses
+            .intersection(wikidataClassesWithAtLeastMinCountInstances)
+            .subtract(wikidataBadClasses);
+
 
     var subclassesOfDisjoint = ShaclSchema.getSchema().getClasses()
             .flatMap(cls1 -> cls1.getDisjointedClasses().map(c2 -> Map.entry(cls1.getTerm(), c2)))
@@ -306,18 +320,8 @@ public class Main {
                             .intersection(PlanNode.fromCollection(List.of(e.getValue())).transitiveClosure(possibleSuperClassOf))
             ).reduce(PlanNode::union).orElseGet(PlanNode::empty);
 
-    var wikidataClassesWithAtLeastMinCountInstances = partitionedStatements.getForKey(keyForIri(WDT_P31))
-            .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject()))
-            .aggregateByKey()
-            .filterValue(v -> v.size() >= MIN_NUMBER_OF_INSTANCES)
-            .keys();
-
-    var classesWithInstances = mapToYago(wikidataClassesWithAtLeastMinCountInstances, wikidataToYagoUrisMapping)
-            .transitiveClosure(possibleSuperClassOf.swap());
-
-    var yagoClasses = classesWithInstances
-            .intersection(schemaThingSubClasses)
-            .subtract(badClasses)
+    var yagoClasses = mapToYago(wikidataClassesToKeep, wikidataToYagoUrisMapping)
+            .union(yagoSchemaClasses)
             .subtract(subclassesOfDisjoint)
             .cache();
 
