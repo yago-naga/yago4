@@ -100,7 +100,6 @@ public class Main {
   private static final IRI SCHEMA_QUANTITATIVE_VALUE = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "QuantitativeValue");
   private static final IRI SCHEMA_IMAGE_OBJECT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "ImageObject");
   private static final IRI SCHEMA_ABOUT = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "about");
-  private static final IRI SCHEMA_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "name");
   private static final IRI SCHEMA_ALTERNATE_NAME = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "alternateName");
   private static final IRI SCHEMA_DESCRIPTION = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "description");
   private static final IRI SCHEMA_SAME_AS = VALUE_FACTORY.createIRI(SCHEMA_PREFIX, "sameAs");
@@ -122,7 +121,7 @@ public class Main {
           "Q17524420", //aspect of history
           "Q18340514" //article about events in a specific year or time period
   );
-  private static final Set<IRI> LABEL_IRIS = Set.of(SCHEMA_NAME, SCHEMA_ALTERNATE_NAME, SCHEMA_DESCRIPTION);
+  private static final Set<IRI> LABEL_IRIS = Set.of(RDFS.LABEL, RDFS.COMMENT, SCHEMA_ALTERNATE_NAME);
   private static final int MIN_NUMBER_OF_INSTANCES = 10;
 
   public static void main(String[] args) throws ParseException, IOException {

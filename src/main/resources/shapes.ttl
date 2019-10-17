@@ -28,11 +28,11 @@ schema:Thing a sh:NodeShape ;
     sh:property [
         sh:path schema:alternateName ;
         sh:datatype rdf:langString ;
-        sh:disjoint schema:name ;
+        sh:disjoint rdfs:label ;
         ys:fromProperty skos:altLabel ;
     ] ;
     sh:property [
-        sh:path schema:description ;
+        sh:path rdfs:comment ;
         sh:datatype rdf:langString ;
         sh:uniqueLang true ;
         ys:fromProperty schema:description ;
@@ -43,7 +43,7 @@ schema:Thing a sh:NodeShape ;
         ys:fromProperty wdt:P18 ;
     ] ;
     sh:property [
-        sh:path schema:name ;
+        sh:path rdfs:label ;
         sh:datatype rdf:langString ;
         sh:uniqueLang true ;
         ys:fromProperty skos:prefLabel ;
