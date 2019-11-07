@@ -355,7 +355,7 @@ public class Main {
             partitionedStatements.getForKey(keyForIri(WDT_P31))
                     .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject())),
             wikidataToYagoUrisMapping
-    ).cache();
+    );
 
     var optionalThingSupersetWithoutClasses = optionalThingSuperset == null
             ? null
@@ -371,7 +371,7 @@ public class Main {
               ? mapToYago(wdInstances, wikidataToYagoUrisMapping).subtract(yagoClasses) // We do not want classes
               : mapToYago(wdInstances, wikidataToYagoUrisMapping).intersection(optionalThingSupersetWithoutClasses);
 
-      return nodeShape.getClasses().map(c -> Map.entry(c, instances.cache()));
+      return nodeShape.getClasses().map(c -> Map.entry(c, instances));
     }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
     var instancesInDisjointIntersections = schema.getClasses()
