@@ -285,16 +285,18 @@ public class Main {
    * 5. Remove the classes that are sub class of two disjoint classes
    */
   private static Map.Entry<PlanNode<Resource>, PairPlanNode<Resource, Resource>> buildYagoClassesAndSuperClassOf(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+    var yagoSchemaClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getClasses));
+    var yagoSchemaFromClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getFromClasses).map(c -> (Resource) c));
+
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279))
-            .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()));
+            .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()))
+            .subtract(yagoSchemaFromClasses)
+            .cache(); // Yago shape classes only have super classes which are shapes
     var wikidataSuperClassOf = wikidataSubClassOf.swap().cache();
 
     var possibleSuperClassOfFromWikidata = mapKeyToYago(mapKeyToYago(wikidataSuperClassOf, wikidataToYagoUrisMapping).swap(), wikidataToYagoUrisMapping).swap();
     var superClassOfFromSchema = subClassOfFromYagoSchema().swap();
     var possibleSuperClassOf = possibleSuperClassOfFromWikidata.union(superClassOfFromSchema).cache();
-
-    var yagoSchemaClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getClasses));
-    var yagoSchemaFromClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getFromClasses).map(c -> (Resource) c));
 
     var wikidataBadClasses = PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c))
             .transitiveClosure(wikidataSuperClassOf);
