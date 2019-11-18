@@ -331,9 +331,14 @@ schema:Article a sh:NodeShape ;
 schema:NewsArticle a sh:NodeShape ;
     ys:fromClass wd:Q5707594 .
 
+schema:Report a sh:NodeShape ;
+    ys:fromClass wd:Q10870555 .
 
 schema:ScholarlyArticle a sh:NodeShape ;
     ys:fromClass wd:Q13442814 .
+
+schema:Atlas a sh:NodeShape ;
+    ys:fromClass wd:Q162827 .
 
 schema:Blog a sh:NodeShape ;
     ys:fromClass wd:Q30849 .
@@ -358,6 +363,11 @@ schema:Book a sh:NodeShape ;
         ys:fromProperty wdt:P1104 ;
     ] .
 
+schema:Chapter a sh:NodeShape ;
+    ys:fromClass wd:Q1980247 .
+
+schema:Collection a sh:NodeShape ;
+    ys:fromClass wd:Q2668072 .
 
 schema:CreativeWorkSeason a sh:NodeShape ;
     ys:fromClass wd:Q70990126 ;
@@ -444,6 +454,11 @@ schema:MovieSeries a sh:NodeShape ;
 schema:Periodical a sh:NodeShape ;
     ys:fromClass wd:Q1002697 .
 
+schema:Newspaper a sh:NodeShape ;
+    ys:fromClass wd:Q11032 .
+
+schema:PodcastSeries a sh:NodeShape ;
+    ys:fromClass wd:Q24634210 .
 
 schema:RadioSeries a sh:NodeShape ;
     ys:fromClass wd:Q14623351 ;
@@ -730,10 +745,8 @@ schema:Movie a sh:NodeShape ;
         ys:fromProperty wdt:P272 ;
     ] .
 
-
-schema:Painting a sh:NodeShape ;
-    ys:fromClass wd:Q3305213 .
-
+schema:Photograph a sh:NodeShape ;
+    ys:fromClass wd:Q125191 .
 
 schema:PublicationIssue a sh:NodeShape ;
     ys:fromClass wd:Q28869365 ;
@@ -795,6 +808,9 @@ schema:VideoGame a sh:NodeShape ;
         ys:fromProperty wdt:P86 ;
     ] .
 
+schema:Thesis a sh:NodeShape ;
+    ys:fromClass wd:Q1266946 .
+
 schema:VisualArtwork a sh:NodeShape ;
     ys:fromClass wd:Q4502142 ;
     sh:property [
@@ -819,6 +835,20 @@ schema:VisualArtwork a sh:NodeShape ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P2049 ;
     ] .
+
+schema:Drawing a sh:NodeShape ;
+    ys:fromClass wd:Q93184 .
+
+schema:Painting a sh:NodeShape ;
+    ys:fromClass wd:Q3305213 .
+
+schema:Sculpture a sh:NodeShape ;
+    ys:fromClass wd:Q860861 .
+
+
+schema:ComputerLanguage a sh:NodeShape ;
+    ys:fromClass wd:Q629206 .
+
 
 schema:Event a sh:NodeShape ;
     ys:fromClass wd:Q1656682 ;
@@ -1103,8 +1133,34 @@ schema:Airline a sh:NodeShape ;
 schema:Corporation a sh:NodeShape ;
     ys:fromClass wd:Q167037 .
 
+schema:EducationalOrganization a sh:NodeShape ;
+    ys:fromClass wd:Q5341295 .
+
+schema:CollegeOrUniversity a sh:NodeShape ;
+    ys:fromClass wd:Q38723 .
+
+schema:ElementarySchool a sh:NodeShape ;
+    ys:fromClass wd:Q20950067 .
+
+schema:MiddleSchool a sh:NodeShape ;
+    ys:fromClass wd:Q149566 .
+
+schema:Preschool a sh:NodeShape ;
+    ys:fromClass wd:Q1076052 .
+
+schema:School a sh:NodeShape ;
+    ys:fromClass wd:Q3914 .
+
+schema:GovernmentOrganization a sh:NodeShape ;
+    ys:fromClass wd:Q2659904 .
+
+schema:NGO a sh:NodeShape ;
+    ys:fromClass wd:Q79913 .
 
 schema:PerformingGroup a sh:NodeShape .
+
+schema:DanceGroup a sh:NodeShape ;
+    ys:fromClass wd:Q2393314 .
 
 schema:MusicGroup a sh:NodeShape ;
     ys:fromClass wd:Q215380 ;
@@ -1113,6 +1169,15 @@ schema:MusicGroup a sh:NodeShape ;
         sh:node schema:Thing ;
         ys:fromProperty wdt:P136 ;
     ] .
+
+schema:TheaterGroup a sh:NodeShape ;
+    ys:fromClass wd:Q2416217 .
+
+schema:SportsOrganization a sh:NodeShape ;
+    ys:fromClass wd:Q4438121 .
+
+schema:SportsTeam a sh:NodeShape ;
+    ys:fromClass wd:Q12973014 .
 
 
 schema:Person a sh:NodeShape ;
@@ -1331,9 +1396,6 @@ schema:Place a sh:NodeShape ;
 schema:AdministrativeArea a sh:NodeShape ;
     ys:fromClass wd:Q56061 .
 
-schema:Country a sh:NodeShape ;
-    ys:fromClass wd:Q6256 .
-
 schema:City a sh:NodeShape ;
     ys:fromClass wd:Q515 ;
     sh:property [
@@ -1343,6 +1405,13 @@ schema:City a sh:NodeShape ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P238 ;
     ] .
+
+schema:Country a sh:NodeShape ;
+    ys:fromClass wd:Q6256 .
+
+schema:State a sh:NodeShape ;
+    ys:fromClass wd:Q107390 .
+
 
 schema:CivicStructure a sh:NodeShape .
 
@@ -1362,6 +1431,159 @@ schema:Airport a sh:NodeShape ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P239 ;
     ] .
+
+schema:Aquarium a sh:NodeShape ;
+    ys:fromClass wd:Q2281788 .
+
+schema:Beach a sh:NodeShape ;
+    ys:fromClass wd:Q40080 .
+
+schema:Bridge a sh:NodeShape ;
+    ys:fromClass wd:Q12280 .
+
+schema:BusStation a sh:NodeShape ;
+    ys:fromClass wd:Q494829 .
+
+schema:BusStop a sh:NodeShape ;
+    ys:fromClass wd:Q953806 .
+
+schema:Campground a sh:NodeShape ;
+    ys:fromClass wd:Q27108230 .
+
+schema:Cemetery a sh:NodeShape ;
+    ys:fromClass wd:Q39614 .
+
+schema:Crematorium a sh:NodeShape ;
+    ys:fromClass wd:Q157570 .
+schema:EventVenue a sh:NodeShape ;
+    ys:fromClass wd:Q18674739 .
+
+schema:FireStation a sh:NodeShape ;
+    ys:fromClass wd:Q1195942 .
+
+schema:GovernmentBuilding a sh:NodeShape ;
+    ys:fromClass wd:Q16831714 .
+
+schema:CityHall a sh:NodeShape ;
+    ys:fromClass wd:Q543654 .
+
+schema:Courthouse a sh:NodeShape ;
+    ys:fromClass wd:Q1137809 .
+
+schema:DefenceEstablishment a sh:NodeShape ;
+    ys:fromClass wd:Q18691599 .
+
+schema:Embassy a sh:NodeShape ;
+    ys:fromClass wd:Q3917681 .
+
+schema:Hospital a sh:NodeShape ;
+    ys:fromClass wd:Q16917 .
+
+schema:MovieTheater a sh:NodeShape ;
+    ys:fromClass wd:Q41253 .
+
+schema:Museum a sh:NodeShape ;
+    ys:fromClass wd:Q33506 .
+
+schema:MusicVenue a sh:NodeShape ;
+    ys:fromClass wd:Q8719053 .
+
+schema:Park a sh:NodeShape ;
+    ys:fromClass wd:Q22698 .
+
+schema:ParkingFacility a sh:NodeShape ;
+    ys:fromClass wd:Q6501349 .
+
+schema:PerformingArtsTheater a sh:NodeShape ;
+    ys:fromClass wd:Q24354 .
+
+schema:PlaceOfWorship a sh:NodeShape ;
+    ys:fromClass wd:Q1370598 .
+
+schema:BuddhistTemple a sh:NodeShape ;
+    ys:fromClass wd:Q5393308 .
+
+schema:Church a sh:NodeShape ;
+    ys:fromClass wd:Q16970 .
+
+schema:CatholicChurch a sh:NodeShape ;
+    ys:fromClass wd:Q1088552 .
+
+schema:HinduTemple a sh:NodeShape ;
+    ys:fromClass wd:Q842402 .
+
+schema:Mosque a sh:NodeShape ;
+    ys:fromClass wd:Q32815 .
+
+schema:Synagogue a sh:NodeShape ;
+    ys:fromClass wd:Q34627 .
+
+schema:Playground a sh:NodeShape ;
+    ys:fromClass wd:Q13607440 .
+
+schema:PoliceStation a sh:NodeShape ;
+    ys:fromClass wd:Q861951 .
+
+schema:PublicToilet a sh:NodeShape ;
+    ys:fromClass wd:Q813966 .
+
+schema:StadiumOrArena a sh:NodeShape ;
+    ys:fromClass wd:Q483110 .
+
+schema:SubwayStation a sh:NodeShape ;
+    ys:fromClass wd:Q928830 .
+
+schema:TrainStation a sh:NodeShape ;
+    ys:fromClass wd:Q55488 .
+
+schema:Zoo a sh:NodeShape ;
+    ys:fromClass wd:Q43501 .
+
+schema:Landform a sh:NodeShape ;
+    ys:fromClass wd:Q271669 .
+
+schema:BodyOfWater a sh:NodeShape ;
+    ys:fromClass wd:Q15324 .
+
+schema:Canal a sh:NodeShape ;
+    ys:fromClass wd:Q12284 .
+
+schema:LakeBodyOfWater a sh:NodeShape ;
+    ys:fromClass wd:Q23397 .
+
+schema:OceanBodyOfWater a sh:NodeShape ;
+    ys:fromClass wd:Q9430 .
+
+schema:Pond a sh:NodeShape ;
+    ys:fromClass wd:Q3253281 .
+
+schema:Reservoir a sh:NodeShape ;
+    ys:fromClass wd:Q131681 .
+
+schema:RiverBodyOfWater a sh:NodeShape ;
+    ys:fromClass wd:Q4022 .
+
+schema:SeaBodyOfWater a sh:NodeShape ;
+    ys:fromClass wd:Q165 .
+
+schema:Waterfall a sh:NodeShape ;
+    ys:fromClass wd:Q34038 .
+
+schema:Continent a sh:NodeShape ;
+    ys:fromClass wd:Q5107 .
+
+schema:Mountain a sh:NodeShape ;
+    ys:fromClass wd:Q8502 .
+
+schema:Volcano a sh:NodeShape ;
+    ys:fromClass wd:Q8072 .
+
+schema:LandmarksOrHistoricalBuildings a sh:NodeShape ;
+    ys:fromClass wd:Q51369558 .
+
+schema:TouristAttraction a sh:NodeShape ;
+    ys:fromClass wd:Q570116 .
+
 
 schema:LocalBusiness a sh:NodeShape ;
     ys:fromClass wd:Q62849941 .
@@ -1436,7 +1658,6 @@ schema:Product a sh:NodeShape ;
 
 schema:ProductModel a sh:NodeShape ;
     ys:fromClass wd:Q17444171 .
-
 
 schema:Rating a sh:NodeShape ;
     ys:fromClass wd:Q23649976 .
