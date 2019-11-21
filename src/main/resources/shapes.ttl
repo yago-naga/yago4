@@ -704,6 +704,33 @@ schema:MusicAlbum a sh:NodeShape ;
        ys:fromProperty wdt:P175 ;
    ] .
 
+schema:MusicRelease a sh:NodeShape ;
+    sh:property [
+        sh:path schema:duration ;
+        sh:datatype xsd:duration ;
+        ys:fromProperty wdt:P2047 ;
+    ] ;
+    sh:property [
+        sh:path schema:musicReleaseFormat ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P437 ;
+    ] ;
+    sh:property [
+        sh:path schema:recordLabel ;
+        sh:node schema:Organization ;
+        ys:fromProperty wdt:P264 ;
+    ] ;
+    sh:property [
+        sh:path schema:releaseOf ;
+        sh:node schema:MusicAlbum ;
+        ys:fromProperty wdt:P2550 ;
+    ] ;
+    sh:property [
+        sh:path schema:track ;
+        sh:node schema:MusicRecording ;
+        ys:fromProperty wdt:P658 ;
+    ] .
+
 
 schema:Movie a sh:NodeShape ;
     ys:fromClass wd:Q11424 ;
