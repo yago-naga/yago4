@@ -993,6 +993,9 @@ schema:Event a sh:NodeShape ;
         ys:fromProperty wdt:P655 ;
     ] .
 
+schema:Festival a sh:NodeShape ;
+    ys:fromClass wd:Q132241 .
+
 
 schema:Language a sh:NodeShape ;
     ys:fromClass wd:Q34770 .
