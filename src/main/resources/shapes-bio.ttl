@@ -37,22 +37,11 @@ bioschema:BioChemEntity a sh:NodeShape ;
         sh:path bioschema:isLocatedInSubcellularLocation ;
         sh:node schema:Thing ;
         ys:fromProperty wdt:P681 ;
-    ] ;
-    sh:property [
-        sh:path bioschema:isLocatedInSubcellularLocation ;
-        sh:node schema:Thing ;
-        ys:fromProperty wdt:P681 ;
     ] .
 
 
 bioschema:ChemicalSubstance a sh:NodeShape ;
-    ys:fromClass wd:Q79529 ;
-    sh:property [
-        sh:path bioschema:molecularFormula ;
-        sh:datatype xsd:string ;
-        # TODO: sh:pattern
-        ys:fromProperty wdt:P274 ;
-    ] .
+    ys:fromClass wd:Q79529 .
 
 
 bioschema:Gene a sh:NodeShape ;
