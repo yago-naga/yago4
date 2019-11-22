@@ -58,6 +58,15 @@ public class ShaclSchema {
     return model;
   }
 
+  public NodeShape getNodeShape(Resource cls) {
+    return new UnionNodeShape(Stream.concat(
+            model.filter(null, SHACL.TARGET_CLASS, cls).stream().map(Statement::getSubject),
+            Stream.of(cls)
+    ).filter(s -> model.contains(s, RDF.TYPE, SHACL.NODE_SHAPE))
+            .map(SingleNodeShape::new)
+    );
+  }
+
   public Stream<NodeShape> getNodeShapes() {
     return model.filter(null, RDF.TYPE, SHACL.NODE_SHAPE).subjects().stream()
             .map(SingleNodeShape::new);

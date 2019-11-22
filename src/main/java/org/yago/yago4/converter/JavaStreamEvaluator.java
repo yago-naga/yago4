@@ -354,7 +354,7 @@ public class JavaStreamEvaluator {
   private <K, V> Multimap<K, V> toMap(TransitiveClosurePairNode<K, V> plan) {
     Multimap<V, V> right = toMap(plan.getRightParent());
 
-    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(toMultimapCollector());
+    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(toMultimapCollector(ArraySetHashMapMultimap::new));
     List<Map.Entry<K, V>> toDo = new ArrayList<>(closure.entries());
     while (!toDo.isEmpty()) {
       var oldElement = toDo.remove(toDo.size() - 1);

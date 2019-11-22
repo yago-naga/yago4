@@ -29,6 +29,7 @@ import java.time.format.SignStyle;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -174,13 +175,19 @@ public class Main {
   private static void buildYago(PartitionedStatements partitionedStatements, Path outputDir, boolean enWikipediaOnly, boolean wikipediaOnly) throws IOException {
     Files.createDirectories(outputDir);
 
-    var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements);
+    var wikidataToEnWikipediaMapping = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
+            .filter(s -> s.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
+            .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject()))
+            .cache();
 
-    var t = buildYagoClassesAndSuperClassOf(partitionedStatements, wikidataToYagoUrisMapping);
+    var wikidataToYagoUrisMapping = wikidataToYagoUrisMapping(partitionedStatements, wikidataToEnWikipediaMapping);
+
+    var t = buildYagoClassesAndSuperClassOf(partitionedStatements, wikidataToYagoUrisMapping, wikidataToEnWikipediaMapping);
     var yagoClasses = t.getKey();
-    var yagoSuperClassOf = t.getValue();
+    var wikidataToYagoClassMapping = t.getValue().getKey();
+    var yagoSuperClassOf = t.getValue().getValue();
 
-    var yagoShapeInstances = yagoShapeInstances(partitionedStatements, yagoSuperClassOf, yagoClasses,
+    var yagoShapeInstances = yagoShapeInstances(partitionedStatements, wikidataToYagoClassMapping, yagoSuperClassOf, yagoClasses,
             enWikipediaOnly
                     ? enWikipediaElements(partitionedStatements, wikidataToYagoUrisMapping)
                     : (wikipediaOnly ? wikipediaElements(partitionedStatements, wikidataToYagoUrisMapping) : null),
@@ -194,7 +201,7 @@ public class Main {
     generateNTFile(buildSimpleInstanceOf(yagoShapeInstances), outputDir, "yago-wd-simple-types.nt");
 
     generateNTFile(
-            buildFullInstanceOf(yagoShapeInstances.get(SCHEMA_THING), yagoClasses, partitionedStatements, wikidataToYagoUrisMapping),
+            buildFullInstanceOf(yagoShapeInstances.get(SCHEMA_THING), wikidataToYagoClassMapping, partitionedStatements, wikidataToYagoUrisMapping),
             outputDir, "yago-wd-full-types.nt"
     );
 
@@ -208,7 +215,7 @@ public class Main {
     generateNTStarFile(annotatedFacts.getValue(), outputDir, "yago-wd-facts-annotations.ntx");
 
     generateNTFile(
-            buildSameAs(partitionedStatements, yagoShapeInstances.get(SCHEMA_THING), wikidataToYagoUrisMapping),
+            buildSameAs(partitionedStatements, yagoShapeInstances.get(SCHEMA_THING), wikidataToYagoUrisMapping, wikidataToEnWikipediaMapping),
             outputDir, "yago-wd-sameAs.nt"
     );
 
@@ -237,15 +244,13 @@ public class Main {
   /**
    * Converts Wikidata URI to Yago URIs based on en.wikipedia article titles
    */
-  private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements) {
+  private static PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToEnWikipediaMapping) {
     var fromSchemaMapping = PairPlanNode.fromStream(ShaclSchema.getSchema()
             .getNodeShapes()
             .flatMap(shape -> shape.getClasses().flatMap(toCls -> shape.getFromClasses().map(fromCls -> Map.entry((Resource) fromCls, toCls)))))
             .cache();
 
-    var fromWikipediaMapping = partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
-            .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
-            .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject()))
+    var fromWikipediaMapping = wikidataToEnWikipediaMapping
             .subtract(fromSchemaMapping.keys())
             .flatMapValue(wikipedia -> normalizeIri(wikipedia.stringValue()))
             .mapPair((wikidata, wikipedia) -> Map.entry(wikidata, (Resource) VALUE_FACTORY.createIRI(wikipedia.replace("https://en.wikipedia.org/wiki/", YAGO_RESOURCE_PREFIX))))
@@ -288,27 +293,32 @@ public class Main {
 
   /**
    * Builds the class set and class hierarchy from Wikidata, schema.org ontology and shapes
+   *
    * <p>
    * Algorithm:
    * 1. Take all subClassOf (P279) from Wikidata
-   * 2. Only keep the classes that are sub class of a Yago defined class
-   * 3. Only keep the elements that have/have a subclass with at least 10 instances
+   * 2. Only keep the classes that are subclass of a Yago defined class
+   * 3. Only keep the classes that have at least 10 instances or have a subclass with at least 10 instances
    * 4. Remove the bad classes
    * 5. Remove the classes that are sub class of two disjoint classes
+   * It gives the set of Wikidata classes to consider.
+   * <p>
+   * 6. Build the set of Yago classes by keeping only the classes with at least 10 direct instances and an English Wikipedia article.
+   * 7. Compute the mapping from Wikidata classes and Yago classes and the Yago type hierarchy from it.
    */
-  private static Map.Entry<PlanNode<Resource>, PairPlanNode<Resource, Resource>> buildYagoClassesAndSuperClassOf(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
-    var yagoSchemaClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getClasses));
-    var yagoSchemaFromClasses = PlanNode.fromStream(ShaclSchema.getSchema().getNodeShapes().flatMap(ShaclSchema.NodeShape::getFromClasses).map(c -> (Resource) c));
+  private static Map.Entry<PlanNode<Resource>, Map.Entry<PairPlanNode<Resource, Resource>, PairPlanNode<Resource, Resource>>> buildYagoClassesAndSuperClassOf(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping, PairPlanNode<Resource, Resource> wikidataToEnWikipediaMapping) {
+    var schema = ShaclSchema.getSchema();
+    var wikidataToYagoSchemaClasses = PairPlanNode.fromStream(
+            schema.getNodeShapes()
+                    .flatMap(shape -> shape.getClasses().flatMap(toCls -> shape.getFromClasses().map(fromCls -> Map.entry((Resource) fromCls, toCls))))
+    ).cache();
+    var yagoSchemaFromClasses = wikidataToYagoSchemaClasses.keys().cache();
 
     var wikidataSubClassOf = partitionedStatements.getForKey(keyForIri(WDT_P279))
             .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()))
             .subtract(yagoSchemaFromClasses)
             .cache(); // Yago shape classes only have super classes which are shapes
     var wikidataSuperClassOf = wikidataSubClassOf.swap().cache();
-
-    var possibleSuperClassOfFromWikidata = mapKeyToYago(mapKeyToYago(wikidataSuperClassOf, wikidataToYagoUrisMapping).swap(), wikidataToYagoUrisMapping).swap();
-    var superClassOfFromSchema = subClassOfFromYagoSchema().swap();
-    var possibleSuperClassOf = possibleSuperClassOfFromWikidata.union(superClassOfFromSchema).cache();
 
     var wikidataBadClasses = PlanNode.fromCollection(WD_BAD_CLASSES).map(c -> (Resource) VALUE_FACTORY.createIRI(WD_PREFIX, c))
             .transitiveClosure(wikidataSuperClassOf);
@@ -318,35 +328,67 @@ public class Main {
             .aggregateByKey()
             .filterValue(v -> v.size() >= MIN_NUMBER_OF_INSTANCES)
             .keys()
+            .cache();
+
+    var wikidataClassesWithAtLeastMinCountInstancesRecursively = wikidataClassesWithAtLeastMinCountInstances
             .transitiveClosure(wikidataSubClassOf);
 
     var yagoClassesSubClasses = yagoSchemaFromClasses.transitiveClosure(wikidataSuperClassOf);
 
-    var wikidataClassesToKeep = yagoClassesSubClasses
-            .intersection(wikidataClassesWithAtLeastMinCountInstances)
-            .subtract(wikidataBadClasses);
-
-
     var subclassesOfDisjoint = ShaclSchema.getSchema().getClasses()
-            .flatMap(cls1 -> cls1.getDisjointedClasses().map(c2 -> Map.entry(cls1.getTerm(), c2)))
+            .flatMap(cls1 -> {
+              var s1 = schema.getNodeShape(cls1.getTerm());
+              return cls1.getDisjointedClasses().flatMap(cl2 -> {
+                var s2 = schema.getNodeShape(cl2);
+                return s1.getFromClasses().flatMap(c1 -> s2.getFromClasses().map(c2 -> Map.entry((Resource) c1, (Resource) c2)));
+              });
+            })
             .map(e ->
-                    PlanNode.fromCollection(List.of(e.getKey())).transitiveClosure(possibleSuperClassOf)
-                            .intersection(PlanNode.fromCollection(List.of(e.getValue())).transitiveClosure(possibleSuperClassOf))
+                    PlanNode.fromCollection(List.of(e.getKey())).transitiveClosure(wikidataSuperClassOf)
+                            .intersection(PlanNode.fromCollection(List.of(e.getValue())).transitiveClosure(wikidataSuperClassOf))
             ).reduce(PlanNode::union).orElseGet(PlanNode::empty);
 
-    var yagoClasses = mapToYago(wikidataClassesToKeep, wikidataToYagoUrisMapping)
-            .union(yagoSchemaClasses)
+
+    var wikidataClassesToKeep = yagoClassesSubClasses
+            .intersection(wikidataClassesWithAtLeastMinCountInstancesRecursively)
+            .subtract(wikidataBadClasses)
             .subtract(subclassesOfDisjoint)
+            .union(yagoSchemaFromClasses)
             .cache();
 
-    var yagoSuperClassOf = possibleSuperClassOf
-            .intersection(yagoClasses)
-            .swap()
-            .intersection(yagoClasses)
-            .swap()
+    var wikidataClassesToKeepForYago = wikidataClassesToKeep
+            .intersection(wikidataClassesWithAtLeastMinCountInstances)
+            .join(wikidataToEnWikipediaMapping)
+            .keys()
+            .union(yagoSchemaFromClasses)
             .cache();
 
-    return Map.entry(yagoClasses, yagoSuperClassOf);
+    var yagoClasses = mapToYago(wikidataClassesToKeepForYago, wikidataToYagoUrisMapping).cache();
+
+    var wikidataSubClassOfWithoutClassesToKeepForYago = wikidataSubClassOf
+            .subtract(wikidataClassesToKeepForYago)
+            .cache();
+
+    var wikidataToYagoClassMapping = mapKeyToYago(
+            wikidataClassesToKeep
+                    .mapToPair(c -> Map.entry(c, c))
+                    .transitiveClosure(wikidataSubClassOfWithoutClassesToKeepForYago)
+                    .swap()
+                    .intersection(wikidataClassesToKeepForYago),
+            wikidataToYagoUrisMapping
+    ).swap().cache();
+
+    var yagoSuperClassOf = mapKeyToYago(
+            mapKeyToYago(
+                    wikidataSubClassOf
+                            .intersection(wikidataClassesToKeepForYago)
+                            .transitiveClosure(wikidataSubClassOfWithoutClassesToKeepForYago),
+                    wikidataToYagoUrisMapping
+            ).swap().intersection(wikidataClassesToKeepForYago),
+            wikidataToYagoUrisMapping
+    ).union(subClassOfFromYagoSchema().swap()).cache();
+
+    return Map.entry(yagoClasses, Map.entry(wikidataToYagoClassMapping, yagoSuperClassOf));
   }
 
   private static PlanNode<Resource> wikipediaElements(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
@@ -363,13 +405,14 @@ public class Main {
     return mapToYago(wikidataLinkedToEnWikipedia, wikidataToYagoUrisMapping);
   }
 
-  private static Map<Resource, PlanNode<Resource>> yagoShapeInstances(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> yagoSuperClassOf, PlanNode<Resource> yagoClasses, PlanNode<Resource> optionalThingSuperset, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+  private static Map<Resource, PlanNode<Resource>> yagoShapeInstances(PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoClassMapping, PairPlanNode<Resource, Resource> yagoSuperClassOf, PlanNode<Resource> yagoClasses, PlanNode<Resource> optionalThingSuperset, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     var schema = ShaclSchema.getSchema();
-    var wikidataInstancesForYagoClass = mapKeyToYago(
-            partitionedStatements.getForKey(keyForIri(WDT_P31))
-                    .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject())),
-            wikidataToYagoUrisMapping
-    );
+    var wikidataInstancesForYagoClass = partitionedStatements.getForKey(keyForIri(WDT_P31))
+            .mapToPair(t -> Map.entry((Resource) t.getObject(), t.getSubject()))
+            .join(wikidataToYagoClassMapping)
+            .values()
+            .mapToPair(Function.identity())
+            .swap();
 
     var optionalThingSupersetWithoutClasses = optionalThingSuperset == null
             ? null
@@ -406,16 +449,17 @@ public class Main {
     }).reduce(PlanNode::union).orElseGet(PlanNode::empty);
   }
 
-  private static PlanNode<Statement> buildFullInstanceOf(PlanNode<Resource> yagoThings, PlanNode<Resource> yagoClasses, PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+  private static PlanNode<Statement> buildFullInstanceOf(PlanNode<Resource> yagoThings, PairPlanNode<Resource, Resource> wikidataToYagoClassMapping, PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
     var wikidataInstanceOf = partitionedStatements.getForKey(keyForIri(WDT_P31))
             .mapToPair(t -> Map.entry(t.getSubject(), (Resource) t.getObject()));
 
     var instanceOfSubjectFiltered = mapKeyToYago(wikidataInstanceOf, wikidataToYagoUrisMapping)
             .intersection(yagoThings);
 
-    return mapKeyToYago(instanceOfSubjectFiltered.swap(), wikidataToYagoUrisMapping)
-            .intersection(yagoClasses)
-            .map((o, s) -> VALUE_FACTORY.createStatement(s, RDF.TYPE, o));
+    return instanceOfSubjectFiltered.swap()
+            .join(wikidataToYagoClassMapping)
+            .values()
+            .map(e -> VALUE_FACTORY.createStatement(e.getKey(), RDF.TYPE, e.getValue()));
   }
 
   private static PlanNode<Statement> buildClassesDescription(PlanNode<Resource> yagoClasses, PairPlanNode<Resource, Resource> yagoSuperClassOf, PartitionedStatements partitionedStatements, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
@@ -711,7 +755,7 @@ public class Main {
             .mapPair((k, v) -> Map.entry((Resource) v, k))
             .join(clean)
             .values()
-            .mapToPair(t -> t);
+            .mapToPair(Function.identity());
   }
 
   private static PairPlanNode<Resource, Value> getSubjectStatement(PartitionedStatements partitionedStatements, ShaclSchema.PropertyShape propertyShape) {
@@ -750,7 +794,7 @@ public class Main {
             .mapPair((k, v) -> Map.entry(v, k));
   }
 
-  private static PlanNode<Statement> buildSameAs(PartitionedStatements partitionedStatements, PlanNode<Resource> yagoThings, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping) {
+  private static PlanNode<Statement> buildSameAs(PartitionedStatements partitionedStatements, PlanNode<Resource> yagoThings, PairPlanNode<Resource, Resource> wikidataToYagoUrisMapping, PairPlanNode<Resource, Resource> wikidataToEnWikipediaMapping) {
     // Wikidata
     PlanNode<Statement> wikidata = wikidataToYagoUrisMapping
             .swap()
@@ -758,9 +802,7 @@ public class Main {
             .map((yago, wd) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, wd));
 
     //dbPedia
-    PlanNode<Statement> dbPedia = mapKeyToYago(partitionedStatements.getForKey(keyForIri(SCHEMA_ABOUT))
-            .filter(t -> t.getSubject().stringValue().startsWith("https://en.wikipedia.org/wiki/"))
-            .mapToPair(s -> Map.entry((Resource) s.getObject(), s.getSubject())), wikidataToYagoUrisMapping)
+    PlanNode<Statement> dbPedia = mapKeyToYago(wikidataToEnWikipediaMapping, wikidataToYagoUrisMapping)
             .intersection(yagoThings)
             .mapValue(wikipedia -> VALUE_FACTORY.createIRI(wikipedia.stringValue().replace("https://en.wikipedia.org/wiki/", "http://dbpedia.org/resource/")))
             .map((yago, dbpedia) -> VALUE_FACTORY.createStatement(yago, OWL.SAMEAS, dbpedia));
@@ -807,7 +849,7 @@ public class Main {
                 } else if (cp.equals(SCHEMA_STRUCTURED_VALUE)) {
                   //schema:StructuredValue are not schema:Thing
                   //TODO: breaks Blazegraph yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, OWL.THING);
-                } else { //We ignore schema:Intangible
+                } else {
                   yagoStatements.add(c.getTerm(), RDFS.SUBCLASSOF, cp);
                 }
               });

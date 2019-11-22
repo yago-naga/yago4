@@ -28,6 +28,7 @@ import java.util.*;
 public class YagoValueFactory implements ValueFactory {
   private static final SimpleValueFactory VALUE_FACTORY = SimpleValueFactory.getInstance();
   private static final DatatypeFactory DATATYPE_FACTORY;
+
   static {
     try {
       DATATYPE_FACTORY = DatatypeFactory.newInstance();
@@ -83,6 +84,7 @@ public class YagoValueFactory implements ValueFactory {
           "http://www.wikidata.org/prop/reference/",
           "http://www.wikidata.org/prop/"
   };
+
   static {
     assert NUMERIC_NAMESPACES.length < Byte.MAX_VALUE;
   }
@@ -178,6 +180,7 @@ public class YagoValueFactory implements ValueFactory {
   };
   private static final Map<String, IRI> CONSTANTS_IRIS_FOR_STRING = new HashMap<>();
   private static final Map<IRI, Integer> CONSTANTS_IDS_FOR_IRI = new HashMap<>();
+
   static {
     assert CONSTANTS.length < Byte.MAX_VALUE;
 

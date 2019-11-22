@@ -13,7 +13,7 @@
         <fastutil.version>8.3.0</fastutil.version>
         <guava.version>28.1-jre</guava.version>
         <junit.version>5.5.2</junit.version>
-        <rdf4j.version>3.0.0</rdf4j.version>
+        <rdf4j.version>3.0.2</rdf4j.version>
     </properties>
 
     <dependencies>
