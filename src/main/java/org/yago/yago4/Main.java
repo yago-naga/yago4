@@ -897,7 +897,11 @@ public class Main {
       addUnionOfObject(yagoStatements, e.getKey(), RDFS.RANGE, e.getValue(), OWL.CLASS);
     }
     for (Map.Entry<Resource, Set<Resource>> e : datatypeRanges.entrySet()) {
-      addUnionOfObject(yagoStatements, e.getKey(), RDFS.RANGE, e.getValue(), RDFS.DATATYPE);
+      if (e.getValue().size() == 1) {
+        addUnionOfObject(yagoStatements, e.getKey(), RDFS.RANGE, e.getValue(), RDFS.DATATYPE);
+      } else {
+        //TODO: union does not seems to work well...
+      }
     }
 
     // Some hardcoded triples
@@ -1126,9 +1130,10 @@ public class Main {
 
   private static void addListObject(Model model, Resource subject, IRI predicate, Collection<? extends Value> objects) {
     List<Value> list = new ArrayList<>(objects);
+    String name = "list-" + stringName(model, list) + "-";
     Resource current = RDF.NIL;
     for (int i = list.size() - 1; i >= 0; i--) {
-      Resource newCurrent = VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, "list-" + stringName(model, list.subList(i, list.size())));
+      Resource newCurrent = VALUE_FACTORY.createIRI(YAGO_RESOURCE_PREFIX, name + i);
       model.add(newCurrent, RDF.REST, current);
       model.add(newCurrent, RDF.FIRST, list.get(i));
       current = newCurrent;

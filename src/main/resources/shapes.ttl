@@ -209,7 +209,7 @@ schema:CreativeWork a sh:NodeShape ;
     sh:property [
         sh:path schema:hasPart ;
         sh:node schema:CreativeWork ;
-        ys:fromProperty wdt:P527 ;
+        ys:fromProperty wdt:P527 , wdt:P658 ;
     ] ;
     sh:property [
         sh:path schema:inLanguage ;
@@ -724,11 +724,6 @@ schema:MusicRelease a sh:NodeShape ;
         sh:path schema:releaseOf ;
         sh:node schema:MusicAlbum ;
         ys:fromProperty wdt:P2550 ;
-    ] ;
-    sh:property [
-        sh:path schema:track ;
-        sh:node schema:MusicRecording ;
-        ys:fromProperty wdt:P658 ;
     ] .
 
 
@@ -1184,6 +1179,9 @@ schema:School a sh:NodeShape ;
 schema:GovernmentOrganization a sh:NodeShape ;
     ys:fromClass wd:Q2659904 .
 
+schema:MedicalOrganization a sh:NodeShape ;
+    ys:fromClass wd:Q4287745 .
+
 schema:NGO a sh:NodeShape ;
     ys:fromClass wd:Q79913 .
 
@@ -1618,6 +1616,11 @@ schema:TouristAttraction a sh:NodeShape ;
 schema:LocalBusiness a sh:NodeShape ;
     ys:fromClass wd:Q62849941 .
 
+schema:EntertainmentBusiness a sh:NodeShape .
+
+schema:EmergencyService a sh:NodeShape ;
+    ys:fromClass wd:Q814610 .
+
 schema:FoodEstablishment a sh:NodeShape ;
     ys:fromClass wd:Q27038993 ;
     sh:property [
@@ -1625,6 +1628,10 @@ schema:FoodEstablishment a sh:NodeShape ;
         sh:node schema:Thing ;
         ys:fromProperty wdt:P2012 ;
     ] .
+
+schema:LodgingBusiness a sh:NodeShape .
+
+schema:SportsActivityLocation a sh:NodeShape .
 
 schema:Product a sh:NodeShape ;
     ys:fromClass wd:Q2424752 ;
