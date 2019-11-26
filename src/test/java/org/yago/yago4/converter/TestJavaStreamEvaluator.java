@@ -50,6 +50,37 @@ class TestJavaStreamEvaluator {
     );
   }
 
+
+  @Test
+  void testFilterPair() {
+    assertEq(
+            List.of(2),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(3, 4)))
+                    .filter((k, v) -> k == 1)
+                    .values())
+    );
+  }
+
+  @Test
+  void testFilterKey() {
+    assertEq(
+            List.of(2),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(3, 4)))
+                    .filterKey(k -> k == 1)
+                    .values())
+    );
+  }
+
+  @Test
+  void testFilterValue() {
+    assertEq(
+            List.of(2),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(3, 4)))
+                    .filterValue(v -> v == 2)
+                    .values())
+    );
+  }
+
   @Test
   void testMap() {
     assertEq(
@@ -69,6 +100,25 @@ class TestJavaStreamEvaluator {
   }
 
   @Test
+  void testFlatMapFromPair() {
+    assertEq(
+            List.of(2, 3, 7, 12),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(3, 4)))
+                    .flatMap((k, v) -> Stream.of(k + v, k * v)))
+    );
+  }
+
+  @Test
+  void testFlatMapPair() {
+    assertEq(
+            List.of(2, 3, 7, 12),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(3, 4)))
+                    .flatMapPair((k, v) -> Stream.of(Map.entry(k, k + v), Map.entry(k, k * v)))
+                    .values())
+    );
+  }
+
+  @Test
   void testIntersection() {
     assertEq(
             List.of(1, 3),
@@ -84,6 +134,17 @@ class TestJavaStreamEvaluator {
             evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 'a'), Map.entry(2, 'b'), Map.entry(3, 'c')))
                     .intersection(PlanNode.fromCollection(List.of(1, 3, 4)))
                     .values())
+    );
+  }
+
+  @Test
+  void testJoinValuePair() {
+    assertEq(
+            List.of(2, 4),
+            evaluate(PlanNode.fromCollection(List.of(1, 3))
+                    .join(PairPlanNode.fromCollection(List.of(Map.entry(1, 2), Map.entry(3, 4))))
+                    .values()
+            )
     );
   }
 
@@ -146,6 +207,16 @@ class TestJavaStreamEvaluator {
             List.of(1, 2, 9, 10),
             evaluate(PlanNode.fromCollection(List.of(1, 2))
                     .union(PlanNode.fromCollection(List.of(9, 10))))
+    );
+  }
+
+  @Test
+  void testUnionPair() {
+    assertEq(
+            List.of(2, 10),
+            evaluate(PairPlanNode.fromCollection(List.of(Map.entry(1, 2)))
+                    .union(PairPlanNode.fromCollection(List.of(Map.entry(9, 10))))
+                    .values())
     );
   }
 

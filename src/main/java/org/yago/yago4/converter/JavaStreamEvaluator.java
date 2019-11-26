@@ -195,7 +195,7 @@ public class JavaStreamEvaluator {
   }
 
   private <K, V> Stream<Map.Entry<K, Collection<V>>> toStream(AggregateByKeyNode<K, V> plan) {
-    return toMap(plan.getParent()).groups().stream();
+    return toMap(plan.getParent()).groups().parallelStream();
   }
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(FilterPairNode<K, V> plan) {
@@ -251,14 +251,6 @@ public class JavaStreamEvaluator {
 
   private <K, V> Stream<Map.Entry<K, V>> toStream(UnionPairNode<K, V> plan) {
     return plan.getParents().stream().flatMap(this::toStream);
-  }
-
-  private <T> boolean isAlreadySet(PlanNode<T> planNode) {
-    return planNode instanceof CacheNode ||
-            planNode instanceof CollectionNode ||
-            planNode instanceof KeysNode && isAlreadyMap(((KeysNode<T, ?>) planNode).getParent()) ||
-            planNode instanceof TransitiveClosureNode ||
-            cache.containsKey(planNode);
   }
 
   private <T> Set<T> toSet(PlanNode<T> plan) {
@@ -322,6 +314,7 @@ public class JavaStreamEvaluator {
   private <K, V> boolean isAlreadyMap(PairPlanNode<K, V> planNode) {
     return planNode instanceof CachePairNode ||
             planNode instanceof TransitiveClosurePairNode ||
+            planNode instanceof DistinctPairNode ||
             cachePairs.containsKey(planNode);
   }
 
