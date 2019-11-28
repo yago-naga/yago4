@@ -1,0 +1,107 @@
+@prefix bioschema: <http://bioschemas.org/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix schema: <http://schema.org/> .
+@prefix wd: <http://www.wikidata.org/entity/> .
+@prefix wdt: <http://www.wikidata.org/prop/direct/> .
+@prefix wpq: <http://www.wikidata.org/prop/qualifier/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ys: <http://yago-knowledge.org/schema#> .
+
+
+bioschema:BioChemEntity a sh:NodeShape ;
+    sh:property [
+        sh:path bioschema:bioChemInteraction ;
+        sh:node bioschema:BioChemEntity ;
+        ys:fromProperty wdt:P769 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:hasMolecularFunction ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P680 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:isEncodedByBioChemEntity ;
+        sh:node bioschema:Gene ;
+        ys:fromProperty wdt:P702 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:isInvolvedInBiologicalProcess ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P682 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:isLocatedInSubcellularLocation ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P681 ;
+    ] .
+
+
+bioschema:ChemicalSubstance a sh:NodeShape ;
+    ys:fromClass wd:Q79529 .
+
+
+bioschema:Gene a sh:NodeShape ;
+    ys:fromClass wd:Q7187 ;
+    sh:property [
+        sh:path bioschema:encodesBioChemEntity ;
+        sh:node bioschema:BioChemEntity ;
+        ys:fromProperty wdt:P688 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:expressedIn ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P5572 ;
+    ] .
+
+
+bioschema:MolecularEntity a sh:NodeShape ;
+    ys:fromClass wd:Q2393187 ;
+    sh:property [
+        sh:path bioschema:inChI ;
+        sh:datatype xsd:string ;
+        sh:pattern "^1S/([0-9]*[A-Z][ub]?[a-z]?[0-9]*\\.?)+(/[0-9A-Za-z+\\-(),.*;?]+)*$" ;
+        sh:maxCount 1 ;
+        ys:fromProperty wdt:P234 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:inChIKey ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[A-Z]{14}-[A-Z]{10}-[A-Z]$" ;
+        sh:maxCount 1 ;
+        ys:fromProperty wdt:P235 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:molecularFormula ;
+        sh:datatype xsd:string ;
+        # TODO: sh:pattern
+        sh:maxCount 1 ;
+        ys:fromProperty wdt:P274 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:smiles ;
+        sh:datatype xsd:string ;
+        sh:pattern "^[A-Za-z0-9+\\-\\*=#$:().>/\\\\\\[\\]%]+$" ;
+        ys:fromProperty wdt:P233 ;
+    ] .
+
+bioschema:Protein a sh:NodeShape ;
+    ys:fromClass wd:Q8054 .
+
+
+bioschema:Taxon a sh:NodeShape ;
+    ys:fromClass wd:Q16521 ;
+    sh:property [
+        sh:path bioschema:parentTaxon ;
+        sh:node bioschema:Taxon ;
+        ys:fromProperty wdt:P171 ;
+    ] ;
+    sh:property [
+        sh:path bioschema:taxonRank ;
+        sh:node schema:Thing ;
+        sh:maxCount 1 ;
+        ys:fromProperty wdt:P105 ;
+    ] .

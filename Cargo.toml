@@ -1,0 +1,21 @@
+[package]
+name = "yago4"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+clap = "2"
+failure = "0.1"
+flate2 = "1"
+rio_api = "0.3"
+rio_turtle = { git = "https://github.com/Tpt/rio" }
+chrono = "0.4"
+byteorder = "1"
+rocksdb = "0.13"
+percent-encoding = "2"
+regex = "1"
+url = "2"
+crossbeam = "0.7"
+
+[profile.release]
+lto = true
