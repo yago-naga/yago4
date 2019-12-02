@@ -14,6 +14,11 @@ final class ArraySet<E> extends ArrayList<E> {
     super(initialCapacity);
   }
 
+  ArraySet(Collection<E> from) {
+    super(from.size());
+    addAll(from);
+  }
+
   @Override
   public boolean add(E element) {
     if (contains(element)) {

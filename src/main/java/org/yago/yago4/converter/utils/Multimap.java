@@ -14,9 +14,23 @@ public abstract class Multimap<K, V> {
     entries = new Entries<>(inner);
   }
 
+  public Multimap(int expected) {
+    inner = createMap(expected);
+    entries = new Entries<>(inner);
+  }
+
+  public Multimap(Multimap<K, V> from) {
+    this(from.inner.size());
+    putAll(from);
+  }
+
   protected abstract Map<K, Collection<V>> createMap();
 
+  protected abstract Map<K, Collection<V>> createMap(int expected);
+
   protected abstract Collection<V> createCollection();
+
+  protected abstract Collection<V> createCollection(Collection<V> from);
 
   private Collection<V> createCollection(K key) {
     return createCollection();
@@ -40,7 +54,12 @@ public abstract class Multimap<K, V> {
 
   public void putAll(Multimap<K, V> other) {
     for (Map.Entry<K, Collection<V>> o : other.inner.entrySet()) {
-      inner.computeIfAbsent(o.getKey(), this::createCollection).addAll(o.getValue());
+      Collection<V> values = inner.get(o.getKey());
+      if (values == null) {
+        inner.put(o.getKey(), createCollection(o.getValue()));
+      } else {
+        values.addAll(o.getValue());
+      }
     }
   }
 

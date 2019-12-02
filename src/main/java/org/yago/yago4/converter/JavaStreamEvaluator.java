@@ -340,14 +340,25 @@ public class JavaStreamEvaluator {
     return value;
   }
 
-  private <K, V> Multimap<K, V> toMap(DistinctPairNode<K, V> plan) {
-    return toStream(plan.getParent()).collect(toMultimapCollector(ArraySetHashMapMultimap::new));
+  private <K, V> ArraySetHashMapMultimap<K, V> toMap(DistinctPairNode<K, V> plan) {
+    if (isAlreadyMap(plan.getParent())) {
+      Multimap<K, V> parent = toMap(plan.getParent());
+      if (parent instanceof ArraySetHashMapMultimap) {
+        return (ArraySetHashMapMultimap) parent;
+      } else {
+        return new ArraySetHashMapMultimap<>(parent);
+      }
+    } else {
+      return toStream(plan.getParent()).collect(toMultimapCollector(ArraySetHashMapMultimap::new));
+    }
   }
 
   private <K, V> Multimap<K, V> toMap(TransitiveClosurePairNode<K, V> plan) {
     Multimap<V, V> right = toMap(plan.getRightParent());
 
-    Multimap<K, V> closure = toStream(plan.getLeftParent()).collect(toMultimapCollector(ArraySetHashMapMultimap::new));
+    Multimap<K, V> closure = isAlreadyMap(plan.getLeftParent())
+            ? new ArraySetHashMapMultimap<>(toMap(plan.getLeftParent()))
+            : toStream(plan.getLeftParent()).collect(toMultimapCollector(ArraySetHashMapMultimap::new));
     List<Map.Entry<K, V>> toDo = new ArrayList<>(closure.entries());
     while (!toDo.isEmpty()) {
       var oldElement = toDo.remove(toDo.size() - 1);
@@ -384,7 +395,7 @@ public class JavaStreamEvaluator {
     return toMultimapCollector(ArrayListHashMapMultimap::new);
   }
 
-  private static <K, V> Collector<Map.Entry<K, V>, Multimap<K, V>, Multimap<K, V>> toMultimapCollector(Supplier<Multimap<K, V>> multimapSupplier) {
+  private static <K, V, M extends Multimap<K, V>> Collector<Map.Entry<K, V>, M, M> toMultimapCollector(Supplier<M> multimapSupplier) {
     return Collector.of(
             multimapSupplier,
             (m, i) -> m.put(i.getKey(), i.getValue()),
