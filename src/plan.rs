@@ -371,13 +371,6 @@ fn build_yago_classes_and_super_class_of(
             .map(|(k, _)| k)
             .collect();
 
-    let wikidata_classes_with_at_least_min_count_instances_recursively = transitive_closure(
-        wikidata_classes_with_at_least_min_count_instances
-            .iter()
-            .cloned(),
-        &wikidata_sub_class_of,
-    );
-
     let yago_classes_sub_classes = transitive_closure(
         yago_schema_from_classes.iter().cloned(),
         &wikidata_super_class_of,
@@ -405,18 +398,74 @@ fn build_yago_classes_and_super_class_of(
     }
 
     let wikidata_classes_to_keep: HashSet<YagoTerm> = yago_classes_sub_classes
-        .intersection(&wikidata_classes_with_at_least_min_count_instances_recursively)
+        .intersection(&wikidata_classes_with_at_least_min_count_instances)
         .filter(|c| !wikidata_bad_classes.contains(c) && !subclasses_of_disjoint.contains(c))
         .chain(&yago_schema_from_classes)
         .cloned()
         .collect();
 
     let wikidata_classes_to_keep_for_yago: HashSet<YagoTerm> = wikidata_classes_to_keep
-        .intersection(&wikidata_classes_with_at_least_min_count_instances)
+        .iter()
         .filter(|c| wikidata_to_en_wikipedia_mapping.contains_key(c))
         .chain(&yago_schema_from_classes)
         .cloned()
         .collect();
+
+    println!("Generating Yago subClassOf relations");
+
+    let yago_sub_class_of_not_simplified: Multimap<YagoTerm, YagoTerm> = map_value_to_yago(
+        map_key_to_yago(
+            transitive_closure_pair(
+                wikidata_sub_class_of
+                    .iter()
+                    .filter(|(k, _)| wikidata_classes_to_keep_for_yago.contains(k))
+                    .map(|(k, v)| (k.clone(), v.clone())),
+                &wikidata_sub_class_of,
+            )
+            .into_iter()
+            .filter(|(_, v)| yago_schema_from_classes.contains(v)),
+            wikidata_to_yago_uris_mapping,
+        ),
+        wikidata_to_yago_uris_mapping,
+    )
+    .chain(subclass_of_from_yago_schema(schema))
+    .collect();
+
+    let yago_super_class_of_not_simplified: Multimap<YagoTerm, YagoTerm> =
+        yago_sub_class_of_not_simplified
+            .iter()
+            .map(|(k, v)| (v.clone(), k.clone()))
+            .collect();
+
+    let yago_super_class_of: Multimap<YagoTerm, YagoTerm> = filter_redundant_sub_class_of(
+        yago_super_class_of_not_simplified,
+        &yago_sub_class_of_not_simplified,
+    );
+
+    println!("Generating Wikidata to Yago class mapping");
+
+    let wikidata_to_yago_class_mapping: Multimap<YagoTerm, YagoTerm> =
+        filter_redundant_sub_class_of(
+            map_value_to_yago(
+                wikidata_classes_to_keep_for_yago
+                    .iter()
+                    .map(|c| (c.clone(), c.clone()))
+                    .chain(
+                        transitive_closure_pair(
+                            wikidata_classes_to_keep
+                                .into_iter()
+                                .filter(|c| !wikidata_classes_to_keep_for_yago.contains(c))
+                                .map(|c| (c.clone(), c)),
+                            &wikidata_sub_class_of,
+                        )
+                        .into_iter()
+                        .filter(|(_, v)| yago_schema_from_classes.contains(v)),
+                    ),
+                wikidata_to_yago_uris_mapping,
+            )
+            .collect(),
+            &yago_super_class_of,
+        );
 
     let yago_classes: HashSet<YagoTerm> = map_to_yago(
         wikidata_classes_to_keep_for_yago.iter().cloned(),
@@ -424,51 +473,34 @@ fn build_yago_classes_and_super_class_of(
     )
     .collect();
 
-    let wikidata_sub_class_of_without_classes_to_keep_for_yago: Multimap<YagoTerm, YagoTerm> =
-        wikidata_sub_class_of
-            .iter()
-            .filter(|(k, _)| !wikidata_classes_to_keep_for_yago.contains(k))
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-
-    println!("Generating Wikidata to Yago class mapping");
-
-    let wikidata_to_yago_class_mapping: Multimap<YagoTerm, YagoTerm> = map_value_to_yago(
-        transitive_closure_pair(
-            wikidata_classes_to_keep.into_iter().map(|c| (c.clone(), c)),
-            &wikidata_sub_class_of_without_classes_to_keep_for_yago,
-        )
-        .into_iter()
-        .filter(|(_, v)| wikidata_classes_to_keep_for_yago.contains(v)),
-        wikidata_to_yago_uris_mapping,
-    )
-    .collect();
-
-    println!("Generating Yago subClassOf relations");
-
-    let yago_super_class_of: Multimap<YagoTerm, YagoTerm> = map_value_to_yago(
-        map_key_to_yago(
-            transitive_closure_pair(
-                wikidata_sub_class_of
-                    .into_iter()
-                    .filter(|(k, _)| wikidata_classes_to_keep_for_yago.contains(k)),
-                &wikidata_sub_class_of_without_classes_to_keep_for_yago,
-            )
-            .into_iter()
-            .filter(|(_, v)| wikidata_classes_to_keep_for_yago.contains(v)),
-            wikidata_to_yago_uris_mapping,
-        ),
-        wikidata_to_yago_uris_mapping,
-    )
-    .chain(subclass_of_from_yago_schema(schema))
-    .map(|(k, v)| (v, k))
-    .collect();
-
     (
         yago_classes,
-        wikidata_to_yago_class_mapping,
+        wikidata_to_yago_class_mapping.into_iter().collect(), //TODO: avoid
         yago_super_class_of,
     )
+}
+
+fn filter_redundant_sub_class_of(
+    sub_class_of: Multimap<YagoTerm, YagoTerm>,
+    super_class_of: &Multimap<YagoTerm, YagoTerm>,
+) -> Multimap<YagoTerm, YagoTerm> {
+    sub_class_of
+        .into_iter_grouped()
+        .flat_map(|(child, parents)| {
+            // Hacky filter to remove redundant sub class of
+            parents
+                .clone()
+                .into_iter()
+                .filter(move |parent| {
+                    super_class_of.get(parent).map_or(true, |parent_children| {
+                        !parent_children
+                            .iter()
+                            .any(|parent_child| parents.contains(parent_child))
+                    })
+                })
+                .map(move |parent| (child.clone(), parent))
+        })
+        .collect()
 }
 
 fn yago_shape_instances(
