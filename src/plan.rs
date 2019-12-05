@@ -1586,11 +1586,7 @@ fn add_union_of_object(
             object: objects.into_iter().next().unwrap(),
         });
     } else {
-        let union = YagoTerm::Iri(format!(
-            "{}owl:unionOf-{}",
-            YAGO_VALUE_PREFIX,
-            string_name(&objects)
-        ));
+        let union = YagoTerm::BlankNode(format!("owl:unionOf-{}", string_name(&objects)));
         model.insert(YagoTriple {
             subject,
             predicate,
@@ -1612,11 +1608,11 @@ fn add_list_object(
     objects: impl IntoIterator<Item = YagoTerm>,
 ) {
     let mut list: Vec<_> = objects.into_iter().collect();
-    let name = format!("{}list-{}-", YAGO_VALUE_PREFIX, string_name(&list));
+    let name = format!("list-{}-", string_name(&list));
 
     let mut current: YagoTerm = RDF_NIL.into();
     while let Some(next) = list.pop() {
-        let new_current = YagoTerm::Iri(format!("{}{}", name, list.len() + 1));
+        let new_current = YagoTerm::BlankNode(format!("{}{}", name, list.len() + 1));
         model.insert(YagoTriple {
             subject: new_current.clone(),
             predicate: RDF_REST.into(),
