@@ -1,3 +1,6 @@
-* Avoid bypass sub class of
-* Add a black list for "bad classes"
-* Drop redundent subClassOf (ie a b such that (a, subClassOf b) and (a, subClassOf c) and (c subClassOf b)"
+* Investiger <http://schema.org/FoodEstablishment>	0
+* Ecrire papier
+* Màj site web
+* Plus de contraintes ?
+* Générer version complète
+* Blank node for owl:unionOf

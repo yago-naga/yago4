@@ -4,17 +4,20 @@ use crate::partitioned_statements::PartitionedStatements;
 use crate::schema::{PropertyShape, Schema};
 use crate::vocab::*;
 use crossbeam::thread;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use percent_encoding::percent_decode_str;
 use regex::Regex;
 use rio_api::model::NamedNode;
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fmt::Write;
 use std::fs::{create_dir_all, File};
 use std::hash::Hash;
 use std::io::BufWriter;
 use std::iter::{empty, once};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Mutex;
 use url::Url;
 
 const P_PREFIX: &str = "http://www.wikidata.org/prop/";
@@ -38,11 +41,18 @@ const WD_BAD_CLASSES: [YagoTerm; 6] = [
 const MIN_NUMBER_OF_INSTANCES: usize = 10;
 
 pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
+    let stats = Stats::default();
     let schema = Schema::open();
     let partitioned_statements = PartitionedStatements::open(index_dir);
 
     let wikidata_to_enwikipedia_mapping = wikidata_to_enwikipedia_mapping(&partitioned_statements);
+    stats.add_global(
+        "Wikidata items mapped to English Wikipedia articles",
+        wikidata_to_enwikipedia_mapping.len(),
+    );
+
     let wikidata_to_yago_uris_mapping = wikidata_to_yago_uris_mapping(
+        &stats,
         &schema,
         &partitioned_statements,
         &wikidata_to_enwikipedia_mapping,
@@ -50,6 +60,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
 
     let (yago_classes, wikidata_to_yago_class_mapping, yago_super_class_of) =
         build_yago_classes_and_super_class_of(
+            &stats,
             &schema,
             &partitioned_statements,
             &wikidata_to_yago_uris_mapping,
@@ -57,6 +68,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
         );
 
     let yago_shape_instances = yago_shape_instances(
+        &stats,
         &schema,
         &partitioned_statements,
         &wikidata_to_yago_class_mapping,
@@ -75,7 +87,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
                     &wikidata_to_yago_uris_mapping,
                 ),
                 &to_dir,
-                "yago-wd-class.nt",
+                "yago-wd-class.nt.gz",
             );
         });
 
@@ -83,7 +95,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
             write_ntriples(
                 build_simple_instance_of(&yago_shape_instances),
                 &to_dir,
-                "yago-wd-simple-types.nt",
+                "yago-wd-simple-types.nt.gz",
             );
         });
 
@@ -96,7 +108,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
                     &wikidata_to_yago_uris_mapping,
                 ),
                 &to_dir,
-                "yago-wd-full-types.nt",
+                "yago-wd-full-types.nt.gz",
             );
         });
 
@@ -114,12 +126,13 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
                     ],
                 ),
                 &to_dir,
-                "yago-wd-labels.nt",
+                "yago-wd-labels.nt.gz",
             );
         });
 
         s.spawn(|_| {
             build_properties_from_wikidata_and_schema(
+                &stats,
                 &schema,
                 &partitioned_statements,
                 &yago_shape_instances,
@@ -130,28 +143,35 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
                     SCHEMA_ALTERNATE_NAME.into(),
                 ],
                 &to_dir,
-                "yago-wd-facts.nt",
+                "yago-wd-facts.nt.gz",
             );
         });
 
         s.spawn(|_| {
             write_ntriples(
                 build_same_as(
+                    &stats,
                     &partitioned_statements,
                     &yago_shape_instances.get(&SCHEMA_THING.into()).unwrap(),
                     &wikidata_to_yago_uris_mapping,
                     &wikidata_to_enwikipedia_mapping,
                 ),
                 &to_dir,
-                "yago-wd-sameAs.nt",
+                "yago-wd-sameAs.nt.gz",
             );
         });
 
         s.spawn(|_| {
-            write_ntriples(build_yago_schema(&schema), &to_dir, "yago-wd-schema.nt");
+            write_ntriples(build_yago_schema(&schema), &to_dir, "yago-wd-schema.nt.gz");
         });
     })
     .unwrap();
+
+    {
+        let mut path = PathBuf::from(to_dir);
+        path.push("stats.tsv");
+        stats.write(path);
+    }
 }
 
 fn write_ntriples(
@@ -166,9 +186,20 @@ fn write_ntriples(
     create_dir_all(dir.as_ref()).unwrap();
     let mut path = dir.as_ref().to_owned();
     path.push(file_name);
-    let mut file = BufWriter::new(File::create(path).unwrap());
-    for t in triples {
-        writeln!(file, "{}", t).unwrap();
+    if file_name.ends_with(".gz") {
+        let mut file = BufWriter::new(GzEncoder::new(
+            File::create(path).unwrap(),
+            Compression::fast(),
+        ));
+        for t in triples {
+            writeln!(file, "{}", t).unwrap();
+        }
+        file.into_inner().unwrap().finish().unwrap();
+    } else {
+        let mut file = BufWriter::new(File::create(path).unwrap());
+        for t in triples {
+            writeln!(file, "{}", t).unwrap();
+        }
     }
 }
 
@@ -193,6 +224,7 @@ fn wikidata_to_enwikipedia_mapping(
 
 /// Converts Wikidata URI to Yago URIs based on en.wikipedia article titles
 fn wikidata_to_yago_uris_mapping(
+    stats: &Stats,
     schema: &Schema,
     partitioned_statements: &PartitionedStatements,
     wikidata_to_enwikipedia_mapping: &HashMap<YagoTerm, String>,
@@ -213,6 +245,11 @@ fn wikidata_to_yago_uris_mapping(
             }
         })
         .collect();
+
+    stats.add_global(
+        "Wikidata items with Wikipedia articles",
+        wikidata_items_to_keep.len(),
+    );
 
     let from_schema_mapping: HashMap<YagoTerm, YagoTerm> = schema
         .node_shapes()
@@ -242,6 +279,10 @@ fn wikidata_to_yago_uris_mapping(
             Some((wd.to_owned(), YagoTerm::Iri(uri)))
         })
         .collect();
+    stats.add_global(
+        "Possible Yago resource with English Wikipedia URI",
+        from_wikipedia_mapping.len(),
+    );
 
     let from_label_mapping: HashMap<YagoTerm, YagoTerm> = partitioned_statements
         .subjects_objects_for_predicate(SKOS_PREF_LABEL)
@@ -272,12 +313,18 @@ fn wikidata_to_yago_uris_mapping(
             }
         })
         .collect();
+    stats.add_global(
+        "Possible Yago resource with English label URI",
+        from_label_mapping.len(),
+    );
 
     let wikibase_item = YagoTerm::from(WIKIBASE_ITEM);
-    let wikidata_items = partitioned_statements
+    let wikidata_items: HashSet<YagoTerm> = partitioned_statements
         .subjects_objects_for_predicate(RDF_TYPE)
         .filter(|(_, o)| o == &wikibase_item)
-        .map(|(s, _)| s);
+        .map(|(s, _)| s)
+        .collect();
+    stats.add_global("Wikidata items", wikidata_items.len());
 
     /*TODO: bad hack for tests
     wikidata_items.extend(
@@ -292,6 +339,7 @@ fn wikidata_to_yago_uris_mapping(
     );*/
 
     let fallback_mapping: HashMap<YagoTerm, YagoTerm> = wikidata_items
+        .into_iter()
         .filter(|i| {
             wikidata_items_to_keep.contains(i)
                 && !from_schema_mapping.contains_key(i)
@@ -309,13 +357,19 @@ fn wikidata_to_yago_uris_mapping(
             }
         })
         .collect();
+    stats.add_global(
+        "Possible Yago resource with Qid only URI",
+        fallback_mapping.len(),
+    );
 
-    from_schema_mapping
+    let result: HashMap<YagoTerm, YagoTerm> = from_schema_mapping
         .into_iter()
         .chain(from_wikipedia_mapping)
         .chain(from_label_mapping)
         .chain(fallback_mapping)
-        .collect()
+        .collect();
+    stats.add_global("Total URI mapping size", result.len());
+    result
 }
 
 /// Builds the class set and class hierarchy from Wikidata, schema.org ontology and shapes
@@ -331,6 +385,7 @@ fn wikidata_to_yago_uris_mapping(
 /// 6. Build the set of Yago classes by keeping only the classes with at least 10 direct instances and an English Wikipedia article.
 /// 7. Compute the mapping from Wikidata classes and Yago classes and the Yago type hierarchy from it.
 fn build_yago_classes_and_super_class_of(
+    stats: &Stats,
     schema: &Schema,
     partitioned_statements: &PartitionedStatements,
     wikidata_to_yago_uris_mapping: &HashMap<YagoTerm, YagoTerm>,
@@ -347,33 +402,63 @@ fn build_yago_classes_and_super_class_of(
         .into_iter()
         .flat_map(|shape| shape.from_classes)
         .collect();
+    stats.add_global(
+        "Wikidata classes mapped to schema.org",
+        yago_schema_from_classes.len(),
+    );
 
-    let wikidata_sub_class_of: Multimap<YagoTerm, YagoTerm> = partitioned_statements
+    let all_wikidata_sub_class_of: Multimap<YagoTerm, YagoTerm> = partitioned_statements
         .subjects_objects_for_predicate(WDT_P279)
+        .collect();
+    stats.add_global("Wikidata sub class of", all_wikidata_sub_class_of.len());
+    stats.add_global(
+        "Wikidata items with sub class of",
+        all_wikidata_sub_class_of.iter_grouped().count(),
+    );
+
+    let wikidata_sub_class_of: Multimap<YagoTerm, YagoTerm> = all_wikidata_sub_class_of
+        .into_iter()
         .filter(|(s, _)| !yago_schema_from_classes.contains(s))
         .collect(); // Yago shape classes only have super classes which are shapes
+    stats.add_global(
+        "Wikidata sub class of from mapped classes",
+        wikidata_sub_class_of.len(),
+    );
 
     let wikidata_super_class_of: Multimap<YagoTerm, YagoTerm> = wikidata_sub_class_of
         .iter()
         .map(|(s, o)| (o.clone(), s.clone()))
         .collect();
 
+    let wikidata_instances_by_class: Multimap<YagoTerm, YagoTerm> = partitioned_statements
+        .subjects_objects_for_predicate(WDT_P31)
+        .map(|(s, o)| (o, s))
+        .collect::<Multimap<YagoTerm, YagoTerm>>();
+
     let wikidata_bad_classes =
         transitive_closure(WD_BAD_CLASSES.iter().cloned(), &wikidata_super_class_of);
-
-    let wikidata_classes_with_at_least_min_count_instances: HashSet<YagoTerm> =
-        partitioned_statements
-            .subjects_objects_for_predicate(WDT_P31)
-            .map(|(s, o)| (o, s))
-            .collect::<Multimap<YagoTerm, YagoTerm>>()
-            .into_iter_grouped()
-            .filter(|(_, v)| v.len() >= MIN_NUMBER_OF_INSTANCES)
-            .map(|(k, _)| k)
-            .collect();
+    stats.add_global("bad classes", wikidata_bad_classes.len());
+    stats.add_global(
+        "bad classes instances",
+        map_to_yago(
+            wikidata_bad_classes
+                .iter()
+                .filter_map(|c| wikidata_instances_by_class.get(c))
+                .flatten()
+                .cloned(),
+            wikidata_to_yago_uris_mapping,
+        )
+        .collect::<HashSet<_>>()
+        .len(),
+    );
 
     let yago_classes_sub_classes = transitive_closure(
         yago_schema_from_classes.iter().cloned(),
         &wikidata_super_class_of,
+    );
+    stats.add_global(
+        "Wikidata classes subclass of a mapped class",
+        yago_classes_sub_classes.len(),
     );
 
     // sub classes of disjoint classes computation
@@ -396,6 +481,31 @@ fn build_yago_classes_and_super_class_of(
             }
         }
     }
+    stats.add_global("Not disjoint classes", subclasses_of_disjoint.len());
+    stats.add_global(
+        "Not disjoint classes instances",
+        map_to_yago(
+            subclasses_of_disjoint
+                .iter()
+                .filter_map(|c| wikidata_instances_by_class.get(c))
+                .flatten()
+                .cloned(),
+            wikidata_to_yago_uris_mapping,
+        )
+        .collect::<HashSet<_>>()
+        .len(),
+    );
+
+    let wikidata_classes_with_at_least_min_count_instances: HashSet<YagoTerm> =
+        wikidata_instances_by_class
+            .into_iter_grouped()
+            .filter(|(_, v)| v.len() >= MIN_NUMBER_OF_INSTANCES)
+            .map(|(k, _)| k)
+            .collect();
+    stats.add_global(
+        "classes with at least 10 instances",
+        wikidata_classes_with_at_least_min_count_instances.len(),
+    );
 
     let wikidata_classes_to_keep: HashSet<YagoTerm> = yago_classes_sub_classes
         .intersection(&wikidata_classes_with_at_least_min_count_instances)
@@ -403,6 +513,10 @@ fn build_yago_classes_and_super_class_of(
         .chain(&yago_schema_from_classes)
         .cloned()
         .collect();
+    stats.add_global(
+        "Wikidata classes used for the instance of extraction",
+        wikidata_classes_to_keep.len(),
+    );
 
     let wikidata_classes_to_keep_for_yago: HashSet<YagoTerm> = wikidata_classes_to_keep
         .iter()
@@ -410,6 +524,10 @@ fn build_yago_classes_and_super_class_of(
         .chain(&yago_schema_from_classes)
         .cloned()
         .collect();
+    stats.add_global(
+        "Wikidata classes kept for Yago",
+        wikidata_classes_to_keep_for_yago.len(),
+    );
 
     println!("Generating Yago subClassOf relations");
 
@@ -441,6 +559,7 @@ fn build_yago_classes_and_super_class_of(
         yago_super_class_of_not_simplified,
         &yago_sub_class_of_not_simplified,
     );
+    stats.add_global("sub class of relations in Yago", yago_super_class_of.len());
 
     println!("Generating Wikidata to Yago class mapping");
 
@@ -504,6 +623,7 @@ fn filter_redundant_sub_class_of(
 }
 
 fn yago_shape_instances(
+    stats: &Stats,
     schema: &Schema,
     partitioned_statements: &PartitionedStatements,
     wikidata_to_yago_class_mapping: &Multimap<YagoTerm, YagoTerm>,
@@ -512,6 +632,14 @@ fn yago_shape_instances(
     wikidata_to_yago_uris_mapping: &HashMap<YagoTerm, YagoTerm>,
 ) -> HashMap<YagoTerm, HashSet<YagoTerm>> {
     println!("Generating the list of instances for each shape");
+
+    stats.add_global(
+        "Wikidata instance of",
+        partitioned_statements
+            .subjects_objects_for_predicate(WDT_P31)
+            .count(),
+    );
+
     let wikidata_instances_for_yago_class: Multimap<YagoTerm, YagoTerm> = join_pairs(
         partitioned_statements
             .subjects_objects_for_predicate(WDT_P31)
@@ -520,6 +648,10 @@ fn yago_shape_instances(
     )
     .map(|(_, wd_instance, yago_class)| (yago_class, wd_instance))
     .collect();
+    stats.add_global(
+        "Wikidata instance of to a Yago class",
+        wikidata_instances_for_yago_class.len(),
+    );
 
     let instances_without_intersection_removal: HashMap<YagoTerm, HashSet<YagoTerm>> = schema
         .node_shapes()
@@ -531,7 +663,8 @@ fn yago_shape_instances(
             let wd_instances = from_yago_classes
                 .iter()
                 .flat_map(|class| wikidata_instances_for_yago_class.get(&class))
-                .flat_map(|v| v.iter().cloned());
+                .flatten()
+                .cloned();
             let instances = map_to_yago(wd_instances, wikidata_to_yago_uris_mapping)
                 .filter(|i| !yago_classes.contains(i))
                 .collect(); // We do not want classes
@@ -558,6 +691,10 @@ fn yago_shape_instances(
         })
         .cloned()
         .collect();
+    stats.add_global(
+        "Yago instances in a disjoint intersection",
+        instances_in_disjoint_intersections.len(),
+    );
 
     instances_without_intersection_removal
         .into_iter()
@@ -569,6 +706,9 @@ fn yago_shape_instances(
             to_remove.into_iter().for_each(|c| {
                 instances.remove(&c);
             });
+
+            stats.add_local("Instances of a shape", class.to_string(), instances.len());
+
             (class, instances)
         })
         .collect()
@@ -732,6 +872,7 @@ fn build_simple_properties_from_schema<'a>(
 }
 
 fn build_properties_from_wikidata_and_schema(
+    stats: &Stats,
     schema: &Schema,
     partitioned_statements: &PartitionedStatements,
     yago_shape_instances: &HashMap<YagoTerm, HashSet<YagoTerm>>,
@@ -757,6 +898,7 @@ fn build_properties_from_wikidata_and_schema(
             convert_time(value, precision, calendar).map(|t| (k, t))
         })
         .collect();
+    stats.add_local("Cleaned complex type", "time", clean_times.len());
 
     let clean_coordinates: HashMap<YagoTerm, (YagoTerm, Vec<YagoTriple>)> = partitioned_statements
         .subjects_objects_for_predicate(WIKIBASE_GEO_LATITUDE)
@@ -779,6 +921,11 @@ fn build_properties_from_wikidata_and_schema(
             convert_globe_coordinates(lat, long, precision, globe).map(|t| (k, t))
         })
         .collect();
+    stats.add_local(
+        "Cleaned complex type",
+        "coordinates",
+        clean_coordinates.len(),
+    );
 
     let clean_durations: HashMap<YagoTerm, YagoTerm> = partitioned_statements
         .subjects_objects_for_predicate(WIKIBASE_QUANTITY_AMOUNT)
@@ -789,6 +936,7 @@ fn build_properties_from_wikidata_and_schema(
         })
         .filter_map(|(k, amount, unit)| convert_duration_quantity(amount, unit).map(|t| (k, t)))
         .collect();
+    stats.add_local("Cleaned complex type", "duration", clean_durations.len());
 
     let clean_integers: HashMap<YagoTerm, YagoTerm> = partitioned_statements
         .subjects_objects_for_predicate(WIKIBASE_QUANTITY_AMOUNT)
@@ -799,6 +947,7 @@ fn build_properties_from_wikidata_and_schema(
         })
         .filter_map(|(k, amount, unit)| convert_integer_quantity(amount, unit).map(|t| (k, t)))
         .collect();
+    stats.add_local("Cleaned complex type", "integer", clean_integers.len());
 
     let clean_quantities: HashMap<YagoTerm, (YagoTerm, Vec<YagoTriple>)> = map_value_to_yago(
         partitioned_statements.subjects_objects_for_predicate(WIKIBASE_QUANTITY_UNIT),
@@ -823,6 +972,7 @@ fn build_properties_from_wikidata_and_schema(
         convert_quantity(&k, unit, amount, lower, upper).map(|v| (k, v))
     })
     .collect();
+    stats.add_local("Cleaned complex type", "quantity", clean_quantities.len());
 
     /* let statements_with_annotations = vec![];
     TODO schemaShaclSchema.getScfhema().getAnnotationPropertyShapes().map(annotationShape ->
@@ -850,6 +1000,8 @@ fn build_properties_from_wikidata_and_schema(
             &property_shape,
         ).map(|(subject, statement)| (statement, subject)).collect();
 
+        stats.add_local("Yago facts before any filter TODO: wrong", property_shape.path.to_string(), statement_subject.len());
+
         let property_name = property_shape.path.clone();
         let statement_triple = join_pairs(statement_object.map(|(s, o, a)| (s, (o, a))), &statement_subject)
             .map(move |(statement_id, (object, mut additional), subject)| {
@@ -864,9 +1016,12 @@ fn build_properties_from_wikidata_and_schema(
 
         // Max count
         if let Some(max_count) = property_shape.max_count {
-            best_main_facts = Box::new(best_main_facts
+            let before_filter: Multimap<YagoTerm, _> = best_main_facts
                 .map(|(statement, triples)| (triples[triples.len() - 1].subject.clone(), (statement, triples)))
-                .collect::<Multimap<_, _>>()
+                .collect();
+            stats.add_local("Yago facts before maxCount filter", property_shape.path.to_string(), before_filter.len());
+
+            best_main_facts = Box::new(before_filter
                 .into_iter_grouped()
                 .filter(move |(_, t)| t.len() <= max_count)
                 .flat_map(|(_, v)| v));
@@ -879,8 +1034,12 @@ fn build_properties_from_wikidata_and_schema(
         .join(statements_with_annotations)
         .map((s, e) -> new AnnotatedStatement(e.getKey().getKey(), e.getValue().getKey(), e.getValue().getValue().getKey()));*/
 
+
+        let final_facts = best_main_facts.flat_map(|(_, triples)| triples).collect::<Vec<_>>();
+        stats.add_local("Yago facts", property_shape.path.to_string(), final_facts.len());
+
         //TODO: avoid collect
-        best_main_facts.flat_map(|(_, triples)| triples).collect::<Vec<_>>().into_iter()
+        final_facts.into_iter()
     });
 
     write_ntriples(triples, dir, file_name)
@@ -1074,7 +1233,7 @@ fn map_wikidata_property_value<'a>(
             if let YagoTerm::StringLiteral(v) = object {
                 regex.is_match(&v)
             } else {
-                false //TODO: uspport something else than xsd:string?
+                false //TODO: support something else than xsd:string?
             }
         }));
     }
@@ -1355,23 +1514,26 @@ fn convert_quantity(
 }
 
 fn build_same_as<'a>(
+    stats: &Stats,
     partitioned_statements: &'a PartitionedStatements,
     yago_things: &'a HashSet<YagoTerm>,
     wikidata_to_yago_uris_mapping: &'a HashMap<YagoTerm, YagoTerm>,
     wikidata_to_en_wikipedia_mapping: &'a HashMap<YagoTerm, String>,
 ) -> impl Iterator<Item = YagoTriple> + 'a {
     // Wikidata
-    let wikidata = wikidata_to_yago_uris_mapping
+    let wikidata: Vec<YagoTriple> = wikidata_to_yago_uris_mapping
         .iter()
         .filter(move |(_, yago)| yago_things.contains(yago))
         .map(|(wd, yago)| YagoTriple {
             subject: yago.clone(),
             predicate: OWL_SAME_AS.into(),
             object: wd.clone(),
-        });
+        })
+        .collect();
+    stats.add_local("sameAs", "Wikidata", wikidata.len());
 
     //dbPedia
-    let db_pedia = map_key_to_yago(
+    let db_pedia: Vec<YagoTriple> = map_key_to_yago(
         wikidata_to_en_wikipedia_mapping
             .iter()
             .map(|(a, b)| (a.clone(), b.clone())),
@@ -1385,11 +1547,13 @@ fn build_same_as<'a>(
             "https://en.wikipedia.org/wiki/",
             "http://dbpedia.org/resource/",
         )),
-    });
+    })
+    .collect();
+    stats.add_local("sameAs", "dbPedia", db_pedia.len());
 
     //Freebase
     let freebase_id_pattern = Regex::new("/m/0([0-9a-z_]{2,6}|1[0123][0-9a-z_]{5})$").unwrap();
-    let freebase = map_key_to_yago(
+    let freebase: Vec<YagoTriple> = map_key_to_yago(
         partitioned_statements.subjects_objects_for_predicate(WDT_P646),
         wikidata_to_yago_uris_mapping,
     )
@@ -1409,10 +1573,12 @@ fn build_same_as<'a>(
         object: YagoTerm::Iri(
             "http://rdf.freebase.com/ns/".to_owned() + &freebase[1..].replace('/', "."),
         ),
-    });
+    })
+    .collect();
+    stats.add_local("sameAs", "Freebase", freebase.len());
 
     //Wikipedia
-    let wikipedia = map_value_to_yago(
+    let wikipedia: Vec<YagoTriple> = map_value_to_yago(
         partitioned_statements.subjects_objects_for_predicate(SCHEMA_ABOUT),
         wikidata_to_yago_uris_mapping,
     )
@@ -1428,9 +1594,15 @@ fn build_same_as<'a>(
         subject: yago.clone(),
         predicate: SCHEMA_SAME_AS.into(),
         object: YagoTerm::TypedLiteral(wp.to_owned(), XSD_ANY_URI.iri.to_owned()),
-    });
+    })
+    .collect();
+    stats.add_local("sameAs", "Wikipedia", wikipedia.len());
 
-    wikidata.chain(db_pedia).chain(freebase).chain(wikipedia)
+    wikidata
+        .into_iter()
+        .chain(db_pedia)
+        .chain(freebase)
+        .chain(wikipedia)
 }
 
 fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
@@ -1808,6 +1980,43 @@ fn join_pairs<'a, K: Eq + Hash + Clone, V1: Clone + 'a, V2: Clone + Eq>(
             v2s.iter()
                 .map(move |v2| (k.clone(), v1.clone(), v2.clone()))
         })
+}
+
+#[derive(Default)]
+struct Stats {
+    inner: Mutex<BTreeMap<String, BTreeMap<String, usize>>>,
+}
+
+impl Stats {
+    fn add_global(&self, key: &str, value: usize) {
+        self.add_local(key, "*", value);
+    }
+
+    fn add_local(&self, key: &str, entry: impl ToString, value: usize) {
+        *self
+            .inner
+            .lock()
+            .unwrap()
+            .entry(key.to_owned())
+            .or_insert_with(BTreeMap::new)
+            .entry(entry.to_string())
+            .or_insert(0) += value;
+    }
+
+    fn write(&self, path: impl AsRef<Path>) {
+        use std::io::Write;
+
+        let mut file = BufWriter::new(File::create(path).unwrap());
+        for (key, values) in &*self.inner.lock().unwrap() {
+            if values.len() > 1 && !values.contains_key("*") {
+                let sum: usize = values.values().sum();
+                writeln!(file, "{}\t*\t{}", key, sum).unwrap();
+            }
+            for (entry, value) in values {
+                writeln!(file, "{}\t{}\t{}", key, entry, value).unwrap();
+            }
+        }
+    }
 }
 
 fn encode_iri_path(path: &str, output: &mut String) {
