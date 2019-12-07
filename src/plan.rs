@@ -40,7 +40,7 @@ const WD_BAD_CLASSES: [YagoTerm; 6] = [
 
 const MIN_NUMBER_OF_INSTANCES: usize = 10;
 
-pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
+pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, all_wikidata: bool) {
     let stats = Stats::default();
     let schema = Schema::open();
     let partitioned_statements = PartitionedStatements::open(index_dir);
@@ -56,6 +56,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str) {
         &schema,
         &partitioned_statements,
         &wikidata_to_enwikipedia_mapping,
+        all_wikidata,
     );
 
     let (yago_classes, wikidata_to_yago_class_mapping, yago_super_class_of) =
@@ -228,10 +229,19 @@ fn wikidata_to_yago_uris_mapping(
     schema: &Schema,
     partitioned_statements: &PartitionedStatements,
     wikidata_to_enwikipedia_mapping: &HashMap<YagoTerm, String>,
+    all_wikidata: bool,
 ) -> HashMap<YagoTerm, YagoTerm> {
     println!("Generating Wikidata to Yago URI mapping");
 
-    let wikidata_items_to_keep: HashSet<YagoTerm> = partitioned_statements
+    let wikibase_item = YagoTerm::from(WIKIBASE_ITEM);
+    let wikidata_items: HashSet<YagoTerm> = partitioned_statements
+        .subjects_objects_for_predicate(RDF_TYPE)
+        .filter(|(_, o)| o == &wikibase_item)
+        .map(|(s, _)| s)
+        .collect();
+    stats.add_global("Wikidata items", wikidata_items.len());
+
+    let wikidata_items_with_wikipedia_article: HashSet<YagoTerm> = partitioned_statements
         .subjects_objects_for_predicate(SCHEMA_ABOUT)
         .filter_map(|(wp, wd)| {
             if let YagoTerm::Iri(wp) = wp {
@@ -245,11 +255,18 @@ fn wikidata_to_yago_uris_mapping(
             }
         })
         .collect();
-
     stats.add_global(
         "Wikidata items with Wikipedia articles",
-        wikidata_items_to_keep.len(),
+        wikidata_items_with_wikipedia_article.len(),
     );
+
+    let wikidata_items_to_keep: HashSet<YagoTerm> = if all_wikidata {
+        println!("Considering all Wikidata items");
+        wikidata_items
+    } else {
+        println!("Considering only Wikidata items with a Wikipedia article in any language");
+        wikidata_items_with_wikipedia_article
+    };
 
     let from_schema_mapping: HashMap<YagoTerm, YagoTerm> = schema
         .node_shapes()
@@ -318,31 +335,10 @@ fn wikidata_to_yago_uris_mapping(
         from_label_mapping.len(),
     );
 
-    let wikibase_item = YagoTerm::from(WIKIBASE_ITEM);
-    let wikidata_items: HashSet<YagoTerm> = partitioned_statements
-        .subjects_objects_for_predicate(RDF_TYPE)
-        .filter(|(_, o)| o == &wikibase_item)
-        .map(|(s, _)| s)
-        .collect();
-    stats.add_global("Wikidata items", wikidata_items.len());
-
-    /*TODO: bad hack for tests
-    wikidata_items.extend(
-        partitioned_statements
-            .triples_for_predicate(WDT_P31)
-            .map(|t| t.object),
-    );
-    wikidata_items.extend(
-        partitioned_statements
-            .triples_for_predicate(WDT_P279)
-            .flat_map(|t| once(t.subject).chain(once(t.object))),
-    );*/
-
-    let fallback_mapping: HashMap<YagoTerm, YagoTerm> = wikidata_items
+    let fallback_mapping: HashMap<YagoTerm, YagoTerm> = wikidata_items_to_keep
         .into_iter()
         .filter(|i| {
-            wikidata_items_to_keep.contains(i)
-                && !from_schema_mapping.contains_key(i)
+            !from_schema_mapping.contains_key(i)
                 && !from_wikipedia_mapping.contains_key(i)
                 && !from_label_mapping.contains_key(i)
         })

@@ -30,13 +30,21 @@ fn main() {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("build").about("Build Yago 4").arg(
-                Arg::with_name("output")
-                    .short("o")
-                    .help("Directory to output Yago 4 to")
-                    .takes_value(true)
-                    .required(true),
-            ),
+            SubCommand::with_name("build")
+                .about("Build Yago 4")
+                .arg(
+                    Arg::with_name("output")
+                        .short("o")
+                        .help("Directory to output Yago 4 to")
+                        .takes_value(true)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("full")
+                        .short("f")
+                        .help("Generate Yago 4 from all Wikidata")
+                        .takes_value(false),
+                ),
         )
         .get_matches();
 
@@ -46,6 +54,10 @@ fn main() {
         PartitionedStatements::open(cache_name).load_ntriples(matches.value_of("file").unwrap());
     }
     if let Some(matches) = matches.subcommand_matches("build") {
-        generate_yago(cache_name, matches.value_of("output").unwrap())
+        generate_yago(
+            cache_name,
+            matches.value_of("output").unwrap(),
+            matches.is_present("full"),
+        )
     }
 }
