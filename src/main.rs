@@ -1,3 +1,5 @@
+#![type_length_limit = "1832348"]
+
 use crate::partitioned_statements::PartitionedStatements;
 use crate::plan::generate_yago;
 use clap::{App, Arg, SubCommand};

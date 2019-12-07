@@ -104,19 +104,16 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, all_wikidata: bo
         &to_dir,
         "yago-wd-full-types.nt.gz",
     );
-
-    write_ntriples(
-        build_simple_properties_from_schema(
-            &schema,
-            &partitioned_statements,
-            &yago_shape_instances,
-            &wikidata_to_yago_uris_mapping,
-            vec![
-                RDFS_LABEL.into(),
-                RDFS_COMMENT.into(),
-                SCHEMA_ALTERNATE_NAME.into(),
-            ],
-        ),
+    build_simple_properties_from_schema(
+        &schema,
+        &partitioned_statements,
+        &yago_shape_instances,
+        &wikidata_to_yago_uris_mapping,
+        vec![
+            RDFS_LABEL.into(),
+            RDFS_COMMENT.into(),
+            SCHEMA_ALTERNATE_NAME.into(),
+        ],
         &to_dir,
         "yago-wd-labels.nt.gz",
     );
@@ -154,35 +151,6 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, all_wikidata: bo
         let mut path = PathBuf::from(to_dir);
         path.push("stats.tsv");
         stats.write(path);
-    }
-}
-
-fn write_ntriples(
-    triples: impl IntoIterator<Item = YagoTriple>,
-    dir: impl AsRef<Path>,
-    file_name: &str,
-) {
-    use std::io::Write;
-
-    println!("Writing file {}", file_name);
-
-    create_dir_all(dir.as_ref()).unwrap();
-    let mut path = dir.as_ref().to_owned();
-    path.push(file_name);
-    if file_name.ends_with(".gz") {
-        let mut file = BufWriter::new(GzEncoder::new(
-            File::create(path).unwrap(),
-            Compression::fast(),
-        ));
-        for t in triples {
-            writeln!(file, "{}", t).unwrap();
-        }
-        file.into_inner().unwrap().finish().unwrap();
-    } else {
-        let mut file = BufWriter::new(File::create(path).unwrap());
-        for t in triples {
-            writeln!(file, "{}", t).unwrap();
-        }
     }
 }
 
@@ -778,75 +746,74 @@ fn build_simple_properties_from_schema<'a>(
     yago_shape_instances: &'a HashMap<YagoTerm, HashSet<YagoTerm>>,
     wikidata_to_yago_uris_mapping: &'a HashMap<YagoTerm, YagoTerm>,
     properties: Vec<YagoTerm>,
-) -> impl Iterator<Item = YagoTriple> + 'a {
-    schema
-        .property_shapes()
-        .into_iter()
-        .filter(move |property_shape| properties.contains(&property_shape.path))
-        .flat_map(move |property_shape| {
-            let subject_object: Box<dyn Iterator<Item = (YagoTerm, YagoTerm)>> =
-                if !property_shape.datatypes.is_empty() {
-                    if !property_shape.nodes.is_empty() {
-                        Box::new(empty())
-                    } else {
-                        let dts: Vec<_> = property_shape
-                            .datatypes
-                            .iter()
-                            .filter_map(|dt| {
-                                if let YagoTerm::Iri(dt) = dt {
-                                    Some(NamedNode { iri: dt.as_str() })
-                                } else {
-                                    eprintln!("Invalid datatype: {}", dt);
-                                    None
-                                }
-                            })
-                            .collect();
+    dir: impl AsRef<Path>,
+    file_name: &str,
+) {
+    let mut writer = NTriplesWriter::open(dir, file_name);
 
-                        Box::new(
-                            property_shape
-                                .from_properties
-                                .iter()
-                                .flat_map(|p| {
-                                    partitioned_statements.subjects_objects_for_predicate(p.clone())
-                                })
-                                .filter_map(move |(subject, object)| {
-                                    if object.datatype().map_or(false, |dt| dts.contains(&dt)) {
-                                        Some((subject, object))
-                                    } else {
-                                        None
-                                    }
-                                }),
-                        )
-                    }
-                } else {
-                    unimplemented!();
-                };
+    for property_shape in schema.property_shapes() {
+        if !properties.contains(&property_shape.path) {
+            continue;
+        }
+        let subject_object = if !property_shape.datatypes.is_empty() {
+            if !property_shape.nodes.is_empty() {
+                continue;
+            } else {
+                let dts: BTreeSet<String> = property_shape
+                    .datatypes
+                    .iter()
+                    .filter_map(|dt| {
+                        if let YagoTerm::Iri(dt) = dt {
+                            Some(dt.to_owned())
+                        } else {
+                            eprintln!("Invalid datatype: {}", dt);
+                            None
+                        }
+                    })
+                    .collect();
 
-            let subject_object = filter_domain(
-                map_key_to_yago(subject_object, wikidata_to_yago_uris_mapping),
-                yago_shape_instances,
-                &property_shape,
-            );
-
-            // Max count
-            if property_shape.max_count.is_some() {
-                unimplemented!();
+                property_shape
+                    .from_properties
+                    .clone()
+                    .into_iter()
+                    .flat_map(|p| partitioned_statements.subjects_objects_for_predicate(p))
+                    .filter_map(move |(subject, object)| {
+                        if object.datatype().map_or(false, |dt| dts.contains(dt.iri)) {
+                            Some((subject, object))
+                        } else {
+                            None
+                        }
+                    })
             }
+        } else {
+            unimplemented!();
+        };
 
-            // Regex
-            if property_shape.pattern.is_some() {
-                unimplemented!();
-            }
+        let subject_object = filter_domain(
+            map_key_to_yago(subject_object, wikidata_to_yago_uris_mapping),
+            yago_shape_instances,
+            &property_shape,
+        );
 
-            subject_object
-                .map(|(subject, object)| YagoTriple {
-                    subject,
-                    predicate: property_shape.path.clone(),
-                    object,
-                })
-                .collect::<Vec<_>>()
-                .into_iter()
-        })
+        // Max count
+        if property_shape.max_count.is_some() {
+            unimplemented!();
+        }
+
+        // Regex
+        if property_shape.pattern.is_some() {
+            unimplemented!();
+        }
+
+        let predicate = property_shape.path.clone();
+        writer.write_all(subject_object.map(move |(subject, object)| YagoTriple {
+            subject,
+            predicate: predicate.clone(),
+            object,
+        }))
+    }
+
+    writer.finish()
 }
 
 fn build_properties_from_wikidata_and_schema(
@@ -961,45 +928,91 @@ fn build_properties_from_wikidata_and_schema(
     ).mapValue(v -> (annotationShape.getProperty(), v))
     ).reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty);*/
 
-    let triples = schema.property_shapes().into_iter().filter(|property_shape| !exclude_properties.contains(&property_shape.path)).flat_map(|property_shape| {
+    let mut writer = NTriplesWriter::open(dir, file_name);
+
+    for property_shape in schema.property_shapes() {
+        if exclude_properties.contains(&property_shape.path) {
+            continue;
+        }
 
         // We map the statement -> object relation
         let statement_object = map_wikidata_property_value(
-            schema, &property_shape,
-            partitioned_statements, yago_shape_instances, wikidata_to_yago_uris_mapping,
-            &clean_times, &clean_durations, &clean_integers, &clean_quantities, &clean_coordinates,
-            PS_PREFIX, PSV_PREFIX,
+            schema,
+            &property_shape,
+            partitioned_statements,
+            yago_shape_instances,
+            wikidata_to_yago_uris_mapping,
+            &clean_times,
+            &clean_durations,
+            &clean_integers,
+            &clean_quantities,
+            &clean_coordinates,
+            PS_PREFIX,
+            PSV_PREFIX,
         );
 
         // We map the subject -> statement relation and we apply best rank filter
         let rdf_type: YagoTerm = RDF_TYPE.into();
         let wikibase_best_rank: YagoTerm = WIKIBASE_BEST_RANK.into();
-        let subject_statement: Vec<(YagoTerm, YagoTerm)> = map_key_to_yago(get_subject_statement(partitioned_statements, &property_shape), wikidata_to_yago_uris_mapping)
-            .filter(|(_, statement)| partitioned_statements.contains(statement, &rdf_type, &wikibase_best_rank))  // We keep only best ranks
-            .collect();
-        stats.set_local("Yago facts before any filter", property_shape.path.to_string(), subject_statement.len());
+        let subject_statement: Vec<(YagoTerm, YagoTerm)> = map_key_to_yago(
+            get_subject_statement(partitioned_statements, &property_shape),
+            wikidata_to_yago_uris_mapping,
+        )
+        .filter(|(_, statement)| {
+            partitioned_statements.contains(statement, &rdf_type, &wikibase_best_rank)
+        }) // We keep only best ranks
+        .collect();
+        stats.set_local(
+            "Yago facts before any filter",
+            property_shape.path.to_string(),
+            subject_statement.len(),
+        );
 
         // We apply domain filter
-        let statement_subject: Multimap<YagoTerm, YagoTerm> = filter_domain(subject_statement.into_iter(),
+        let statement_subject: Multimap<YagoTerm, YagoTerm> = filter_domain(
+            subject_statement.into_iter(),
             yago_shape_instances,
             &property_shape,
-        ).map(|(subject, statement)| (statement, subject)).collect();
-        stats.set_local("Yago facts after domain filter", property_shape.path.to_string(), statement_subject.len());
+        )
+        .map(|(subject, statement)| (statement, subject))
+        .collect();
+        stats.set_local(
+            "Yago facts after domain filter",
+            property_shape.path.to_string(),
+            statement_subject.len(),
+        );
 
         let property_name = property_shape.path.clone();
-        let statement_triple: Vec<(YagoTerm,Vec<YagoTriple>)> = join_pairs(statement_object.map(|(s, o, a)| (s, (o, a))), &statement_subject)
-            .map(move |(statement_id, (object, mut additional), subject)| {
-                additional.push(YagoTriple { subject, predicate: property_name.clone(), object });
-                (statement_id, additional)
-            }).collect();
-        stats.set_local("Yago facts after range filter", property_shape.path.to_string(), statement_subject.len());
+        let statement_triple: Vec<(YagoTerm, Vec<YagoTriple>)> = join_pairs(
+            statement_object.map(|(s, o, a)| (s, (o, a))),
+            &statement_subject,
+        )
+        .map(move |(statement_id, (object, mut additional), subject)| {
+            additional.push(YagoTriple {
+                subject,
+                predicate: property_name.clone(),
+                object,
+            });
+            (statement_id, additional)
+        })
+        .collect();
+        stats.set_local(
+            "Yago facts after range filter",
+            property_shape.path.to_string(),
+            statement_subject.len(),
+        );
 
         // Max count
         let statement_triple = if let Some(max_count) = property_shape.max_count {
             statement_triple
                 .into_iter()
-                .map(|(statement, triples)| (triples[triples.len() - 1].subject.clone(), (statement, triples)))
-                .collect::<Multimap<YagoTerm,_>>()
+                .map(|(statement, triples)| {
+                    (
+                        triples[triples.len() - 1].subject.clone(),
+                        (statement, triples),
+                    )
+                })
+                .collect::<Multimap<YagoTerm, _>>()
                 .into_iter_grouped()
                 .filter(move |(_, t)| t.len() <= max_count)
                 .flat_map(|(_, v)| v)
@@ -1007,7 +1020,11 @@ fn build_properties_from_wikidata_and_schema(
         } else {
             statement_triple
         };
-        stats.add_local("Yago facts after maxCount filter", property_shape.path.to_string(), statement_triple.len());
+        stats.add_local(
+            "Yago facts",
+            property_shape.path.to_string(),
+            statement_triple.len(),
+        );
 
         /* TODO Annotations
         //TODO: emit object annotations
@@ -1016,15 +1033,14 @@ fn build_properties_from_wikidata_and_schema(
         .join(statements_with_annotations)
         .map((s, e) -> new AnnotatedStatement(e.getKey().getKey(), e.getValue().getKey(), e.getValue().getValue().getKey()));*/
 
+        writer.write_all(
+            statement_triple
+                .into_iter()
+                .flat_map(|(_, triples)| triples),
+        )
+    }
 
-        let final_facts = statement_triple.into_iter().flat_map(|(_, triples)| triples).collect::<Vec<_>>();
-        stats.add_local("Yago facts (included structured values)", property_shape.path.to_string(), final_facts.len());
-
-        //TODO: avoid collect
-        final_facts.into_iter()
-    });
-
-    write_ntriples(triples, dir, file_name)
+    writer.finish()
 }
 
 type WikidataPropertyValueIterator<'a> =
@@ -1962,6 +1978,52 @@ fn join_pairs<'a, K: Eq + Hash + Clone, V1: Clone + 'a, V2: Clone + Eq>(
             v2s.iter()
                 .map(move |v2| (k.clone(), v1.clone(), v2.clone()))
         })
+}
+
+struct NTriplesWriter {
+    inner: BufWriter<GzEncoder<File>>,
+}
+
+impl NTriplesWriter {
+    fn open(dir: impl AsRef<Path>, file_name: &str) -> Self {
+        println!("Writing file {}", file_name);
+
+        create_dir_all(dir.as_ref()).unwrap();
+        let mut path = dir.as_ref().to_owned();
+        path.push(file_name);
+        if !file_name.ends_with(".gz") {
+            panic!("It only supportz .gz files");
+        }
+        Self {
+            inner: BufWriter::new(GzEncoder::new(
+                File::create(path).unwrap(),
+                Compression::fast(),
+            )),
+        }
+    }
+
+    fn write(&mut self, triple: YagoTriple) {
+        use std::io::Write;
+        writeln!(self.inner, "{}", triple).unwrap();
+    }
+
+    fn write_all(&mut self, triples: impl IntoIterator<Item = YagoTriple>) {
+        triples.into_iter().for_each(|t| self.write(t));
+    }
+
+    fn finish(self) {
+        self.inner.into_inner().unwrap().finish().unwrap();
+    }
+}
+
+fn write_ntriples(
+    triples: impl IntoIterator<Item = YagoTriple>,
+    dir: impl AsRef<Path>,
+    file_name: &str,
+) {
+    let mut writer = NTriplesWriter::open(dir, file_name);
+    writer.write_all(triples);
+    writer.finish()
 }
 
 #[derive(Default)]
