@@ -15,7 +15,6 @@ rocksdb = "0.13"
 percent-encoding = "2"
 regex = "1"
 url = "2"
-crossbeam = "0.7"
 
 [profile.release]
 lto = true
