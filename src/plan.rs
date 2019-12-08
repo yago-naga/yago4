@@ -19,6 +19,13 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use url::Url;
 
+#[derive(Copy, Clone, Debug)]
+pub enum YagoSize {
+    Full,
+    AllWikipedias,
+    EnglishWikipedia,
+}
+
 const P_PREFIX: &str = "http://www.wikidata.org/prop/";
 const PS_PREFIX: &str = "http://www.wikidata.org/prop/statement/";
 const PSV_PREFIX: &str = "http://www.wikidata.org/prop/statement/value/";
@@ -39,7 +46,7 @@ const WD_BAD_CLASSES: [YagoTerm; 6] = [
 
 const MIN_NUMBER_OF_INSTANCES: usize = 10;
 
-pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, all_wikidata: bool) {
+pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) {
     let stats = Stats::default();
     let schema = Schema::open();
     let partitioned_statements = PartitionedStatements::open(index_dir);
@@ -55,7 +62,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, all_wikidata: bo
         &schema,
         &partitioned_statements,
         &wikidata_to_enwikipedia_mapping,
-        all_wikidata,
+        size,
     );
 
     let (yago_classes, wikidata_to_yago_class_mapping, yago_super_class_of) =
@@ -179,7 +186,7 @@ fn wikidata_to_yago_uris_mapping(
     schema: &Schema,
     partitioned_statements: &PartitionedStatements,
     wikidata_to_enwikipedia_mapping: &HashMap<YagoTerm, String>,
-    all_wikidata: bool,
+    size: YagoSize,
 ) -> HashMap<YagoTerm, YagoTerm> {
     println!("Generating Wikidata to Yago URI mapping");
 
@@ -210,12 +217,22 @@ fn wikidata_to_yago_uris_mapping(
         wikidata_items_with_wikipedia_article.len(),
     );
 
-    let wikidata_items_to_keep: HashSet<YagoTerm> = if all_wikidata {
-        println!("Considering all Wikidata items");
-        wikidata_items
-    } else {
-        println!("Considering only Wikidata items with a Wikipedia article in any language");
-        wikidata_items_with_wikipedia_article
+    let wikidata_items_to_keep: HashSet<YagoTerm> = match size {
+        YagoSize::Full => {
+            println!("Considering all Wikidata items");
+            wikidata_items
+        }
+        YagoSize::AllWikipedias => {
+            println!("Considering only Wikidata items with a Wikipedia article in any language");
+            wikidata_items_with_wikipedia_article
+        }
+        YagoSize::EnglishWikipedia => {
+            println!("Considering only Wikidata items with an English Wikipedia");
+            wikidata_to_enwikipedia_mapping
+                .iter()
+                .map(|(k, _)| k.clone())
+                .collect()
+        }
     };
 
     let from_schema_mapping: HashMap<YagoTerm, YagoTerm> = schema

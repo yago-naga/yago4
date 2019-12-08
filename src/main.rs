@@ -1,8 +1,8 @@
-#![type_length_limit = "1832348"]
+#![type_length_limit = "3180578"]
 
 use crate::partitioned_statements::PartitionedStatements;
-use crate::plan::generate_yago;
-use clap::{App, Arg, SubCommand};
+use crate::plan::{generate_yago, YagoSize};
+use clap::{App, Arg, ArgGroup, SubCommand};
 
 mod model;
 mod multimap;
@@ -41,11 +41,13 @@ fn main() {
                         .takes_value(true)
                         .required(true),
                 )
-                .arg(
-                    Arg::with_name("full")
-                        .short("f")
-                        .help("Generate Yago 4 from all Wikidata")
-                        .takes_value(false),
+                .arg(Arg::with_name("full").long("full").help("Generate Yago 4 from all Wikidata"))
+                .arg(Arg::with_name("en-wiki").long("en-wiki").help("Generate Yago 4 with only the entities with an English Wikipedia article"))
+                .arg(Arg::with_name("all-wikis").long("all-wikis").help("Generate Yago 4 with only the entities with an Wikipedia article in any language"))
+                .group(
+                    ArgGroup::with_name("size")
+                        .required(true)
+                        .args(&["full", "en-wiki", "all-wikis"]),
                 ),
         )
         .get_matches();
@@ -59,7 +61,15 @@ fn main() {
         generate_yago(
             cache_name,
             matches.value_of("output").unwrap(),
-            matches.is_present("full"),
+            if matches.is_present("en-wiki") {
+                YagoSize::EnglishWikipedia
+            } else if matches.is_present("all-wikis") {
+                YagoSize::AllWikipedias
+            } else if matches.is_present("full") {
+                YagoSize::Full
+            } else {
+                panic!("Should not happen")
+            },
         )
     }
 }
