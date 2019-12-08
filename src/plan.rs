@@ -3,6 +3,7 @@ use crate::multimap::Multimap;
 use crate::partitioned_statements::PartitionedStatements;
 use crate::schema::{PropertyShape, Schema};
 use crate::vocab::*;
+use crossbeam::thread;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use percent_encoding::percent_decode_str;
@@ -84,75 +85,93 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) 
         &wikidata_to_yago_uris_mapping,
     );
 
-    write_ntriples(
-        build_classes_description(
-            &yago_classes,
-            &yago_super_class_of,
-            &partitioned_statements,
-            &wikidata_to_yago_uris_mapping,
-        ),
-        &to_dir,
-        "yago-wd-class.nt.gz",
-    );
+    thread::scope(|s| {
+        s.spawn(|_| {
+            write_ntriples(
+                build_classes_description(
+                    &yago_classes,
+                    &yago_super_class_of,
+                    &partitioned_statements,
+                    &wikidata_to_yago_uris_mapping,
+                ),
+                &to_dir,
+                "yago-wd-class.nt.gz",
+            );
+        });
 
-    write_ntriples(
-        build_simple_instance_of(&yago_shape_instances),
-        &to_dir,
-        "yago-wd-simple-types.nt.gz",
-    );
+        s.spawn(|_| {
+            write_ntriples(
+                build_simple_instance_of(&yago_shape_instances),
+                &to_dir,
+                "yago-wd-simple-types.nt.gz",
+            );
+        });
 
-    write_ntriples(
-        build_full_instance_of(
-            &yago_shape_instances.get(&SCHEMA_THING.into()).unwrap(),
-            &wikidata_to_yago_class_mapping,
-            &partitioned_statements,
-            &wikidata_to_yago_uris_mapping,
-        ),
-        &to_dir,
-        "yago-wd-full-types.nt.gz",
-    );
-    build_simple_properties_from_schema(
-        &schema,
-        &partitioned_statements,
-        &yago_shape_instances,
-        &wikidata_to_yago_uris_mapping,
-        vec![
-            RDFS_LABEL.into(),
-            RDFS_COMMENT.into(),
-            SCHEMA_ALTERNATE_NAME.into(),
-        ],
-        &to_dir,
-        "yago-wd-labels.nt.gz",
-    );
+        s.spawn(|_| {
+            write_ntriples(
+                build_full_instance_of(
+                    &yago_shape_instances.get(&SCHEMA_THING.into()).unwrap(),
+                    &wikidata_to_yago_class_mapping,
+                    &partitioned_statements,
+                    &wikidata_to_yago_uris_mapping,
+                ),
+                &to_dir,
+                "yago-wd-full-types.nt.gz",
+            );
+        });
 
-    build_properties_from_wikidata_and_schema(
-        &stats,
-        &schema,
-        &partitioned_statements,
-        &yago_shape_instances,
-        &wikidata_to_yago_uris_mapping,
-        vec![
-            RDFS_LABEL.into(),
-            RDFS_COMMENT.into(),
-            SCHEMA_ALTERNATE_NAME.into(),
-        ],
-        &to_dir,
-        "yago-wd-facts.nt.gz",
-    );
+        s.spawn(|_| {
+            build_simple_properties_from_schema(
+                &schema,
+                &partitioned_statements,
+                &yago_shape_instances,
+                &wikidata_to_yago_uris_mapping,
+                vec![
+                    RDFS_LABEL.into(),
+                    RDFS_COMMENT.into(),
+                    SCHEMA_ALTERNATE_NAME.into(),
+                ],
+                &to_dir,
+                "yago-wd-labels.nt.gz",
+            );
+        });
 
-    write_ntriples(
-        build_same_as(
-            &stats,
-            &partitioned_statements,
-            &yago_shape_instances.get(&SCHEMA_THING.into()).unwrap(),
-            &wikidata_to_yago_uris_mapping,
-            &wikidata_to_enwikipedia_mapping,
-        ),
-        &to_dir,
-        "yago-wd-sameAs.nt.gz",
-    );
+        s.spawn(|_| {
+            build_properties_from_wikidata_and_schema(
+                &stats,
+                &schema,
+                &partitioned_statements,
+                &yago_shape_instances,
+                &wikidata_to_yago_uris_mapping,
+                vec![
+                    RDFS_LABEL.into(),
+                    RDFS_COMMENT.into(),
+                    SCHEMA_ALTERNATE_NAME.into(),
+                ],
+                &to_dir,
+                "yago-wd-facts.nt.gz",
+            );
+        });
 
-    write_ntriples(build_yago_schema(&schema), &to_dir, "yago-wd-schema.nt.gz");
+        s.spawn(|_| {
+            write_ntriples(
+                build_same_as(
+                    &stats,
+                    &partitioned_statements,
+                    &yago_shape_instances.get(&SCHEMA_THING.into()).unwrap(),
+                    &wikidata_to_yago_uris_mapping,
+                    &wikidata_to_enwikipedia_mapping,
+                ),
+                &to_dir,
+                "yago-wd-sameAs.nt.gz",
+            );
+        });
+
+        s.spawn(|_| {
+            write_ntriples(build_yago_schema(&schema), &to_dir, "yago-wd-schema.nt.gz");
+        });
+    })
+    .unwrap();
 
     {
         let mut path = PathBuf::from(to_dir);
@@ -843,98 +862,132 @@ fn build_properties_from_wikidata_and_schema(
     dir: impl AsRef<Path>,
     file_name: &str,
 ) {
-    // Some utility plans
-    let clean_times: HashMap<YagoTerm, YagoTerm> = partitioned_statements
-        .subjects_objects_for_predicate(WIKIBASE_TIME_VALUE)
-        .filter_map(|(s, value)| {
-            partitioned_statements
-                .object_for_subject_predicate(&s, &WIKIBASE_TIME_PRECISION.into())
-                .map(|precision| (s, value, precision))
-        })
-        .filter_map(|(s, value, precision)| {
-            partitioned_statements
-                .object_for_subject_predicate(&s, &WIKIBASE_TIME_CALENDAR_MODEL.into())
-                .map(|calendar| (s, value, precision, calendar))
-        })
-        .filter_map(|(k, value, precision, calendar)| {
-            convert_time(value, precision, calendar).map(|t| (k, t))
-        })
-        .collect();
-    stats.set_local("Cleaned complex type", "time", clean_times.len());
+    // Some utility plans executed in //
+    let (clean_times, clean_coordinates, clean_durations, clean_integers, clean_quantities) =
+        thread::scope(|s| {
+            let clean_times = s.spawn(|_| {
+                let clean_times: HashMap<YagoTerm, YagoTerm> = partitioned_statements
+                    .subjects_objects_for_predicate(WIKIBASE_TIME_VALUE)
+                    .filter_map(|(s, value)| {
+                        partitioned_statements
+                            .object_for_subject_predicate(&s, &WIKIBASE_TIME_PRECISION.into())
+                            .map(|precision| (s, value, precision))
+                    })
+                    .filter_map(|(s, value, precision)| {
+                        partitioned_statements
+                            .object_for_subject_predicate(&s, &WIKIBASE_TIME_CALENDAR_MODEL.into())
+                            .map(|calendar| (s, value, precision, calendar))
+                    })
+                    .filter_map(|(k, value, precision, calendar)| {
+                        convert_time(value, precision, calendar).map(|t| (k, t))
+                    })
+                    .collect();
+                stats.set_local("Cleaned complex type", "time", clean_times.len());
+                clean_times
+            });
 
-    let clean_coordinates: HashMap<YagoTerm, (YagoTerm, Vec<YagoTriple>)> = partitioned_statements
-        .subjects_objects_for_predicate(WIKIBASE_GEO_LATITUDE)
-        .filter_map(|(s, latitude)| {
-            partitioned_statements
-                .object_for_subject_predicate(&s, &WIKIBASE_GEO_LONGITUDE.into())
-                .map(|longitude| (s, latitude, longitude))
-        })
-        .filter_map(|(s, latitude, longitude)| {
-            partitioned_statements
-                .object_for_subject_predicate(&s, &WIKIBASE_GEO_PRECISION.into())
-                .map(|precision| (s, latitude, longitude, precision))
-        })
-        .filter_map(|(s, latitude, longitude, precision)| {
-            partitioned_statements
-                .object_for_subject_predicate(&s, &WIKIBASE_GEO_GLOBE.into())
-                .map(|globe| (s, latitude, longitude, precision, globe))
-        })
-        .filter_map(|(k, lat, long, precision, globe)| {
-            convert_globe_coordinates(lat, long, precision, globe).map(|t| (k, t))
-        })
-        .collect();
-    stats.set_local(
-        "Cleaned complex type",
-        "coordinates",
-        clean_coordinates.len(),
-    );
+            let clean_coordinates = s.spawn(|_| {
+                let clean_coordinates: HashMap<YagoTerm, (YagoTerm, Vec<YagoTriple>)> =
+                    partitioned_statements
+                        .subjects_objects_for_predicate(WIKIBASE_GEO_LATITUDE)
+                        .filter_map(|(s, latitude)| {
+                            partitioned_statements
+                                .object_for_subject_predicate(&s, &WIKIBASE_GEO_LONGITUDE.into())
+                                .map(|longitude| (s, latitude, longitude))
+                        })
+                        .filter_map(|(s, latitude, longitude)| {
+                            partitioned_statements
+                                .object_for_subject_predicate(&s, &WIKIBASE_GEO_PRECISION.into())
+                                .map(|precision| (s, latitude, longitude, precision))
+                        })
+                        .filter_map(|(s, latitude, longitude, precision)| {
+                            partitioned_statements
+                                .object_for_subject_predicate(&s, &WIKIBASE_GEO_GLOBE.into())
+                                .map(|globe| (s, latitude, longitude, precision, globe))
+                        })
+                        .filter_map(|(k, lat, long, precision, globe)| {
+                            convert_globe_coordinates(lat, long, precision, globe).map(|t| (k, t))
+                        })
+                        .collect();
+                stats.set_local(
+                    "Cleaned complex type",
+                    "coordinates",
+                    clean_coordinates.len(),
+                );
+                clean_coordinates
+            });
 
-    let clean_durations: HashMap<YagoTerm, YagoTerm> = partitioned_statements
-        .subjects_objects_for_predicate(WIKIBASE_QUANTITY_AMOUNT)
-        .filter_map(|(s, amount)| {
-            partitioned_statements
-                .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_UNIT.into())
-                .map(|unit| (s, amount, unit))
-        })
-        .filter_map(|(k, amount, unit)| convert_duration_quantity(amount, unit).map(|t| (k, t)))
-        .collect();
-    stats.set_local("Cleaned complex type", "duration", clean_durations.len());
+            let clean_durations = s.spawn(|_| {
+                let clean_durations: HashMap<YagoTerm, YagoTerm> = partitioned_statements
+                    .subjects_objects_for_predicate(WIKIBASE_QUANTITY_AMOUNT)
+                    .filter_map(|(s, amount)| {
+                        partitioned_statements
+                            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_UNIT.into())
+                            .map(|unit| (s, amount, unit))
+                    })
+                    .filter_map(|(k, amount, unit)| {
+                        convert_duration_quantity(amount, unit).map(|t| (k, t))
+                    })
+                    .collect();
+                stats.set_local("Cleaned complex type", "duration", clean_durations.len());
+                clean_durations
+            });
 
-    let clean_integers: HashMap<YagoTerm, YagoTerm> = partitioned_statements
-        .subjects_objects_for_predicate(WIKIBASE_QUANTITY_AMOUNT)
-        .filter_map(|(s, amount)| {
-            partitioned_statements
-                .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_UNIT.into())
-                .map(|unit| (s, amount, unit))
-        })
-        .filter_map(|(k, amount, unit)| convert_integer_quantity(amount, unit).map(|t| (k, t)))
-        .collect();
-    stats.set_local("Cleaned complex type", "integer", clean_integers.len());
+            let clean_integers = s.spawn(|_| {
+                let clean_integers: HashMap<YagoTerm, YagoTerm> = partitioned_statements
+                    .subjects_objects_for_predicate(WIKIBASE_QUANTITY_AMOUNT)
+                    .filter_map(|(s, amount)| {
+                        partitioned_statements
+                            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_UNIT.into())
+                            .map(|unit| (s, amount, unit))
+                    })
+                    .filter_map(|(k, amount, unit)| {
+                        convert_integer_quantity(amount, unit).map(|t| (k, t))
+                    })
+                    .collect();
+                stats.set_local("Cleaned complex type", "integer", clean_integers.len());
+                clean_integers
+            });
 
-    let clean_quantities: HashMap<YagoTerm, (YagoTerm, Vec<YagoTriple>)> = map_value_to_yago(
-        partitioned_statements.subjects_objects_for_predicate(WIKIBASE_QUANTITY_UNIT),
-        wikidata_to_yago_uris_mapping,
-    )
-    .filter_map(|(s, unit)| {
-        partitioned_statements
-            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_AMOUNT.into())
-            .map(|amount| (s, unit, amount))
-    })
-    .filter_map(|(s, unit, amount)| {
-        partitioned_statements
-            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_LOWER_BOUND.into())
-            .map(|lower| (s, unit, amount, lower))
-    })
-    .filter_map(|(s, unit, amount, lower)| {
-        partitioned_statements
-            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_UPPER_BOUND.into())
-            .map(|upper| (s, unit, amount, lower, upper))
-    })
-    .filter_map(|(k, unit, amount, lower, upper)| {
-        convert_quantity(&k, unit, amount, lower, upper).map(|v| (k, v))
-    })
-    .collect();
-    stats.set_local("Cleaned complex type", "quantity", clean_quantities.len());
+            let clean_quantities = s.spawn(|_| {
+                let clean_quantities: HashMap<YagoTerm, (YagoTerm, Vec<YagoTriple>)> =
+                    map_value_to_yago(
+                        partitioned_statements
+                            .subjects_objects_for_predicate(WIKIBASE_QUANTITY_UNIT),
+                        wikidata_to_yago_uris_mapping,
+                    )
+                    .filter_map(|(s, unit)| {
+                        partitioned_statements
+                            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_AMOUNT.into())
+                            .map(|amount| (s, unit, amount))
+                    })
+                    .filter_map(|(s, unit, amount)| {
+                        partitioned_statements
+                            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_LOWER_BOUND.into())
+                            .map(|lower| (s, unit, amount, lower))
+                    })
+                    .filter_map(|(s, unit, amount, lower)| {
+                        partitioned_statements
+                            .object_for_subject_predicate(&s, &WIKIBASE_QUANTITY_UPPER_BOUND.into())
+                            .map(|upper| (s, unit, amount, lower, upper))
+                    })
+                    .filter_map(|(k, unit, amount, lower, upper)| {
+                        convert_quantity(&k, unit, amount, lower, upper).map(|v| (k, v))
+                    })
+                    .collect();
+                stats.set_local("Cleaned complex type", "quantity", clean_quantities.len());
+                clean_quantities
+            });
+
+            (
+                clean_times.join().unwrap(),
+                clean_coordinates.join().unwrap(),
+                clean_durations.join().unwrap(),
+                clean_integers.join().unwrap(),
+                clean_quantities.join().unwrap(),
+            )
+        })
+        .unwrap();
 
     /* let statements_with_annotations = vec![];
     TODO schemaShaclSchema.getScfhema().getAnnotationPropertyShapes().map(annotationShape ->
