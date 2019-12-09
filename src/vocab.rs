@@ -1,12 +1,12 @@
 use rio_api::model::NamedNode;
 
 pub const PREFIXES: [(&str, &str); 6] = [
-    ("bioschema:", "http://bioschemas.org/"),
-    ("owl:", "http://www.w3.org/2002/07/owl#"),
-    ("rdf:", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-    ("rdfs:", "http://www.w3.org/2000/01/rdf-schema#"),
-    ("schema:", "http://schema.org/"),
-    ("xsd:", "http://www.w3.org/2001/XMLSchema#"),
+    ("bioschema", "http://bioschemas.org/"),
+    ("owl", "http://www.w3.org/2002/07/owl#"),
+    ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
+    ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
+    ("schema", "http://schema.org/"),
+    ("xsd", "http://www.w3.org/2001/XMLSchema#"),
 ];
 
 pub const WIKIBASE_ITEM: NamedNode = NamedNode {

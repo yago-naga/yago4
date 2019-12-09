@@ -1857,7 +1857,7 @@ fn add_union_of_object(
             object: objects.into_iter().next().unwrap(),
         });
     } else {
-        let union = YagoTerm::BlankNode(format!("owl:unionOf-{}", string_name(&objects)));
+        let union = YagoTerm::BlankNode(format!("owl-unionOf-{}", string_name(&objects)));
         model.insert(YagoTriple {
             subject,
             predicate,
@@ -1909,7 +1909,7 @@ fn string_name<'a>(list: impl IntoIterator<Item = &'a YagoTerm>) -> String {
             YagoTerm::Iri(v) => {
                 for (p, start) in PREFIXES.iter() {
                     if v.starts_with(start) {
-                        return v.replacen(start, p, 1);
+                        return v.replacen(start, &(p.to_string() + "-"), 1);
                     }
                 }
                 v.replace('/', "").replace('?', "").replace('#', "")
