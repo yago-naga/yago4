@@ -1004,23 +1004,6 @@ fn build_properties_from_wikidata_and_schema(
         if exclude_properties.contains(&property_shape.path) {
             continue;
         }
-
-        // We map the statement -> object relation
-        let statement_object = map_wikidata_property_value(
-            schema,
-            &property_shape,
-            partitioned_statements,
-            yago_shape_instances,
-            wikidata_to_yago_uris_mapping,
-            &clean_times,
-            &clean_durations,
-            &clean_integers,
-            &clean_quantities,
-            &clean_coordinates,
-            PS_PREFIX,
-            PSV_PREFIX,
-        );
-
         // We map the subject -> statement relation and we apply best rank filter
         let rdf_type: YagoTerm = RDF_TYPE.into();
         let wikibase_best_rank: YagoTerm = WIKIBASE_BEST_RANK.into();
@@ -1052,6 +1035,22 @@ fn build_properties_from_wikidata_and_schema(
             statement_subject.len(),
         );
 
+        // We map the statement -> object relation
+        let statement_object = map_wikidata_property_value(
+            schema,
+            &property_shape,
+            partitioned_statements,
+            yago_shape_instances,
+            wikidata_to_yago_uris_mapping,
+            &clean_times,
+            &clean_durations,
+            &clean_integers,
+            &clean_quantities,
+            &clean_coordinates,
+            PS_PREFIX,
+            PSV_PREFIX,
+        );
+
         let property_name = property_shape.path.clone();
         let statement_triple: Vec<(YagoTerm, Vec<YagoTriple>)> = join_pairs(
             statement_object.map(|(s, o, a)| (s, (o, a))),
@@ -1069,7 +1068,7 @@ fn build_properties_from_wikidata_and_schema(
         stats.set_local(
             "Yago facts after range filter",
             property_shape.path.to_string(),
-            statement_subject.len(),
+            statement_triple.len(),
         );
 
         // Max count
