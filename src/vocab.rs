@@ -279,3 +279,6 @@ pub const YS_FROM_CLASS: NamedNode = NamedNode {
 pub const YS_FROM_PROPERTY: NamedNode = NamedNode {
     iri: "http://yago-knowledge.org/schema#fromProperty",
 };
+pub const YS_ANNOTATION_PROPERTY_SHAPE: NamedNode = NamedNode {
+    iri: "http://yago-knowledge.org/schema#AnnotationPropertyShape",
+};

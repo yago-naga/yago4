@@ -18,7 +18,11 @@ pub struct YagoTriple {
 
 impl fmt::Display for YagoTriple {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} {} .", self.subject, self.predicate, self.object)
+        write!(
+            f,
+            "{}\t{}\t{}\t.",
+            self.subject, self.predicate, self.object
+        )
     }
 }
 
@@ -29,6 +33,29 @@ impl<'a> From<Triple<'a>> for YagoTriple {
             predicate: t.predicate.into(),
             object: t.object.into(),
         }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
+pub struct AnnotatedYagoTriple {
+    pub subject: YagoTerm,
+    pub predicate: YagoTerm,
+    pub object: YagoTerm,
+    pub annotation_predicate: YagoTerm,
+    pub annotation_object: YagoTerm,
+}
+
+impl fmt::Display for AnnotatedYagoTriple {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "<<\t{}\t{}\t{}\t>>\t{}\t{}\t.",
+            self.subject,
+            self.predicate,
+            self.object,
+            self.annotation_predicate,
+            self.annotation_object
+        )
     }
 }
 

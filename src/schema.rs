@@ -39,7 +39,7 @@ pub struct NodeShape {
 pub struct PropertyShape {
     id: YagoTerm,
     pub path: YagoTerm,
-    pub parent_shape: YagoTerm,
+    pub parent_shape: Option<YagoTerm>,
     pub datatypes: Vec<YagoTerm>,
     pub nodes: Vec<YagoTerm>,
     pub max_count: Option<usize>,
@@ -180,8 +180,7 @@ impl Schema {
             parent_shape: self
                 .graph
                 .subject_for_predicate_object(&SH_PROPERTY.into(), id)
-                .cloned()
-                .unwrap(),
+                .cloned(),
             datatypes: self
                 .property_shape_roots(id)
                 .iter()
@@ -245,6 +244,13 @@ impl Schema {
         self.graph
             .triples_for_predicate(&SH_PROPERTY.into())
             .map(|t| self.property_shape(&t.object))
+            .collect()
+    }
+
+    pub fn annotation_property_shapes(&self) -> Vec<PropertyShape> {
+        self.graph
+            .subjects_for_predicate_object(&RDF_TYPE.into(), &YS_ANNOTATION_PROPERTY_SHAPE.into())
+            .map(|t| self.property_shape(&t))
             .collect()
     }
 

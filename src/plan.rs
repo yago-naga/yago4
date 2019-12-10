@@ -1,4 +1,4 @@
-use crate::model::{YagoTerm, YagoTriple};
+use crate::model::{AnnotatedYagoTriple, YagoTerm, YagoTriple};
 use crate::multimap::Multimap;
 use crate::partitioned_statements::PartitionedStatements;
 use crate::schema::{PropertyShape, Schema};
@@ -10,6 +10,7 @@ use percent_encoding::percent_decode_str;
 use regex::Regex;
 use rio_api::model::NamedNode;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fmt::Display;
 use std::fmt::Write;
 use std::fs::{create_dir_all, File};
 use std::hash::Hash;
@@ -148,8 +149,9 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) 
                     RDFS_COMMENT.into(),
                     SCHEMA_ALTERNATE_NAME.into(),
                 ],
-                &to_dir,
+                to_dir.as_ref(),
                 "yago-wd-facts.nt.gz",
+                "yago-wd-annotated-facts.ntx.gz",
             );
         });
 
@@ -863,8 +865,9 @@ fn build_properties_from_wikidata_and_schema(
     yago_shape_instances: &HashMap<YagoTerm, HashSet<YagoTerm>>,
     wikidata_to_yago_uris_mapping: &HashMap<YagoTerm, YagoTerm>,
     exclude_properties: Vec<YagoTerm>,
-    dir: impl AsRef<Path>,
+    dir: &Path,
     file_name: &str,
+    annotated_file_name: &str,
 ) {
     // Some utility plans executed in //
     let (clean_times, clean_coordinates, clean_durations, clean_integers, clean_quantities) =
@@ -993,16 +996,40 @@ fn build_properties_from_wikidata_and_schema(
         })
         .unwrap();
 
-    /* let statements_with_annotations = vec![];
-    TODO schemaShaclSchema.getScfhema().getAnnotationPropertyShapes().map(annotationShape ->
-    map_wikidata_property_value(annotationShape,
-                             partitioned_statements, yagoShapeInstances, wikidataToYagoUrisMapping,
-                             clean_times, clean_durations, clean_integers, clean_quantities, clean_coordinates,
-                             PQ_PREFIX, PQV_PREFIX
-    ).mapValue(v -> (annotationShape.getProperty(), v))
-    ).reduce(PairPlanNode::union).orElseGet(PairPlanNode::empty);*/
+    let statements_with_annotations: Multimap<YagoTerm, (YagoTerm, YagoTerm, Vec<YagoTriple>)> =
+        schema
+            .annotation_property_shapes()
+            .iter()
+            .flat_map(|property_shape| {
+                let annotations: Vec<_> = map_wikidata_property_value(
+                    schema,
+                    property_shape,
+                    partitioned_statements,
+                    yago_shape_instances,
+                    wikidata_to_yago_uris_mapping,
+                    &clean_times,
+                    &clean_durations,
+                    &clean_integers,
+                    &clean_quantities,
+                    &clean_coordinates,
+                    PQ_PREFIX,
+                    PQV_PREFIX,
+                )
+                .map(move |(statement, object, facts)| {
+                    (statement, (property_shape.path.clone(), object, facts))
+                })
+                .collect();
+                stats.set_local(
+                    "Possible annotations",
+                    property_shape.path.to_string(),
+                    annotations.len(),
+                );
+                annotations.into_iter()
+            })
+            .collect();
 
     let mut writer = NTriplesWriter::open(dir, file_name);
+    let mut annotated_writer = NTriplesWriter::open(dir, annotated_file_name);
 
     for property_shape in schema.property_shapes() {
         if exclude_properties.contains(&property_shape.path) {
@@ -1079,11 +1106,12 @@ fn build_properties_from_wikidata_and_schema(
         let statement_triple = if let Some(max_count) = property_shape.max_count {
             statement_triple
                 .into_iter()
-                .map(|(statement, triples)| {
-                    (
-                        triples[triples.len() - 1].subject.clone(),
-                        (statement, triples),
-                    )
+                .filter_map(|(statement, triples)| {
+                    if let Some(main) = triples.last() {
+                        Some((main.subject.clone(), (statement, triples)))
+                    } else {
+                        None
+                    }
                 })
                 .collect::<Multimap<YagoTerm, _>>()
                 .into_iter_grouped()
@@ -1099,12 +1127,34 @@ fn build_properties_from_wikidata_and_schema(
             statement_triple.len(),
         );
 
-        /* TODO Annotations
-        //TODO: emit object annotations
-        //TODO max_count on annotations
-        let annotations = statement_triple
-        .join(statements_with_annotations)
-        .map((s, e) -> new AnnotatedStatement(e.getKey().getKey(), e.getValue().getKey(), e.getValue().getValue().getKey()));*/
+        // Annotations
+        statement_triple
+            .iter()
+            .for_each(|(statement, main_triples)| {
+                if let Some(annotations) = statements_with_annotations.get(statement) {
+                    annotations.iter().for_each(
+                        |(annotation_predicate, annotation_object, object_facts)| {
+                            if let Some(main) = main_triples.last() {
+                                annotated_writer.write(AnnotatedYagoTriple {
+                                    subject: main.subject.clone(),
+                                    predicate: main.predicate.clone(),
+                                    object: main.object.clone(),
+                                    annotation_predicate: annotation_predicate.clone(),
+                                    annotation_object: annotation_object.clone(),
+                                });
+                                for fact in object_facts {
+                                    annotated_writer.write(fact);
+                                }
+                                stats.add_local(
+                                    "Yago annotations",
+                                    format!("{} {}", main.predicate, annotation_predicate),
+                                    1,
+                                );
+                            }
+                        },
+                    );
+                }
+            });
 
         writer.write_all(
             statement_triple
@@ -1378,10 +1428,12 @@ fn filter_domain<'a>(
     yago_shape_instances: &'a HashMap<YagoTerm, HashSet<YagoTerm>>,
     property_shape: &PropertyShape,
 ) -> impl Iterator<Item = (YagoTerm, YagoTerm)> + 'a {
-    let allowed = yago_shape_instances
-        .get(&property_shape.parent_shape)
-        .unwrap();
-    subject_statements.filter(move |(s, _)| allowed.contains(s))
+    if let Some(parent_shape) = &property_shape.parent_shape {
+        let allowed = yago_shape_instances.get(parent_shape).unwrap();
+        subject_statements.filter(move |(s, _)| allowed.contains(s))
+    } else {
+        panic!("No parent shape for {:?}", property_shape)
+    }
 }
 
 fn filter_object_range<'a>(
@@ -1789,10 +1841,12 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
                 });
                 //TODO: owl:maxCardinality?
             }
-            domains
-                .entry(shape.path.clone())
-                .or_insert_with(BTreeSet::new)
-                .insert(schema.node_shape(&shape.parent_shape).target_class);
+            if let Some(parent_shape) = &shape.parent_shape {
+                domains
+                    .entry(shape.path.clone())
+                    .or_insert_with(BTreeSet::new)
+                    .insert(schema.node_shape(parent_shape).target_class);
+            }
             for object_range in &shape.nodes {
                 object_ranges
                     .entry(shape.path.clone())
@@ -2203,7 +2257,7 @@ impl NTriplesWriter {
         }
     }
 
-    fn write(&mut self, triple: YagoTriple) {
+    fn write(&mut self, triple: impl Display) {
         use std::io::Write;
         writeln!(self.inner, "{}", triple).unwrap();
     }
@@ -2229,29 +2283,29 @@ fn write_ntriples(
 
 #[derive(Default)]
 struct Stats {
-    inner: Mutex<BTreeMap<String, BTreeMap<String, usize>>>,
+    inner: Mutex<BTreeMap<&'static str, BTreeMap<String, usize>>>,
 }
 
 impl Stats {
-    fn set_global(&self, key: &str, value: usize) {
+    fn set_global(&self, key: &'static str, value: usize) {
         self.set_local(key, "*", value);
     }
 
-    fn set_local(&self, key: &str, entry: impl ToString, value: usize) {
+    fn set_local(&self, key: &'static str, entry: impl ToString, value: usize) {
         self.inner
             .lock()
             .unwrap()
-            .entry(key.to_owned())
+            .entry(key)
             .or_insert_with(BTreeMap::new)
             .entry(entry.to_string())
             .or_insert(value);
     }
 
-    fn add_local(&self, key: &str, entry: impl ToString, value: usize) {
+    fn add_local(&self, key: &'static str, entry: impl ToString, value: usize) {
         self.inner
             .lock()
             .unwrap()
-            .entry(key.to_owned())
+            .entry(key)
             .or_insert_with(BTreeMap::new)
             .entry(entry.to_string())
             .and_modify(|v| *v += value)
