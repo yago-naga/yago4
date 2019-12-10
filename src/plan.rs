@@ -1829,15 +1829,13 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
         );
     }
     for (property, range) in datatype_ranges {
-        if range.len() == 1 {
-            add_union_of_object(
-                &mut yago_triples,
-                property,
-                RDFS_RANGE.into(),
-                range,
-                RDFS_DATATYPE.into(),
-            );
-        }
+        add_union_of_object(
+            &mut yago_triples,
+            property,
+            RDFS_RANGE.into(),
+            range,
+            RDFS_DATATYPE.into(),
+        );
     }
 
     yago_triples.into_iter()
@@ -1857,7 +1855,12 @@ fn add_union_of_object(
             object: objects.into_iter().next().unwrap(),
         });
     } else {
-        let union = YagoTerm::BlankNode(format!("owl-unionOf-{}", string_name(&objects)));
+        let union = YagoTerm::BlankNode(format!(
+            "{}-{}-owl-unionOf-{}",
+            string_name(once(&subject)),
+            string_name(once(&predicate)),
+            string_name(&objects)
+        ));
         model.insert(YagoTriple {
             subject,
             predicate,
