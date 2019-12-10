@@ -72,7 +72,7 @@ schema:Brand a sh:NodeShape ;
     ] .
 
 schema:CreativeWork a sh:NodeShape ;
-    ys:fromClass wd:Q386724 ;
+    ys:fromClass wd:Q17537576 ;
     sh:property [
         sh:path schema:about ;
         sh:node schema:Thing ;
@@ -988,6 +988,10 @@ schema:Event a sh:NodeShape ;
         ys:fromProperty wdt:P655 ;
     ] .
 
+schema:WebSite a sh:NodeShape ;
+    ys:fromClass wd:Q35127 .
+
+
 schema:Festival a sh:NodeShape ;
     ys:fromClass wd:Q132241 .
 
@@ -1628,6 +1632,9 @@ schema:FoodEstablishment a sh:NodeShape ;
         sh:node schema:Thing ;
         ys:fromProperty wdt:P2012 ;
     ] .
+
+schema:Restaurant a sh:NodeShape ;
+    ys:fromClass wdt:Q11707 .
 
 schema:LodgingBusiness a sh:NodeShape .
 
