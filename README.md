@@ -1,8 +1,8 @@
 Yago 4 pipeline
 ===============
 
-[![actions status](https://github.com/Tpt/yago4/workflows/build/badge.svg)](https://github.com/Tpt/yago4/actions)
-[![dependency status](https://deps.rs/repo/github/Tpt/yago4/status.svg)](https://deps.rs/repo/github/Tpt/yago4)
+[![actions status](https://github.com/yago-naga/yago4/workflows/build/badge.svg)](https://github.com/yago-naga/yago4/actions)
+[![dependency status](https://deps.rs/repo/github/yago-naga/yago4/status.svg)](https://deps.rs/repo/github/yago-naga/yago4)
 
 This is the pipeline to run Yago 4.
 
