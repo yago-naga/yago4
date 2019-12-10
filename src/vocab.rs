@@ -1,12 +1,14 @@
 use rio_api::model::NamedNode;
 
-pub const PREFIXES: [(&str, &str); 6] = [
+pub const PREFIXES: [(&str, &str); 8] = [
     ("bioschema", "http://bioschemas.org/"),
     ("owl", "http://www.w3.org/2002/07/owl#"),
     ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
     ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
     ("schema", "http://schema.org/"),
     ("xsd", "http://www.w3.org/2001/XMLSchema#"),
+    ("yago", "http://yago-knowledge.org/resource/"),
+    ("yagov", "http://yago-knowledge.org/value/"),
 ];
 
 pub const WIKIBASE_ITEM: NamedNode = NamedNode {
@@ -138,6 +140,9 @@ pub const SKOS_PREF_LABEL: NamedNode = NamedNode {
 pub const XSD_ANY_URI: NamedNode = NamedNode {
     iri: "http://www.w3.org/2001/XMLSchema#anyURI",
 };
+pub const XSD_BOOLEAN: NamedNode = NamedNode {
+    iri: "http://www.w3.org/2001/XMLSchema#boolean",
+};
 pub const XSD_DATE: NamedNode = NamedNode {
     iri: "http://www.w3.org/2001/XMLSchema#date",
 };
@@ -257,6 +262,9 @@ pub const SH_PATH: NamedNode = NamedNode {
 };
 pub const SH_PROPERTY: NamedNode = NamedNode {
     iri: "http://www.w3.org/ns/shacl#property",
+};
+pub const SH_PROPERTY_SHAPE: NamedNode = NamedNode {
+    iri: "http://www.w3.org/ns/shacl#PropertyShape",
 };
 pub const SH_TARGET_CLASS: NamedNode = NamedNode {
     iri: "http://www.w3.org/ns/shacl#targetClass",

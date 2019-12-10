@@ -170,6 +170,10 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) 
         s.spawn(|_| {
             write_ntriples(build_yago_schema(&schema), &to_dir, "yago-wd-schema.nt.gz");
         });
+
+        s.spawn(|_| {
+            write_ntriples(build_yago_shapes(&schema), &to_dir, "yago-wd-shapes.nt.gz");
+        });
     })
     .unwrap();
 
@@ -1673,7 +1677,7 @@ fn build_same_as<'a>(
 }
 
 fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
-    let mut yago_triples = HashSet::new();
+    let mut yago_triples = Vec::new();
     let mut domains = HashMap::new();
     let mut object_ranges = HashMap::new();
     let mut datatype_ranges = HashMap::new();
@@ -1681,20 +1685,20 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
     // Classes
     for shape in schema.node_shapes() {
         if let Some(class) = schema.class(&shape.target_class) {
-            yago_triples.insert(YagoTriple {
+            yago_triples.push(YagoTriple {
                 subject: class.id.clone(),
                 predicate: RDF_TYPE.into(),
                 object: OWL_CLASS.into(),
             });
             if let Some(label) = &class.label {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: class.id.clone(),
                     predicate: RDFS_LABEL.into(),
                     object: term_caml_case_to_regular(label),
                 });
             }
             if let Some(comment) = &class.comment {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: class.id.clone(),
                     predicate: RDFS_COMMENT.into(),
                     object: comment.clone(),
@@ -1702,7 +1706,7 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
             }
             for super_class in &class.super_classes {
                 if super_class == &YagoTerm::Iri(SCHEMA_INTANGIBLE.iri.to_owned()) {
-                    yago_triples.insert(YagoTriple {
+                    yago_triples.push(YagoTriple {
                         subject: class.id.clone(),
                         predicate: RDFS_SUB_CLASS_OF.into(),
                         object: SCHEMA_THING.into(),
@@ -1712,7 +1716,7 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
                 {
                     //Nothing
                 } else {
-                    yago_triples.insert(YagoTriple {
+                    yago_triples.push(YagoTriple {
                         subject: class.id.clone(),
                         predicate: RDFS_SUB_CLASS_OF.into(),
                         object: super_class.clone(),
@@ -1720,7 +1724,7 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
                 }
             }
             for disjoint in &class.disjoint_classes {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: class.id.clone(),
                     predicate: OWL_DISJOINT_WITH.into(),
                     object: disjoint.clone(),
@@ -1732,7 +1736,7 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
     // Properties
     for shape in schema.property_shapes() {
         if let Some(property) = schema.property(&shape.path) {
-            yago_triples.insert(YagoTriple {
+            yago_triples.push(YagoTriple {
                 subject: property.id.clone(),
                 predicate: RDF_TYPE.into(),
                 object: if !shape.nodes.is_empty() && shape.datatypes.is_empty() {
@@ -1750,35 +1754,35 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
             });
 
             if let Some(label) = &property.label {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: property.id.clone(),
                     predicate: RDFS_LABEL.into(),
                     object: term_caml_case_to_regular(label),
                 });
             }
             if let Some(comment) = &property.comment {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: property.id.clone(),
                     predicate: RDFS_COMMENT.into(),
                     object: comment.clone(),
                 });
             }
             for super_property in &property.super_properties {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: property.id.clone(),
                     predicate: RDFS_SUB_PROPERTY_OF.into(),
                     object: super_property.clone(),
                 });
             }
             for inverse in &property.inverse {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: property.id.clone(),
                     predicate: OWL_INVERSE_OF.into(),
                     object: inverse.clone(),
                 });
             }
             if shape.max_count == Some(1) {
-                yago_triples.insert(YagoTriple {
+                yago_triples.push(YagoTriple {
                     subject: property.id.clone(),
                     predicate: RDF_TYPE.into(),
                     object: OWL_FUNCTIONAL_PROPERTY.into(),
@@ -1842,14 +1846,14 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
 }
 
 fn add_union_of_object(
-    model: &mut HashSet<YagoTriple>,
+    model: &mut Vec<YagoTriple>,
     subject: YagoTerm,
     predicate: YagoTerm,
     objects: BTreeSet<YagoTerm>,
     class: YagoTerm,
 ) {
     if objects.len() == 1 {
-        model.insert(YagoTriple {
+        model.push(YagoTriple {
             subject,
             predicate,
             object: objects.into_iter().next().unwrap(),
@@ -1861,12 +1865,12 @@ fn add_union_of_object(
             string_name(once(&predicate)),
             string_name(&objects)
         ));
-        model.insert(YagoTriple {
+        model.push(YagoTriple {
             subject,
             predicate,
             object: union.clone(),
         });
-        model.insert(YagoTriple {
+        model.push(YagoTriple {
             subject: union.clone(),
             predicate: RDF_TYPE.into(),
             object: class,
@@ -1876,7 +1880,7 @@ fn add_union_of_object(
 }
 
 fn add_list_object(
-    model: &mut HashSet<YagoTriple>,
+    model: &mut Vec<YagoTriple>,
     subject: YagoTerm,
     predicate: YagoTerm,
     objects: impl IntoIterator<Item = YagoTerm>,
@@ -1887,19 +1891,19 @@ fn add_list_object(
     let mut current: YagoTerm = RDF_NIL.into();
     while let Some(next) = list.pop() {
         let new_current = YagoTerm::BlankNode(format!("{}{}", name, list.len() + 1));
-        model.insert(YagoTriple {
+        model.push(YagoTriple {
             subject: new_current.clone(),
             predicate: RDF_REST.into(),
             object: current.clone(),
         });
-        model.insert(YagoTriple {
+        model.push(YagoTriple {
             subject: new_current.clone(),
             predicate: RDF_FIRST.into(),
             object: next,
         });
         current = new_current;
     }
-    model.insert(YagoTriple {
+    model.push(YagoTriple {
         subject,
         predicate,
         object: current,
@@ -1948,6 +1952,131 @@ fn caml_case_to_regular(txt: &str) -> String {
         }
     }
     out
+}
+
+fn build_yago_shapes(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
+    let mut yago_triples = Vec::new();
+
+    for node_shape in schema.node_shapes() {
+        if node_shape.properties.is_empty() {
+            continue; // Not useful
+        }
+        yago_triples.push(YagoTriple {
+            subject: node_shape.target_class.clone(),
+            predicate: RDF_TYPE.into(),
+            object: SH_NODE_SHAPE.into(),
+        });
+        yago_triples.push(YagoTriple {
+            subject: node_shape.target_class.clone(),
+            predicate: SH_TARGET_CLASS.into(),
+            object: node_shape.target_class.clone(),
+        });
+        for property_shape in node_shape.properties {
+            let id = YagoTerm::Iri(format!(
+                "{}shape-prop-{}",
+                YAGO_VALUE_PREFIX,
+                string_name(once(&node_shape.target_class).chain(once(&property_shape.path)))
+            ));
+            yago_triples.push(YagoTriple {
+                subject: node_shape.target_class.clone(),
+                predicate: SH_PROPERTY.into(),
+                object: id.clone(),
+            });
+            yago_triples.push(YagoTriple {
+                subject: id.clone(),
+                predicate: RDF_TYPE.into(),
+                object: SH_PROPERTY_SHAPE.into(),
+            });
+            yago_triples.push(YagoTriple {
+                subject: id.clone(),
+                predicate: SH_PATH.into(),
+                object: property_shape.path.clone(),
+            });
+            match property_shape.datatypes.len() {
+                0 => (),
+                1 => {
+                    yago_triples.push(YagoTriple {
+                        subject: id.clone(),
+                        predicate: SH_DATATYPE.into(),
+                        object: property_shape.datatypes[0].clone(),
+                    });
+                }
+                _ => {
+                    let objects: Vec<_> = property_shape
+                        .datatypes
+                        .iter()
+                        .map(|datatype| {
+                            let subject = YagoTerm::Iri(format!(
+                                "{}sh-datatype-{}",
+                                YAGO_VALUE_PREFIX,
+                                string_name(once(datatype))
+                            ));
+                            yago_triples.push(YagoTriple {
+                                subject: subject.clone(),
+                                predicate: SH_DATATYPE.into(),
+                                object: datatype.clone(),
+                            });
+                            subject
+                        })
+                        .collect();
+                    add_list_object(&mut yago_triples, id.clone(), SH_OR.into(), objects);
+                }
+            }
+            match property_shape.nodes.len() {
+                0 => (),
+                1 => {
+                    yago_triples.push(YagoTriple {
+                        subject: id.clone(),
+                        predicate: SH_NODE.into(),
+                        object: property_shape.nodes[0].clone(),
+                    });
+                }
+                _ => {
+                    let objects: Vec<_> = property_shape
+                        .nodes
+                        .iter()
+                        .map(|node| {
+                            let subject = YagoTerm::Iri(format!(
+                                "{}sh-node-{}",
+                                YAGO_VALUE_PREFIX,
+                                string_name(once(node))
+                            ));
+                            yago_triples.push(YagoTriple {
+                                subject: subject.clone(),
+                                predicate: SH_NODE.into(),
+                                object: node.clone(),
+                            });
+                            subject
+                        })
+                        .collect();
+                    add_list_object(&mut yago_triples, id.clone(), SH_OR.into(), objects);
+                }
+            }
+            if property_shape.is_unique_lang {
+                yago_triples.push(YagoTriple {
+                    subject: id.clone(),
+                    predicate: SH_UNIQUE_LANG.into(),
+                    object: YagoTerm::TypedLiteral("true".to_owned(), XSD_BOOLEAN.iri.to_owned()),
+                });
+            }
+            if let Some(max_count) = property_shape.max_count {
+                yago_triples.push(YagoTriple {
+                    subject: id.clone(),
+                    predicate: SH_MAX_COUNT.into(),
+                    object: YagoTerm::IntegerLiteral(max_count as i64),
+                });
+            }
+            if let Some(pattern) = property_shape.pattern {
+                yago_triples.push(YagoTriple {
+                    subject: id.clone(),
+                    predicate: SH_PATTERN.into(),
+                    object: YagoTerm::StringLiteral(pattern),
+                });
+            }
+        }
+    }
+
+    yago_triples.into_iter()
 }
 
 fn map_to_yago<'a>(
