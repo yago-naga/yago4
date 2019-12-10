@@ -1,6 +1,9 @@
 Yago 4 pipeline
 ===============
 
+[![actions status](https://github.com/Tpt/yago4/workflows/build/badge.svg)](https://github.com/Tpt/yago4/actions)
+[![dependency status](https://deps.rs/repo/github/Tpt/yago4/status.svg)](https://deps.rs/repo/github/Tpt/yago4)
+
 This is the pipeline to run Yago 4.
 
 It allows to build Yago 4 from a Wikidata dump.
@@ -56,7 +59,7 @@ Multiple data files are used:
 
 
 Tips:
-* To format your source code please, use `¢argo fmt`.
+* To format your source code please, use `cargo fmt`.
 * `cargo clippy` is a very powerful linter.
 
 
