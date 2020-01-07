@@ -1060,7 +1060,7 @@ fn build_properties_from_wikidata_and_schema(
         )
         .map(|(subject, statement)| (statement, subject))
         .collect();
-        stats.set_local(
+        stats.add_local(
             "Yago facts after domain filter",
             property_shape.path.to_string(),
             statement_subject.len(),
