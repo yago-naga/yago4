@@ -732,7 +732,7 @@ fn build_full_instance_of<'a>(
         |(_, yago_instance, yago_class)| YagoTriple {
             subject: yago_instance,
             predicate: RDF_TYPE.into(),
-            object: yago_class.clone(),
+            object: yago_class,
         },
     )
 }
@@ -1467,10 +1467,9 @@ fn convert_time(
                 time.format("%Y-%m").to_string(),
                 XSD_G_YEAR_MONTH.iri.to_owned(),
             ),
-            YagoTerm::IntegerLiteral(11) => YagoTerm::TypedLiteral(
-                time.format("%Y-%m-%d").to_string().to_string(),
-                XSD_DATE.iri.to_owned(),
-            ),
+            YagoTerm::IntegerLiteral(11) => {
+                YagoTerm::TypedLiteral(time.format("%Y-%m-%d").to_string(), XSD_DATE.iri.to_owned())
+            }
             YagoTerm::IntegerLiteral(14) => YagoTerm::DateTimeLiteral(time),
             _ => return None,
         })
@@ -1664,7 +1663,7 @@ fn build_same_as<'a>(
     )
     .filter(move |(yago, _)| yago_things.contains(yago))
     .map(|(yago, wp)| YagoTriple {
-        subject: yago.clone(),
+        subject: yago,
         predicate: OWL_SAME_AS.into(),
         object: YagoTerm::Iri(wp.replace(
             "https://en.wikipedia.org/wiki/",
@@ -1691,7 +1690,7 @@ fn build_same_as<'a>(
         yago_things.contains(yago) && freebase_id_pattern.is_match(freebase)
     })
     .map(|(yago, freebase)| YagoTriple {
-        subject: yago.clone(),
+        subject: yago,
         predicate: OWL_SAME_AS.into(),
         object: YagoTerm::Iri(
             "http://rdf.freebase.com/ns/".to_owned() + &freebase[1..].replace('/', "."),
@@ -1714,9 +1713,9 @@ fn build_same_as<'a>(
     })
     .filter(move |(yago, wp)| yago_things.contains(yago) && wp.contains(".wikipedia.org/wiki/"))
     .map(|(yago, wp)| YagoTriple {
-        subject: yago.clone(),
+        subject: yago,
         predicate: SCHEMA_SAME_AS.into(),
-        object: YagoTerm::TypedLiteral(wp.to_owned(), XSD_ANY_URI.iri.to_owned()),
+        object: YagoTerm::TypedLiteral(wp, XSD_ANY_URI.iri.to_owned()),
     })
     .collect();
     stats.set_local("sameAs", "Wikipedia", wikipedia.len());
@@ -1970,7 +1969,7 @@ fn string_name<'a>(list: impl IntoIterator<Item = &'a YagoTerm>) -> String {
             YagoTerm::Iri(v) => {
                 for (p, start) in PREFIXES.iter() {
                     if v.starts_with(start) {
-                        return v.replacen(start, &(p.to_string() + "-"), 1);
+                        return v.replacen(start, &((*p).to_owned() + "-"), 1);
                     }
                 }
                 v.replace('/', "").replace('?', "").replace('#', "")
