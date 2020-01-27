@@ -1096,7 +1096,7 @@ fn build_properties_from_wikidata_and_schema(
             (statement_id, additional)
         })
         .collect();
-        stats.set_local(
+        stats.add_local(
             "Yago facts after range filter",
             property_shape.path.to_string(),
             statement_triple.len(),
