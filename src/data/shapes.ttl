@@ -350,11 +350,12 @@ schema:Book a sh:NodeShape ;
         sh:node schema:Person ;
         ys:fromProperty wdt:P110 ;
     ] ;
-    sh:property [ #TODO: pattern
+    sh:property [
         sh:path schema:isbn ;
         sh:datatype xsd:string ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P212 , wdt:P957 ;
+        sh:pattern "^(97[89]-([0-57]-(\d-\d{7}|\d\d-\d{6}|\d\d\d-\d{5}|\d{4}-\d{4}|\d{5}-\d\d\d|\d{6}-\d\d|\d{7}-\d)|[89]\d-(\d-\d{6}|\d\d-\d{5}|\d\d\d-\d{4}|\d{4}-\d\d\d|\d{5}-\d\d|\d{6}-\d)|[69]\d\d-(\d-\d{5}|\d\d-\d{4}|\d\d\d-\d\d\d|\d{4}-\d\d|\d{5}-\d)|99[0-8]\d-\d-\d{4}|99[0-8]\d-\d\d-\d\d\d|99[0-8]\d-\d\d\d-\d\d|99[0-8]\d-\d{4}-\d|999\d\d-\d-\d\d\d|999\d\d-\d\d-\d\d|999\d\d-\d\d\d-\d)-\d|\d{9}(\d|X))|(\d{1,5}-\d{1,7}-\d{1,6}-[0-9X])$"
     ] ;
     sh:property [
         sh:path schema:numberOfPages ;
@@ -1351,6 +1352,11 @@ schema:Person a sh:NodeShape ;
         ys:fromProperty wdt:P27 ;
     ] ;
     sh:property [
+        sh:path schema:netWorth ;
+        sh:node schema:QuantitativeValue ;
+        ys:fromProperty wdt:P2218 ;
+    ] ;
+    sh:property [
         sh:path schema:owns ;
         sh:node schema:Product ;
         ys:fromProperty wdt:P1830 ;
@@ -1381,7 +1387,7 @@ schema:Person a sh:NodeShape ;
         sh:path schema:worksFor ;
         sh:node schema:Person ;
         ys:fromProperty wdt:P108 ;
-    ] . #TODO: netWorth
+    ] .
 
 schema:Place a sh:NodeShape ;
     ys:fromClass wd:Q17334923 ;
