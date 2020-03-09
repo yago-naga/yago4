@@ -2366,7 +2366,7 @@ fn encode_iri_path(path: &str, output: &mut String) {
         | '\u{FDF0}'..='\u{FFEF}'
         | '\u{10000}'..='\u{EFFFD}' => output.push(c),
         c => {
-            let mut buf = [0 as u8; 4];
+            let mut buf = [0; 4];
             c.encode_utf8(&mut buf).bytes().for_each(|b| {
                 write!(output, "%{:X}", b).unwrap();
             });

@@ -52,7 +52,8 @@ pub struct Schema {
     graph: SimpleGraph,
 }
 
-const PROPERTY_TYPES: [NamedNode; 3] = [RDF_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_OBJECT_PROPERTY];
+const PROPERTY_TYPES: [NamedNode<'_>; 3] =
+    [RDF_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_OBJECT_PROPERTY];
 
 impl Schema {
     pub fn open() -> Self {
@@ -311,7 +312,7 @@ impl SimpleGraph {
                     predicate: YagoTerm::from_parser(t.predicate.into(), &seed),
                     object: YagoTerm::from_parser(t.object, &seed),
                 });
-                Ok(()) as std::result::Result<(), TurtleError>
+                Ok(()) as std::result::Result<_, TurtleError>
             })
             .map_err(|e| {
                 if let Some(position) = e.textual_position() {

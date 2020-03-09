@@ -26,7 +26,7 @@ impl<K: Eq + Hash, V: Eq> Multimap<K, V> {
         self.inner.entry(key).or_insert_with(Vec::new).push(value)
     }
 
-    pub fn iter(&self) -> MultimapIter<K, V> {
+    pub fn iter(&self) -> MultimapIter<'_, K, V> {
         self.into_iter()
     }
 

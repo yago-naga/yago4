@@ -17,7 +17,7 @@ pub struct YagoTriple {
 }
 
 impl fmt::Display for YagoTriple {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}\t{}\t{}\t.",
@@ -46,7 +46,7 @@ pub struct AnnotatedYagoTriple {
 }
 
 impl fmt::Display for AnnotatedYagoTriple {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "<<\t{}\t{}\t{}\t>>\t{}\t{}\t.",
@@ -99,7 +99,7 @@ impl YagoTerm {
         }
     }
 
-    pub fn from_parser(t: Term, seed: &str) -> Self {
+    pub fn from_parser(t: Term<'_>, seed: &str) -> Self {
         match t {
             Term::NamedNode(n) => YagoTerm::iri(n.iri),
             Term::BlankNode(b) => YagoTerm::BlankNode(b.id.to_owned() + seed),
@@ -130,7 +130,7 @@ impl YagoTerm {
         }
     }
 
-    pub fn datatype(&self) -> Option<NamedNode> {
+    pub fn datatype(&self) -> Option<NamedNode<'_>> {
         match self {
             YagoTerm::WikidataItem(_)
             | YagoTerm::WikidataProperty(_, _)
@@ -215,7 +215,7 @@ pub const PROPERTY_PREFIXES: [&str; 14] = [
 ];
 
 impl fmt::Display for YagoTerm {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             YagoTerm::WikidataItem(i) => write!(f, "<http://www.wikidata.org/entity/Q{}>", i),
             YagoTerm::WikidataProperty(i, t) => {
@@ -257,31 +257,31 @@ impl fmt::Display for YagoTerm {
 }
 
 impl<'a> From<NamedNode<'a>> for YagoTerm {
-    fn from(t: NamedNode) -> Self {
+    fn from(t: NamedNode<'a>) -> Self {
         Term::from(t).into()
     }
 }
 
 impl<'a> From<BlankNode<'a>> for YagoTerm {
-    fn from(t: BlankNode) -> Self {
+    fn from(t: BlankNode<'a>) -> Self {
         Term::from(t).into()
     }
 }
 
 impl<'a> From<Literal<'a>> for YagoTerm {
-    fn from(t: Literal) -> Self {
+    fn from(t: Literal<'a>) -> Self {
         Term::from(t).into()
     }
 }
 
 impl<'a> From<NamedOrBlankNode<'a>> for YagoTerm {
-    fn from(t: NamedOrBlankNode) -> Self {
+    fn from(t: NamedOrBlankNode<'a>) -> Self {
         Term::from(t).into()
     }
 }
 
 impl<'a> From<Term<'a>> for YagoTerm {
-    fn from(t: Term) -> Self {
+    fn from(t: Term<'a>) -> Self {
         Self::from_parser(t, "")
     }
 }

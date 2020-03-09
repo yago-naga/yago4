@@ -1,4 +1,11 @@
-#![type_length_limit = "3180578"]
+#![deny(
+    future_incompatible,
+    nonstandard_style,
+    rust_2018_idioms,
+    missing_copy_implementations,
+    trivial_numeric_casts,
+    unsafe_code
+)]
 
 use crate::partitioned_statements::PartitionedStatements;
 use crate::plan::{generate_yago, YagoSize};
