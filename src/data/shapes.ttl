@@ -63,6 +63,20 @@ schema:Thing a sh:NodeShape ;
         sh:nodeKind sh:IRI ;
     ] .
 
+schema:BroadcastChannel a sh:NodeShape ;
+    sh:property [
+        sh:path schema:broadcastChannelId ;
+        sh:datatype xsd:string ;
+        ys:fromProperty wdt:P3970 ;
+    ] .
+
+schema:RadioChannel a sh:NodeShape ;
+    ys:fromClass wd:Q25582589 .
+
+schema:TelevisionChannel a sh:NodeShape ;
+    ys:fromClass wd:Q2001305 .
+
+
 schema:Brand a sh:NodeShape ;
     ys:fromClass wd:Q431289 ;
     sh:property [
@@ -337,6 +351,12 @@ schema:Report a sh:NodeShape ;
 schema:ScholarlyArticle a sh:NodeShape ;
     ys:fromClass wd:Q13442814 .
 
+schema:SocialMediaPosting a sh:NodeShape ;
+    ys:fromClass wd:Q7216866 .
+
+schema:BlogPosting a sh:NodeShape ;
+    ys:fromClass wd:Q17928402 .
+
 schema:Atlas a sh:NodeShape ;
     ys:fromClass wd:Q162827 .
 
@@ -451,6 +471,14 @@ schema:MovieSeries a sh:NodeShape ;
         ys:fromProperty wdt:P272 ;
     ] .
 
+schema:Course a sh:NodeShape ;
+    ys:fromClass wd:Q600134 .
+
+schema:DataCatalog a sh:NodeShape ;
+    ys:fromClass wd:Q29937289 .
+
+schema:Dataset a sh:NodeShape ;
+    ys:fromClass wd:Q1172284 .
 
 schema:Periodical a sh:NodeShape ;
     ys:fromClass wd:Q1002697 .
@@ -659,6 +687,14 @@ schema:TVEpisode a sh:NodeShape ;
 schema:Game a sh:NodeShape ;
     ys:fromClass wd:Q11410 .
 
+schema:Legislation a sh:NodeShape ;
+    ys:fromClass wd:Q820655 .
+
+schema:Manuscript a sh:NodeShape ;
+    ys:fromClass wd:Q87167 .
+
+schema:Map a sh:NodeShape ;
+    ys:fromClass wd:Q4006 .
 
 schema:MusicComposition a sh:NodeShape ;
     ys:fromClass wd:Q207628 ;
@@ -771,6 +807,12 @@ schema:Movie a sh:NodeShape ;
 schema:Photograph a sh:NodeShape ;
     ys:fromClass wd:Q125191 .
 
+schema:Play a sh:NodeShape ;
+    ys:fromClass wd:Q25379 .
+
+schema:Poster a sh:NodeShape ;
+    ys:fromClass wd:Q429785 .
+
 schema:PublicationIssue a sh:NodeShape ;
     ys:fromClass wd:Q28869365 ;
     sh:property [
@@ -798,6 +840,9 @@ schema:PublicationVolume a sh:NodeShape ;
         ys:fromProperty wdt:P478 ;
     ] .
 
+schema:SheetMusic a sh:NodeShape ;
+    ys:fromClass wd:Q187947 .
+
 schema:SoftwareApplication a sh:NodeShape ;
     ys:fromClass wd:Q166142 ;
     sh:property [
@@ -805,6 +850,9 @@ schema:SoftwareApplication a sh:NodeShape ;
         sh:node schema:SoftwareApplication ;
         ys:fromProperty wdt:P306 ;
     ] .
+
+schema:MobileApplication a sh:NodeShape ;
+    ys:fromClass wd:Q620615 .
 
 schema:VideoGame a sh:NodeShape ;
     ys:fromClass wd:Q7889 ;
@@ -868,6 +916,11 @@ schema:Painting a sh:NodeShape ;
 schema:Sculpture a sh:NodeShape ;
     ys:fromClass wd:Q860861 .
 
+schema:WebPage a sh:NodeShape ;
+    ys:fromClass wd:Q36774 .
+
+schema:WebSite a sh:NodeShape ;
+    ys:fromClass wd:Q35127 .
 
 schema:ComputerLanguage a sh:NodeShape ;
     ys:fromClass wd:Q629206 .
@@ -927,6 +980,18 @@ schema:Event a sh:NodeShape ;
         ys:fromProperty wdt:P131 , wdt:P276 , wdt:P706 , wdt:P4552 ;
     ] ;
     sh:property [
+        sh:path schema:organizer ;
+        sh:or (
+            [
+                sh:node schema:Person
+            ]
+            [
+                sh:node schema:MusicGroup
+            ]
+        ) ;
+        ys:fromProperty wdt:P664 ;
+    ] ;
+    sh:property [
         sh:path schema:startDate ;
         sh:or (
             [
@@ -977,6 +1042,16 @@ schema:Event a sh:NodeShape ;
         ys:fromProperty wdt:P859 ;
     ] ;
     sh:property [
+        sh:path schema:superEvent ;
+        sh:node schema:Event ;
+        ys:fromProperty wdt:P361 ;
+    ] ;
+    sh:property [
+        sh:path schema:subEvent ;
+        sh:node schema:Event ;
+        ys:fromProperty wdt:P527 ;
+    ] ;
+    sh:property [
         sh:path schema:translator ;
         sh:or (
             [
@@ -989,8 +1064,28 @@ schema:Event a sh:NodeShape ;
         ys:fromProperty wdt:P655 ;
     ] .
 
-schema:WebSite a sh:NodeShape ;
-    ys:fromClass wd:Q35127 .
+schema:EventSeries a sh:NodeShape ;
+    ys:fromClass wd:Q15275719 .
+
+schema:SportsEvent a sh:NodeShape ;
+    ys:fromClass wd:Q16510064 ;
+    sh:property [
+        sh:path schema:competitor ;
+        sh:or (
+            [
+                sh:node schema:Person
+            ]
+            [
+                sh:node schema:SportsTeam
+            ]
+        ) ;
+        ys:fromProperty wdt:P710 , wdt:P1923 ;
+    ] ;
+    sh:property [
+        sh:path schema:sport ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P641 ;
+    ] .
 
 
 schema:Festival a sh:NodeShape ;
@@ -999,6 +1094,125 @@ schema:Festival a sh:NodeShape ;
 
 schema:Language a sh:NodeShape ;
     ys:fromClass wd:Q34770 .
+
+
+schema:MedicalEntity a sh:NodeShape ;
+    sh:property [
+        sh:path schema:legalStatus ;
+        sh:node schema:DrugLegalStatus ;
+        ys:fromProperty wdt:P3493 ;
+    ] ;
+    sh:property [
+        sh:path schema:relevantSpecialty ;
+        sh:node schema:MedicalSpecialty ;
+        ys:fromProperty wdt:P1995 ;
+    ] .
+
+schema:DrugLegalStatus a sh:NodeShape ;
+    ys:fromClass wd:Q26715005 .
+
+schema:AnatomicalStructure a sh:NodeShape ;
+    ys:fromClass wd:Q4936952 ;
+    sh:property [
+        sh:path schema:connectedTo ;
+        sh:node schema:AnatomicalStructure ;
+        ys:fromProperty wdt:P2789 ;
+    ] .
+
+schema:Artery a sh:NodeShape ;
+    ys:fromClass wd:Q9655 .
+
+schema:Bone a sh:NodeShape ;
+    ys:fromClass wd:Q265868 .
+
+schema:Joint a sh:NodeShape ;
+    ys:fromClass wd:Q9644 .
+
+schema:Ligament a sh:NodeShape ;
+    ys:fromClass wd:Q39888 .
+
+schema:Muscle a sh:NodeShape ;
+    ys:fromClass wd:Q7365 .
+
+schema:Nerve a sh:NodeShape ;
+    ys:fromClass wd:Q9620 .
+
+schema:Vein a sh:NodeShape ;
+    ys:fromClass wd:Q9609 .
+
+schema:MedicalCondition a sh:NodeShape ;
+    ys:fromClass wd:Q12136 ;
+    sh:property [
+        sh:path schema:possibleTreatment ;
+        sh:node schema:MedicalTherapy ;
+        ys:fromProperty wdt:P924 ;
+    ] ;
+    sh:property [
+        sh:path schema:riskFactor ;
+        sh:node schema:Thing ; # TODO: should be schema:MedicalRiskFactor
+        ys:fromProperty wdt:P5642 ;
+    ] ;
+    sh:property [
+        sh:path schema:signOrSymptom ;
+        sh:node schema:MedicalSignOrSymptom ;
+        ys:fromProperty wdt:P780 ;
+    ] .
+
+schema:InfectiousDisease a sh:NodeShape ;
+    ys:fromClass wd:Q18123741 .
+
+schema:MedicalDevice a sh:NodeShape ;
+    ys:fromClass wd:Q6554101 .
+
+schema:MedicalGuideline a sh:NodeShape ;
+    ys:fromClass wd:Q878041 .
+
+schema:MedicalProcedure a sh:NodeShape ;
+    ys:fromClass wd:Q796194 .
+
+schema:DiagnosticProcedure a sh:NodeShape ;
+    ys:fromClass wd:Q177719 .
+
+schema:PhysicalExam a sh:NodeShape ;
+    ys:fromClass wd:Q835153 .
+
+schema:TherapeuticProcedure a sh:NodeShape .
+
+schema:SurgicalProcedure a sh:NodeShape ;
+    ys:fromClass wd:Q15636229 .
+
+schema:MedicalTherapy a sh:NodeShape .
+
+schema:RadiationTherapy a sh:NodeShape ;
+    ys:fromClass wd:Q180507 .
+
+schema:MedicalSignOrSymptom a sh:NodeShape ;
+    sh:property [
+        sh:path schema:possibleTreatment ;
+        sh:node schema:MedicalTherapy ;
+        ys:fromProperty wdt:P924 ;
+    ] .
+
+schema:MedicalSign a sh:NodeShape ;
+    ys:fromClass wd:Q1441305 .
+
+schema:MedicalSymptom a sh:NodeShape ;
+    ys:fromClass wd:Q169872 .
+
+schema:MedicalSpecialty a sh:NodeShape ;
+    ys:fromClass wd:Q930752 .
+
+schema:MedicalTest a sh:NodeShape ;
+    ys:fromClass wd:Q2671652 .
+
+schema:BloodTest a sh:NodeShape ;
+    ys:fromClass wd:Q886837 .
+
+schema:Substance a sh:NodeShape ;
+    ys:fromClass wd:Q27166344 .
+
+schema:Drug a sh:NodeShape ;
+    ys:fromClass wd:Q12140 .
 
 
 schema:Occupation a sh:NodeShape ;
@@ -1114,6 +1328,11 @@ schema:Organization a sh:NodeShape ;
         ys:fromProperty wdt:P463 ;
     ] ;
     sh:property [
+        sh:path schema:numberOfEmployees ;
+        sh:node schema:QuantitativeValue ;
+        ys:fromProperty wdt:P1128 ;
+    ] ;
+    sh:property [
         sh:path schema:parentOrganization ;
         sh:node schema:Organization ;
         ys:fromProperty wdt:P749 ;
@@ -1207,10 +1426,18 @@ schema:TheaterGroup a sh:NodeShape ;
     ys:fromClass wd:Q2416217 .
 
 schema:SportsOrganization a sh:NodeShape ;
-    ys:fromClass wd:Q4438121 .
+    ys:fromClass wd:Q4438121 ;
+    sh:property [
+        sh:path schema:sport ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P641 ;
+    ] .
 
 schema:SportsTeam a sh:NodeShape ;
     ys:fromClass wd:Q12973014 .
+
+schema:WorkersUnion a sh:NodeShape ;
+    ys:fromClass wd:Q178790 .
 
 
 schema:Person a sh:NodeShape ;
@@ -1267,6 +1494,11 @@ schema:Person a sh:NodeShape ;
         ) ;
         sh:node schema:Brand ;
         ys:fromProperty wdt:P1716 ;
+    ] ;
+    sh:property [
+        sh:path schema:callSign ;
+        sh:datatype xsd:string ;
+        ys:fromProperty wdt:P2317 ;
     ] ;
     sh:property [
         sh:path schema:children ;
@@ -1335,6 +1567,11 @@ schema:Person a sh:NodeShape ;
         sh:path schema:homeLocation ;
         sh:node schema:Place ;
         ys:fromProperty wdt:P551 ;
+    ] ;
+    sh:property [
+        sh:path schema:honorificPrefix ;
+        sh:node schema:Thing ;
+        ys:fromProperty wdt:P511 ;
     ] ;
     sh:property [
         sh:path schema:knowsLanguage ;
@@ -1493,6 +1730,7 @@ schema:Cemetery a sh:NodeShape ;
 
 schema:Crematorium a sh:NodeShape ;
     ys:fromClass wd:Q157570 .
+
 schema:EventVenue a sh:NodeShape ;
     ys:fromClass wd:Q18674739 .
 
@@ -1622,14 +1860,62 @@ schema:LandmarksOrHistoricalBuildings a sh:NodeShape ;
 schema:TouristAttraction a sh:NodeShape ;
     ys:fromClass wd:Q570116 .
 
+schema:Accommodation a sh:NodeShape .
+
+schema:Apartment a sh:NodeShape ;
+    ys:fromClass wd:Q188507 .
+
+schema:House a sh:NodeShape ;
+    ys:fromClass wd:Q3947 .
 
 schema:LocalBusiness a sh:NodeShape ;
     ys:fromClass wd:Q62849941 .
 
+schema:AnimalShelter a sh:NodeShape ;
+    ys:fromClass wd:Q1411287 .
+
+schema:ArchiveOrganization a sh:NodeShape ;
+    ys:fromClass wd:Q166118 .
+
+schema:AutomotiveBusiness a sh:NodeShape .
+
+schema:AutoRental a sh:NodeShape ;
+    ys:fromClass wd:Q291240 .
+
+schema:GasStation a sh:NodeShape ;
+    ys:fromClass wd:Q205495 .
+
+schema:ChildCare a sh:NodeShape ;
+    ys:fromClass wd:Q27008444 .
+
 schema:EntertainmentBusiness a sh:NodeShape .
+
+schema:AmusementPark a sh:NodeShape ;
+    ys:fromClass wd:Q194195 .
+
+schema:ArtGallery a sh:NodeShape ;
+    ys:fromClass wd:Q1007870 .
+
+schema:Casino a sh:NodeShape ;
+    ys:fromClass wd:Q133215 .
+
+schema:ComedyClub a sh:NodeShape ;
+    ys:fromClass wd:Q2814066 .
+
+schema:NightClub a sh:NodeShape ;
+    ys:fromClass wd:Q622425 .
 
 schema:EmergencyService a sh:NodeShape ;
     ys:fromClass wd:Q814610 .
+
+schema:EmploymentAgency a sh:NodeShape ;
+    ys:fromClass wd:Q261362 .
+
+schema:FinancialService a sh:NodeShape ;
+    ys:fromClass wd:Q837171 .
+
+schema:BankOrCreditUnion a sh:NodeShape ;
+    ys:fromClass wd:Q730038 .
 
 schema:FoodEstablishment a sh:NodeShape ;
     ys:fromClass wd:Q27038993 ;
@@ -1639,12 +1925,163 @@ schema:FoodEstablishment a sh:NodeShape ;
         ys:fromProperty wdt:P2012 ;
     ] .
 
+schema:Bakery a sh:NodeShape ;
+    ys:fromClass wd:Q274393 .
+
+schema:BarOrPub a sh:NodeShape ;
+    ys:fromClass wd:Q5307737 .
+
+schema:Brewery a sh:NodeShape ;
+    ys:fromClass wd:Q131734 .
+
+schema:CafeOrCoffeeShop a sh:NodeShape ;
+    ys:fromClass wd:Q30022 .
+
+schema:Distillery a sh:NodeShape ;
+    ys:fromClass wd:Q1251750 .
+
+schema:IceCreamShop a sh:NodeShape ;
+    ys:fromClass wd:Q1311064 .
+
+schema:LiquorStore a sh:NodeShape ;
+    ys:fromClass wd:Q2632011 .
+
 schema:Restaurant a sh:NodeShape ;
-    ys:fromClass wdt:Q11707 .
+    ys:fromClass wd:Q11707 .
+
+schema:Winery a sh:NodeShape ;
+    ys:fromClass wd:Q156362 .
+
+schema:GovernmentOffice a sh:NodeShape ;
+    ys:fromClass wd:Q327333 .
+
+schema:PostOffice a sh:NodeShape ;
+    ys:fromClass wd:Q35054 .
+
+schema:HealthAndBeautyBusiness a sh:NodeShape .
+
+schema:BeautySalon a sh:NodeShape ;
+    ys:fromClass wd:Q1195245 .
+
+schema:DaySpa a sh:NodeShape ;
+    ys:fromClass wd:Q11290050 .
+
+schema:NailSalon a sh:NodeShape ;
+    ys:fromClass wd:Q8007048 .
+
+schema:TattooParlor a sh:NodeShape ;
+    ys:fromClass wd:Q27038997 .
+
+schema:Library a sh:NodeShape ;
+    ys:fromClass wd:Q7075 .
 
 schema:LodgingBusiness a sh:NodeShape .
 
+schema:BedAndBreakfast a sh:NodeShape ;
+    ys:fromClass wd:Q367914 .
+
+schema:Hostel a sh:NodeShape ;
+    ys:fromClass wd:Q654772 .
+
+schema:Hotel a sh:NodeShape ;
+    ys:fromClass wd:Q27686 .
+
+schema:Motel a sh:NodeShape ;
+    ys:fromClass wd:Q216212 .
+
+schema:Resort a sh:NodeShape ;
+    ys:fromClass wd:Q875157 .
+
+schema:MedicalBusiness a sh:NodeShape .
+
+schema:MedicalClinic a sh:NodeShape ;
+    ys:fromClass wd:Q1774898 .
+
+schema:Optician a sh:NodeShape ;
+    ys:fromClass wd:Q1996635 .
+
+schema:Pharmacy a sh:NodeShape ;
+    ys:fromClass wd:Q13107184 .
+
 schema:SportsActivityLocation a sh:NodeShape .
+
+schema:BowlingAlley a sh:NodeShape ;
+    ys:fromClass wd:Q27106471 .
+
+schema:GolfCourse a sh:NodeShape ;
+    ys:fromClass wd:Q1048525 .
+
+schema:HealthClub a sh:NodeShape ;
+    ys:fromClass wd:Q1065656 .
+
+schema:PublicSwimmingPool a sh:NodeShape ;
+    ys:fromClass wd:Q27106886 .
+
+schema:SkiResort a sh:NodeShape ;
+    ys:fromClass wd:Q130003 .
+
+schema:TennisComplex a sh:NodeShape ;
+    ys:fromClass wd:Q13380226 .
+
+schema:RadioStation a sh:NodeShape ;
+    ys:fromClass wd:Q14350 .
+
+schema:RecyclingCenter a sh:NodeShape ;
+    ys:fromClass wd:Q27106436 .
+
+schema:SelfStorage a sh:NodeShape ;
+    ys:fromClass wd:Q401404 .
+
+schema:Store a sh:NodeShape ;
+    ys:fromClass wd:Q213441 .
+
+schema:BookStore a sh:NodeShape ;
+    ys:fromClass wd:Q200764 .
+
+schema:GroceryStore a sh:NodeShape ;
+    ys:fromClass wd:Q1295201 .
+
+schema:OutletStore a sh:NodeShape ;
+    ys:fromClass wd:Q76470 .
+
+schema:PawnShop a sh:NodeShape ;
+    ys:fromClass wd:Q176637 .
+
+schema:PetStore a sh:NodeShape ;
+    ys:fromClass wd:Q220142 .
+
+schema:ShoeStore a sh:NodeShape ;
+    ys:fromClass wd:Q7500021 .
+
+schema:ToyStore a sh:NodeShape ;
+    ys:fromClass wd:Q1318959 .
+
+schema:ShoppingCenter a sh:NodeShape ;
+    ys:fromClass wd:Q11315 .
+
+schema:TelevisionStation a sh:NodeShape ;
+    ys:fromClass wd:Q1616075 .
+
+schema:TouristInformationCenter a sh:NodeShape ;
+    ys:fromClass wd:Q1587716 .
+
+schema:TravelAgency a sh:NodeShape ;
+    ys:fromClass wd:Q217107 .
+
+
+schema:Service a sh:NodeShape .
+
+schema:BroadcastService a sh:NodeShape ;
+    ys:fromClass wd:Q15265344 ;
+    sh:property [
+        sh:path schema:callSign ;
+        sh:datatype xsd:string ;
+        ys:fromProperty wdt:P2317 ;
+    ] .
+
+schema:FinancialProduct a sh:NodeShape ;
+    ys:fromClass wd:Q15809678 .
+
 
 schema:Product a sh:NodeShape ;
     ys:fromClass wd:Q2424752 ;
@@ -1705,6 +2142,23 @@ schema:Product a sh:NodeShape ;
         sh:maxCount 1 ;
         ys:fromProperty wdt:P2049 ;
     ] .
+
+schema:Vehicle a sh:NodeShape ;
+    ys:fromClass wd:Q42889 ;
+    sh:property [
+        sh:path schema:callSign ;
+        sh:datatype xsd:string ;
+        ys:fromProperty wdt:P2317 ;
+    ] .
+
+schema:BusOrCoach a sh:NodeShape ;
+    ys:fromClass wd:Q5638 .
+
+schema:Car a sh:NodeShape ;
+    ys:fromClass wd:Q1144312 .
+
+schema:Motorcycle a sh:NodeShape ;
+    ys:fromClass wd:Q34493 .
 
 schema:ProductModel a sh:NodeShape ;
     ys:fromClass wd:Q17444171 .

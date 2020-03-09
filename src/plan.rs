@@ -1756,11 +1756,21 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
                 });
             }
             for super_class in &class.super_classes {
-                if super_class == &YagoTerm::Iri(SCHEMA_INTANGIBLE.iri.to_owned()) {
+                if super_class == &YagoTerm::Iri(SCHEMA_INTANGIBLE.iri.to_owned())
+                    || super_class == &YagoTerm::Iri(SCHEMA_ENUMERATION.iri.to_owned())
+                {
                     yago_triples.push(YagoTriple {
                         subject: class.id.clone(),
                         predicate: RDFS_SUB_CLASS_OF.into(),
                         object: SCHEMA_THING.into(),
+                    });
+                } else if super_class == &YagoTerm::Iri(SCHEMA_MEDICAL_INTANGIBLE.iri.to_owned())
+                    || super_class == &YagoTerm::Iri(SCHEMA_MEDICAL_ENUMERATION.iri.to_owned())
+                {
+                    yago_triples.push(YagoTriple {
+                        subject: class.id.clone(),
+                        predicate: RDFS_SUB_CLASS_OF.into(),
+                        object: SCHEMA_MEDICAL_ENTITY.into(),
                     });
                 } else if super_class == &YagoTerm::Iri(SCHEMA_STRUCTURED_VALUE.iri.to_owned())
                     || super_class == &YagoTerm::Iri(SCHEMA_SERIES.iri.to_owned())

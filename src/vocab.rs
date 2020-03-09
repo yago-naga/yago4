@@ -83,8 +83,20 @@ pub const WD_Q1985727: NamedNode = NamedNode {
 pub const SCHEMA_THING: NamedNode = NamedNode {
     iri: "http://schema.org/Thing",
 };
+pub const SCHEMA_ENUMERATION: NamedNode = NamedNode {
+    iri: "http://schema.org/Enumeration",
+};
+pub const SCHEMA_MEDICAL_ENUMERATION: NamedNode = NamedNode {
+    iri: "http://schema.org/MedicalEnumeration",
+};
 pub const SCHEMA_INTANGIBLE: NamedNode = NamedNode {
     iri: "http://schema.org/Intangible",
+};
+pub const SCHEMA_MEDICAL_INTANGIBLE: NamedNode = NamedNode {
+    iri: "http://schema.org/MedicalIntangible",
+};
+pub const SCHEMA_MEDICAL_ENTITY: NamedNode = NamedNode {
+    iri: "http://schema.org/MedicalEntity",
 };
 pub const SCHEMA_SERIES: NamedNode = NamedNode {
     iri: "http://schema.org/Series",
