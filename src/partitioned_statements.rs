@@ -9,7 +9,7 @@ use rocksdb::{DBCompactionStyle, DBCompressionType, DBRawIterator, Options, Writ
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::io::{Cursor, Result};
-use std::mem::{replace, size_of};
+use std::mem::{size_of, take};
 use std::path::Path;
 use std::time::Instant;
 
@@ -97,9 +97,7 @@ impl PartitionedStatements {
 
             i += 1;
             if i % 10_000 == 0 {
-                self.db
-                    .write_without_wal(replace(&mut batch, WriteBatch::default()))
-                    .unwrap();
+                self.db.write_without_wal(take(&mut batch)).unwrap();
                 if i % 1_000_000 == 0 {
                     println!(
                         "{}M loaded at {} triples / s",

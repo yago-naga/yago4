@@ -6,6 +6,7 @@
     trivial_numeric_casts,
     unsafe_code
 )]
+#![type_length_limit = "1832348"]
 
 use crate::partitioned_statements::PartitionedStatements;
 use crate::plan::{generate_yago, YagoSize};
