@@ -13,6 +13,9 @@ use std::mem::{size_of, take};
 use std::path::Path;
 use std::time::Instant;
 
+/// A storage based on RocksDB that allows to retrieve triples based on a pattern.
+/// It is based on a (predicate, subject, object) tree index and so allows to retrieve efficiently
+/// all triples for a given predicate or a given (subject, predicate) tuple.
 pub struct PartitionedStatements {
     db: DB,
 }

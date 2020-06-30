@@ -2,6 +2,7 @@ use failure::_core::hash::Hash;
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
+/// A multimap data structure that associate to each key a set of values
 #[derive(Debug)]
 pub struct Multimap<K: Eq + Hash, V: Eq> {
     inner: HashMap<K, Vec<V>>,

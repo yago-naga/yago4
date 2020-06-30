@@ -1,3 +1,5 @@
+//! Nice Rust data structures for YAGO schema and shapes
+//!
 use crate::model::{YagoTerm, YagoTriple};
 use crate::vocab::*;
 use rio_api::model::NamedNode;
@@ -9,6 +11,7 @@ use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::iter::once;
 
+/// A RDFS class
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub struct Class {
     pub id: YagoTerm,
@@ -18,6 +21,7 @@ pub struct Class {
     pub disjoint_classes: Vec<YagoTerm>,
 }
 
+/// A RDF property
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub struct Property {
     pub id: YagoTerm,
@@ -27,6 +31,7 @@ pub struct Property {
     pub inverse: Vec<YagoTerm>,
 }
 
+/// A SHACL NodeShape
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub struct NodeShape {
     id: YagoTerm,
@@ -35,6 +40,7 @@ pub struct NodeShape {
     pub from_classes: Vec<YagoTerm>,
 }
 
+/// A SHACL PropertyShape
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
 pub struct PropertyShape {
     id: YagoTerm,
@@ -48,6 +54,7 @@ pub struct PropertyShape {
     pub from_properties: Vec<YagoTerm>,
 }
 
+/// THE YAGO schema
 pub struct Schema {
     graph: SimpleGraph,
 }
@@ -56,6 +63,7 @@ const PROPERTY_TYPES: [NamedNode<'_>; 3] =
     [RDF_PROPERTY, OWL_DATATYPE_PROPERTY, OWL_OBJECT_PROPERTY];
 
 impl Schema {
+    /// Loads the schema
     pub fn open() -> Self {
         let mut graph = SimpleGraph::default();
         for d in &SCHEMA_DATA {
@@ -64,6 +72,7 @@ impl Schema {
         Self { graph }
     }
 
+    /// Returns a `Class` object for a given class IRI
     pub fn class(&self, id: &YagoTerm) -> Option<Class> {
         if self.graph.contains(&YagoTriple {
             subject: id.clone(),
@@ -96,6 +105,7 @@ impl Schema {
         }
     }
 
+    /// Returns all classes
     pub fn classes(&self) -> Vec<Class> {
         self.graph
             .subjects_for_predicate_object(&RDF_TYPE.into(), &RDFS_CLASS.into())
@@ -103,6 +113,7 @@ impl Schema {
             .collect()
     }
 
+    /// Returns a `NodeShape` object for a given class IRI
     pub fn node_shape(&self, id: &YagoTerm) -> NodeShape {
         NodeShape {
             id: id.clone(),
@@ -124,6 +135,7 @@ impl Schema {
         }
     }
 
+    /// Returns all `NodeShape`s
     pub fn node_shapes(&self) -> Vec<NodeShape> {
         self.graph
             .subjects_for_predicate_object(&RDF_TYPE.into(), &SH_NODE_SHAPE.into())
@@ -131,6 +143,7 @@ impl Schema {
             .collect()
     }
 
+    /// Returns a `Property` object for a given property IRI
     pub fn property(&self, id: &YagoTerm) -> Option<Property> {
         let is_property = PROPERTY_TYPES.iter().any(|t| {
             self.graph.contains(&YagoTriple {
@@ -170,6 +183,7 @@ impl Schema {
         }
     }
 
+    /// Returns a `PropertyShape` object for a given property IRI
     pub fn property_shape(&self, id: &YagoTerm) -> PropertyShape {
         PropertyShape {
             id: id.clone(),
@@ -241,6 +255,7 @@ impl Schema {
         }
     }
 
+    /// Returns all `PropertyShape`s
     pub fn property_shapes(&self) -> Vec<PropertyShape> {
         self.graph
             .triples_for_predicate(&SH_PROPERTY.into())
@@ -248,6 +263,7 @@ impl Schema {
             .collect()
     }
 
+    /// Returns a `PropertyShape` for a given annotation property
     pub fn annotation_property_shapes(&self) -> Vec<PropertyShape> {
         self.graph
             .subjects_for_predicate_object(&RDF_TYPE.into(), &YS_ANNOTATION_PROPERTY_SHAPE.into())

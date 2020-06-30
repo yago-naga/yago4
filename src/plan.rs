@@ -21,6 +21,7 @@ use std::str::FromStr;
 use std::sync::Mutex;
 use url::Url;
 
+/// The different sizes/flavors of YAGO
 #[derive(Copy, Clone, Debug)]
 pub enum YagoSize {
     Full,
@@ -36,6 +37,7 @@ const PQV_PREFIX: &str = "http://www.wikidata.org/prop/qualifier/value/";
 const YAGO_RESOURCE_PREFIX: &str = "http://yago-knowledge.org/resource/";
 const YAGO_VALUE_PREFIX: &str = "http://yago-knowledge.org/value/";
 
+/// Wikidata classes to filter out from YAGO
 #[allow(clippy::unreadable_literal)]
 const WD_BAD_CLASSES: [YagoTerm; 6] = [
     YagoTerm::WikidataItem(17379835), //Wikimedia page outside the main knowledge tree
@@ -46,6 +48,7 @@ const WD_BAD_CLASSES: [YagoTerm; 6] = [
     YagoTerm::WikidataItem(18340514), //article about events in a specific year or time period
 ];
 
+/// The minimal number of instance threshold to consider classes for inclusion in YAGO
 const MIN_NUMBER_OF_INSTANCES: usize = 10;
 
 pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) {

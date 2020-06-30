@@ -1,3 +1,5 @@
+//! Utility data structures to represent RDF triples (`YagoTriple`) and terms (`YagoTerm`)
+
 use crate::vocab::*;
 use chrono::{DateTime, FixedOffset};
 use rio_api::model::NamedNode;
