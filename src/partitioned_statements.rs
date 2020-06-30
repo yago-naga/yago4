@@ -95,7 +95,7 @@ impl PartitionedStatements {
             self.write_term(&t.predicate.into(), &mut buffer).unwrap();
             self.write_term(&t.subject.into(), &mut buffer).unwrap();
             self.write_term(&t.object.into(), &mut buffer).unwrap();
-            batch.put(buffer.as_slice(), &[]).unwrap();
+            batch.put(buffer.as_slice(), &[]);
             buffer.clear();
 
             i += 1;
