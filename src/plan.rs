@@ -1,3 +1,5 @@
+//! The big piece of code. Generates YAGO 4 from the partioned statements
+
 use crate::model::{AnnotatedYagoTriple, YagoTerm, YagoTriple};
 use crate::multimap::Multimap;
 use crate::partitioned_statements::PartitionedStatements;

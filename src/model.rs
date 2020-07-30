@@ -9,8 +9,8 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::str::FromStr;
-use u32;
 
+/// An RDF triple
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
 pub struct YagoTriple {
     pub subject: YagoTerm,
@@ -38,6 +38,7 @@ impl<'a> From<Triple<'a>> for YagoTriple {
     }
 }
 
+/// An annotated RDF triple i.e. <<subject predicate object>> annotation_predicate annotation_object in RDF*
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
 pub struct AnnotatedYagoTriple {
     pub subject: YagoTerm,
@@ -61,6 +62,8 @@ impl fmt::Display for AnnotatedYagoTriple {
     }
 }
 
+/// An RDF term used in YAGO triples
+/// It inlines some values like Wikidata IRIs
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone)]
 pub enum YagoTerm {
     WikidataItem(u32),
@@ -77,6 +80,7 @@ pub enum YagoTerm {
 }
 
 impl YagoTerm {
+    /// Creates a YagoTerm from an IRI
     pub fn iri(iri: &str) -> Self {
         if iri.starts_with("http://www.wikidata.org/") {
             if iri.starts_with("http://www.wikidata.org/entity/Q") {
@@ -101,6 +105,7 @@ impl YagoTerm {
         }
     }
 
+    /// Creates a YagoTerm from a RIO term with a given seed for the blank node ids
     pub fn from_parser(t: Term<'_>, seed: &str) -> Self {
         match t {
             Term::NamedNode(n) => YagoTerm::iri(n.iri),
@@ -132,6 +137,7 @@ impl YagoTerm {
         }
     }
 
+    /// The term datatype if it is an RDF literal
     pub fn datatype(&self) -> Option<NamedNode<'_>> {
         match self {
             YagoTerm::WikidataItem(_)
@@ -149,6 +155,7 @@ impl YagoTerm {
     }
 }
 
+/// A 64 bits float with ordering
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct Double(pub f64);

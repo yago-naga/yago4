@@ -1,3 +1,5 @@
+//! Useful constants
+
 use rio_api::model::NamedNode;
 
 pub const PREFIXES: [(&str, &str); 8] = [

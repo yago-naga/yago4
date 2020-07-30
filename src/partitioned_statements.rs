@@ -7,20 +7,21 @@ use rio_api::parser::TriplesParser;
 use rio_turtle::{NTriplesParser, TurtleError};
 use rocksdb::{DBCompactionStyle, DBCompressionType, DBRawIterator, Options, WriteBatch, DB};
 use std::fs::File;
-use std::io::{BufRead, Write, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::io::{Cursor, Result};
 use std::mem::{size_of, take};
 use std::path::Path;
 use std::time::Instant;
 
-/// A storage based on RocksDB that allows to retrieve triples based on a pattern.
+/// A storage based on RocksDB that allows retrieving triples based on a pattern.
 /// It is based on a (predicate, subject, object) tree index and so allows to retrieve efficiently
-/// all triples for a given predicate or a given (subject, predicate) tuple.
+/// all triples for a given predicate, or for a given (subject, predicate) tuple.
 pub struct PartitionedStatements {
     db: DB,
 }
 
 impl PartitionedStatements {
+    /// Opens an already existing store
     pub fn open(path: impl AsRef<Path>) -> Self {
         let mut options = Options::default();
         options.set_max_open_files(512);
@@ -77,7 +78,9 @@ impl PartitionedStatements {
         self.db.get(&key).unwrap().is_some()
     }
 
-    pub fn load_ntriples(&self, file: &str) {
+    /// Loads a N-Triples file into the store.
+    /// This file could be compressed with gzip. In this case, the file name should end with .gz
+    pub fn load_ntriples(&self, file: &Path) {
         if file.ends_with(".gz") {
             self.do_load_ntriples(BufReader::new(GzDecoder::new(File::open(file).unwrap())))
         } else {
@@ -197,6 +200,7 @@ const LANGUAGE_TAGGED_STRING: u8 = 10;
 const TYPED_LITERAL: u8 = 11;
 const END_OF_STRING: u8 = 0xFF;
 
+/// Iterator to iterate on the (subject, object) pairs for a given predicate (prefix)
 struct SubjectObjectIterator<'a> {
     iter: DBRawIterator<'a>,
     prefix: Vec<u8>,
@@ -309,7 +313,7 @@ fn roundtrip() {
     }
 
     let part = PartitionedStatements::open("unittest.db");
-    part.load_ntriples("unittest.nt");
+    part.load_ntriples(Path::new("unittest.nt"));
 
     assert_eq!(
         part.subjects_objects_for_predicate(NamedNode { iri: "http://bar" })

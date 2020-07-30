@@ -1,5 +1,5 @@
 //! Nice Rust data structures for YAGO schema and shapes
-//!
+
 use crate::model::{YagoTerm, YagoTriple};
 use crate::vocab::*;
 use rio_api::model::NamedNode;
