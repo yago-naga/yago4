@@ -7,7 +7,7 @@ use rio_api::parser::TriplesParser;
 use rio_turtle::{NTriplesParser, TurtleError};
 use rocksdb::{DBCompactionStyle, DBCompressionType, DBRawIterator, Options, WriteBatch, DB};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, Write, BufReader};
 use std::io::{Cursor, Result};
 use std::mem::{size_of, take};
 use std::path::Path;
@@ -79,18 +79,18 @@ impl PartitionedStatements {
 
     pub fn load_ntriples(&self, file: &str) {
         if file.ends_with(".gz") {
-            self.do_load_ntriples(GzDecoder::new(File::open(file).unwrap()))
+            self.do_load_ntriples(BufReader::new(GzDecoder::new(File::open(file).unwrap())))
         } else {
-            self.do_load_ntriples(File::open(file).unwrap())
+            self.do_load_ntriples(BufReader::new(File::open(file).unwrap()))
         }
     }
 
-    fn do_load_ntriples(&self, read: impl Read) {
+    fn do_load_ntriples(&self, read: impl BufRead) {
         let mut buffer = Vec::new();
         let mut i = 0;
         let start = Instant::now();
         let mut batch = WriteBatch::default();
-        let mut parser = NTriplesParser::new(BufReader::new(read)).unwrap();
+        let mut parser = NTriplesParser::new(read).unwrap();
         let mut on_triple = |t: Triple<'_>| {
             self.write_term(&t.predicate.into(), &mut buffer).unwrap();
             self.write_term(&t.subject.into(), &mut buffer).unwrap();
@@ -304,7 +304,7 @@ fn roundtrip() {
 
     {
         let mut file = File::create("unittest.nt").unwrap();
-        file.write_all("<http://foo> <http://bar> <http://baz> .\n".as_bytes())
+        file.write_all("<http://www.wikidata.org/entity/Q1666382> <http://schema.org/description> \"pol\\u00EDticu estauxunidense (1730\\u20131779)\"@ast .\n<http://foo> <http://bar> <http://baz> .\n".as_bytes())
             .unwrap();
     }
 
