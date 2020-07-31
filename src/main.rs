@@ -11,7 +11,6 @@
 use crate::partitioned_statements::PartitionedStatements;
 use crate::plan::{generate_yago, YagoSize};
 use clap::{App, Arg, ArgGroup, SubCommand};
-use std::path::Path;
 
 mod model;
 mod multimap;
@@ -67,8 +66,7 @@ fn main() {
 
     if let Some(matches) = matches.subcommand_matches("partition") {
         // We partition the dump using RocksDB
-        PartitionedStatements::open(cache_name)
-            .load_ntriples(Path::new(matches.value_of("file").unwrap()));
+        PartitionedStatements::open(cache_name).load_ntriples(matches.value_of("file").unwrap());
     }
     if let Some(matches) = matches.subcommand_matches("build") {
         // We generate YAGO

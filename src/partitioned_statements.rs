@@ -1,7 +1,7 @@
 use crate::model::{Double, YagoTerm};
 use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
-use flate2::read::GzDecoder;
+use flate2::read::MultiGzDecoder;
 use rio_api::model::Triple;
 use rio_api::parser::TriplesParser;
 use rio_turtle::{NTriplesParser, TurtleError};
@@ -80,9 +80,11 @@ impl PartitionedStatements {
 
     /// Loads a N-Triples file into the store.
     /// This file could be compressed with gzip. In this case, the file name should end with .gz
-    pub fn load_ntriples(&self, file: &Path) {
+    pub fn load_ntriples(&self, file: &str) {
         if file.ends_with(".gz") {
-            self.do_load_ntriples(BufReader::new(GzDecoder::new(File::open(file).unwrap())))
+            self.do_load_ntriples(BufReader::new(MultiGzDecoder::new(
+                File::open(file).unwrap(),
+            )))
         } else {
             self.do_load_ntriples(BufReader::new(File::open(file).unwrap()))
         }
@@ -313,7 +315,7 @@ fn roundtrip() {
     }
 
     let part = PartitionedStatements::open("unittest.db");
-    part.load_ntriples(Path::new("unittest.nt"));
+    part.load_ntriples("unittest.nt");
 
     assert_eq!(
         part.subjects_objects_for_predicate(NamedNode { iri: "http://bar" })
