@@ -1140,6 +1140,9 @@ schema:Nerve a sh:NodeShape ;
 schema:Vein a sh:NodeShape ;
     ys:fromClass wd:Q9609 .
 
+schema:Vessel a sh:NodeShape ;
+    ys:fromClass wd:Q382386 .
+
 schema:MedicalCondition a sh:NodeShape ;
     ys:fromClass wd:Q12136 ;
     sh:property [
@@ -2166,7 +2169,8 @@ schema:ProductModel a sh:NodeShape ;
 schema:Rating a sh:NodeShape ;
     ys:fromClass wd:Q23649976 .
 
-
+schema:Specialty a sh:NodeShape ;
+    ys:fromClass wd:Q1047113 .
 
 schema:GeoCoordinates a sh:NodeShape ;
     sh:property [

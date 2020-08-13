@@ -2190,7 +2190,9 @@ fn subclass_of_from_yago_schema(schema: &Schema) -> Multimap<YagoTerm, YagoTerm>
         .flat_map(|c| {
             let sub_class = c.id.clone();
             c.super_classes.into_iter().filter_map(move |super_class| {
-                if super_class == YagoTerm::from(SCHEMA_INTANGIBLE) {
+                if super_class == YagoTerm::from(SCHEMA_INTANGIBLE)
+                    || super_class == YagoTerm::from(SCHEMA_MEDICAL_INTANGIBLE)
+                {
                     Some((sub_class.clone(), SCHEMA_THING.into())) //We ignore schema:Intangible
                 } else if super_class == YagoTerm::from(SCHEMA_STRUCTURED_VALUE)
                     || super_class == YagoTerm::from(SCHEMA_SERIES)
