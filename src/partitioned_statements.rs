@@ -95,7 +95,7 @@ impl PartitionedStatements {
         let mut i = 0;
         let start = Instant::now();
         let mut batch = WriteBatch::default();
-        let mut parser = NTriplesParser::new(read).unwrap();
+        let mut parser = NTriplesParser::new(read);
         let mut on_triple = |t: Triple<'_>| {
             self.write_term(&t.predicate.into(), &mut buffer).unwrap();
             self.write_term(&t.subject.into(), &mut buffer).unwrap();

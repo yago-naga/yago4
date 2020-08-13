@@ -7,6 +7,7 @@ use rio_api::parser::{ParseError, TriplesParser};
 use rio_turtle::{TurtleError, TurtleParser};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
+use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::iter::once;
@@ -320,8 +321,7 @@ impl SimpleGraph {
         data.hash(&mut hasher);
         let seed = hasher.finish().to_string();
 
-        TurtleParser::new(Cursor::new(data), "")
-            .unwrap()
+        TurtleParser::new(Cursor::new(data), None)
             .parse_all(&mut move |t| {
                 self.triples.insert(YagoTriple {
                     subject: YagoTerm::from_parser(t.subject.into(), &seed),
@@ -334,7 +334,9 @@ impl SimpleGraph {
                 if let Some(position) = e.textual_position() {
                     eprintln!(
                         "Error while parsing line '{}': {}",
-                        data.lines().nth(position.line_number()).unwrap(),
+                        data.lines()
+                            .nth(position.line_number().try_into().unwrap())
+                            .unwrap(),
                         &e
                     )
                 }
