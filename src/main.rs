@@ -1,3 +1,4 @@
+// Some magic incantations to make the compiler more pedantic (like --pedantic)
 #![deny(
     future_incompatible,
     nonstandard_style,
@@ -6,6 +7,7 @@
     trivial_numeric_casts,
     unsafe_code
 )]
+// Avoids compiler failure because of too big type expressions due to the huge iterator combinations in the build plan
 #![type_length_limit = "1832348"]
 
 use crate::partitioned_statements::PartitionedStatements;

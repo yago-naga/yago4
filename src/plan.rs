@@ -53,11 +53,13 @@ const WD_BAD_CLASSES: [YagoTerm; 6] = [
 /// The minimal number of instance threshold to consider classes for inclusion in YAGO
 const MIN_NUMBER_OF_INSTANCES: usize = 10;
 
+/// Main function to generate YAGO from an index
 pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) {
     let stats = Stats::default();
     let schema = Schema::open();
     let partitioned_statements = PartitionedStatements::open(index_dir);
 
+    // Some useful tables
     let wikidata_to_enwikipedia_mapping = wikidata_to_enwikipedia_mapping(&partitioned_statements);
     stats.set_global(
         "Wikidata items mapped to English Wikipedia articles",
@@ -91,6 +93,8 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) 
         &wikidata_to_yago_uris_mapping,
     );
 
+    // Incantations to build each YAGO 4 file in parallel
+    // each spawn create a new thread and scope exits only when all the thread have finished
     thread::scope(|s| {
         s.spawn(|_| {
             write_ntriples(
@@ -191,6 +195,7 @@ pub fn generate_yago(index_dir: impl AsRef<Path>, to_dir: &str, size: YagoSize) 
     }
 }
 
+/// The mapping between Wikidata (key) and the English Wikipedia (value)
 fn wikidata_to_enwikipedia_mapping(
     partitioned_statements: &PartitionedStatements,
 ) -> HashMap<YagoTerm, String> {
@@ -210,7 +215,8 @@ fn wikidata_to_enwikipedia_mapping(
         .collect()
 }
 
-/// Converts Wikidata URI to Yago URIs based on en.wikipedia article titles
+/// Converts Wikidata URI (key) to Yago URIs (values)
+/// It builds multiple URI candidates (from en.wikipedia titles, Wikidata labels) and merges them with a priority order
 fn wikidata_to_yago_uris_mapping(
     stats: &Stats,
     schema: &Schema,
@@ -377,6 +383,11 @@ fn wikidata_to_yago_uris_mapping(
 /// <p>
 /// 6. Build the set of Yago classes by keeping only the classes with at least 10 direct instances and an English Wikipedia article.
 /// 7. Compute the mapping from Wikidata classes and Yago classes and the Yago type hierarchy from it.
+/// <p>
+/// It returns multiple elements:
+/// 1. the set of all YAGO classes
+/// the mapping between Wikidata (key) and YAGO (value) classes
+/// The relations between super classes (key) and sub classes (value) of YAGO
 fn build_yago_classes_and_super_class_of(
     stats: &Stats,
     schema: &Schema,
@@ -592,6 +603,7 @@ fn build_yago_classes_and_super_class_of(
     )
 }
 
+/// Returns all (a,b) when there exists no c such that (a,c) in sub_class_of and (b,c) in super_class_of
 fn filter_redundant_sub_class_of(
     sub_class_of: Multimap<YagoTerm, YagoTerm>,
     super_class_of: &Multimap<YagoTerm, YagoTerm>,
@@ -615,6 +627,7 @@ fn filter_redundant_sub_class_of(
         .collect()
 }
 
+/// Returns for each YAGO shape (key) the set of all its instances (value)
 fn yago_shape_instances(
     stats: &Stats,
     schema: &Schema,
