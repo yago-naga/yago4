@@ -720,6 +720,7 @@ fn yago_shape_instances(
         .collect()
 }
 
+/// Returns all the rdf:type triples between YAGO instances and schema.org classes
 fn build_simple_instance_of<'a>(
     yago_shape_instances: &'a HashMap<YagoTerm, HashSet<YagoTerm>>,
 ) -> impl Iterator<Item = YagoTriple> + 'a {
@@ -732,6 +733,7 @@ fn build_simple_instance_of<'a>(
     })
 }
 
+/// Returns the rdf:type triples between YAGO instances and YAGO classes extracted from Wikidata
 fn build_full_instance_of<'a>(
     yago_things: &'a HashSet<YagoTerm>,
     wikidata_to_yago_class_mapping: &'a Multimap<YagoTerm, YagoTerm>,
@@ -755,6 +757,7 @@ fn build_full_instance_of<'a>(
     )
 }
 
+/// Returns the RDF triples describing YAGO classes (rdf:type, rdfs:subclassof, rdfs:label...)
 fn build_classes_description<'a>(
     yago_classes: &'a HashSet<YagoTerm>,
     yago_super_class_of: &'a Multimap<YagoTerm, YagoTerm>,
@@ -800,6 +803,8 @@ fn build_classes_description<'a>(
         .chain(rdfs_comment)
 }
 
+/// Build facts without annotations from Wikidata mapping.
+/// The `properties` parameter restricts the set of created facts to the one with the given properties.
 fn build_simple_properties_from_schema<'a>(
     schema: &'a Schema,
     partitioned_statements: &'a PartitionedStatements,
@@ -876,6 +881,8 @@ fn build_simple_properties_from_schema<'a>(
     writer.finish()
 }
 
+/// Build facts with annotations from Wikidata mapping.
+/// The `exclude_properties` parameter restricts the set of created facts to the one without the given properties.
 fn build_properties_from_wikidata_and_schema(
     stats: &Stats,
     schema: &Schema,
@@ -887,7 +894,7 @@ fn build_properties_from_wikidata_and_schema(
     file_name: &str,
     annotated_file_name: &str,
 ) {
-    // Some utility plans executed in //
+    // Some utility plans executed in parallel
     let (clean_times, clean_coordinates, clean_durations, clean_integers, clean_quantities) =
         thread::scope(|s| {
             let clean_times = s.spawn(|_| {
@@ -1184,9 +1191,11 @@ fn build_properties_from_wikidata_and_schema(
     writer.finish()
 }
 
+/// Type of iterator of (statement id, object, extra triples about the objects)
 type WikidataPropertyValueIterator<'a> =
     Box<dyn Iterator<Item = (YagoTerm, YagoTerm, Vec<YagoTriple>)> + 'a>;
 
+/// Maps Wikidata statement values with optional annotations
 fn map_wikidata_property_value<'a>(
     schema: &Schema,
     property_shape: &'a PropertyShape,
@@ -1380,6 +1389,7 @@ fn map_wikidata_property_value<'a>(
     statement_object
 }
 
+/// Fetches the objects for the Wikidata statements and map them to the YAGO values using the `clean` map
 fn get_and_convert_statements_complex_value<'a>(
     partitioned_statements: &'a PartitionedStatements,
     property_shape: &'a PropertyShape,
@@ -1398,6 +1408,7 @@ fn get_and_convert_statements_complex_value<'a>(
     })
 }
 
+/// Fetches the objects for the Wikidata statements and map them to the YAGO values using the `clean` map
 fn get_and_convert_statements_annotated_complex_value<'a>(
     partitioned_statements: &'a PartitionedStatements,
     property_shape: &'a PropertyShape,
@@ -1416,6 +1427,7 @@ fn get_and_convert_statements_annotated_complex_value<'a>(
     })
 }
 
+/// Fetches the subject of the Wikidata statements which main property is a value of the yago:fromProperty relation of the given shape
 fn get_subject_statement<'a>(
     partitioned_statements: &'a PartitionedStatements,
     property_shape: &'a PropertyShape,
@@ -1423,6 +1435,8 @@ fn get_subject_statement<'a>(
     get_triples_from_wikidata_property_relation(partitioned_statements, property_shape, P_PREFIX)
 }
 
+/// Fetches the triples which properties is a value of the yago:fromProperty relation of the given shape
+/// The http://www.wikidata.org/prop/direct/ prefix is replaced by the given prefix
 fn get_triples_from_wikidata_property_relation<'a>(
     partitioned_statements: &'a PartitionedStatements,
     property_shape: &'a PropertyShape,
@@ -1441,6 +1455,7 @@ fn get_triples_from_wikidata_property_relation<'a>(
         })
 }
 
+/// Filters subject_objects iterator to keep only the subjects that are instance of an element of expected_classes according to yago_shape_instances
 fn filter_domain<'a>(
     subject_statements: impl Iterator<Item = (YagoTerm, YagoTerm)> + 'a,
     yago_shape_instances: &'a HashMap<YagoTerm, HashSet<YagoTerm>>,
@@ -1454,6 +1469,7 @@ fn filter_domain<'a>(
     }
 }
 
+/// Filters subject_objects iterator to keep only the objects that are instance of an element of expected_classes according to yago_shape_instances
 fn filter_object_range<'a>(
     subjects_objects: impl Iterator<Item = (YagoTerm, YagoTerm)> + 'a,
     yago_shape_instances: &'a HashMap<YagoTerm, HashSet<YagoTerm>>,
@@ -1468,6 +1484,7 @@ fn filter_object_range<'a>(
     })
 }
 
+/// Builds an RDF term encoding a Wikibase time
 fn convert_time(
     value: YagoTerm,
     precision: YagoTerm,
@@ -1496,6 +1513,8 @@ fn convert_time(
     }
 }
 
+/// Builds an RDF representation encoding for a Wikibase geo coordinates
+/// Returns the pair (term, describing triple)
 fn convert_globe_coordinates(
     latitude: YagoTerm,
     longitude: YagoTerm,
@@ -1545,6 +1564,7 @@ fn round_degrees(degrees: f64, precision: f64) -> f64 {
     degrees.signum() * expended
 }
 
+/// Builds an RDF term encoding for a Wikibase quantity encoding a duration
 fn convert_duration_quantity(amount: YagoTerm, unit: YagoTerm) -> Option<YagoTerm> {
     if let YagoTerm::DecimalLiteral(amount) = amount {
         if let Ok(amount) = i128::from_str(&amount) {
@@ -1599,6 +1619,7 @@ fn convert_duration_quantity(amount: YagoTerm, unit: YagoTerm) -> Option<YagoTer
     }
 }
 
+/// Builds an RDF term encoding for a Wikibase integer quantity
 fn convert_integer_quantity(amount: YagoTerm, unit: YagoTerm) -> Option<YagoTerm> {
     if unit != WD_Q199.into() {
         None
@@ -1609,6 +1630,8 @@ fn convert_integer_quantity(amount: YagoTerm, unit: YagoTerm) -> Option<YagoTerm
     }
 }
 
+/// Builds an RDF representation encoding for a Wikibase quantity
+/// Returns the pair (term, describing triples)
 fn convert_quantity(
     subject: &YagoTerm,
     unit: YagoTerm,
@@ -1653,6 +1676,7 @@ fn convert_quantity(
     }
 }
 
+/// Builds the RDF containing same as relations between Yago and Wikidata, Wikipedia, DBpedia and Freebase
 fn build_same_as<'a>(
     stats: &Stats,
     partitioned_statements: &'a PartitionedStatements,
@@ -1745,6 +1769,7 @@ fn build_same_as<'a>(
         .chain(wikipedia)
 }
 
+/// builds the RDF for Yago schema
 fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
     let mut yago_triples = Vec::new();
     let mut domains = HashMap::new();
@@ -1926,6 +1951,7 @@ fn build_yago_schema(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
     yago_triples.into_iter()
 }
 
+/// builds the RDF "subject predicate [owl:unionOf (object[0] ... object[n])]"
 fn add_union_of_object(
     model: &mut Vec<YagoTriple>,
     subject: YagoTerm,
@@ -1960,6 +1986,7 @@ fn add_union_of_object(
     }
 }
 
+/// builds the RDF "subject predicate (object[0] ... object[n])"
 fn add_list_object(
     model: &mut Vec<YagoTriple>,
     subject: YagoTerm,
@@ -1991,6 +2018,7 @@ fn add_list_object(
     });
 }
 
+/// builds a string identifier from a set of RDF terms
 fn string_name<'a>(list: impl IntoIterator<Item = &'a YagoTerm>) -> String {
     list.into_iter()
         .map(|t| match t {
@@ -2008,6 +2036,7 @@ fn string_name<'a>(list: impl IntoIterator<Item = &'a YagoTerm>) -> String {
         .join("-")
 }
 
+/// Converts "fooBar" to "foo bar"
 fn term_caml_case_to_regular(term: &YagoTerm) -> YagoTerm {
     match term {
         YagoTerm::StringLiteral(s) => YagoTerm::StringLiteral(caml_case_to_regular(s)),
@@ -2018,6 +2047,7 @@ fn term_caml_case_to_regular(term: &YagoTerm) -> YagoTerm {
     }
 }
 
+/// Converts "fooBar" to "foo bar"
 fn caml_case_to_regular(txt: &str) -> String {
     let mut out = String::with_capacity(txt.len());
     for c in txt.chars() {
@@ -2035,6 +2065,7 @@ fn caml_case_to_regular(txt: &str) -> String {
     out
 }
 
+/// Builds the RDF triples representing YAGO shapes
 fn build_yago_shapes(schema: &Schema) -> impl Iterator<Item = YagoTriple> {
     let mut yago_triples = Vec::new();
 
@@ -2206,6 +2237,8 @@ fn subclass_of_from_yago_schema(schema: &Schema) -> Multimap<YagoTerm, YagoTerm>
         .collect()
 }
 
+/// Evaluates the transitive closure of with starting from input
+/// i.e. the fixed point of "i -> i ⨝_{i = with[0]} with" containing input
 fn transitive_closure<T: Eq + Hash + Clone>(
     input: impl IntoIterator<Item = T>,
     with: &Multimap<T, T>,
@@ -2224,6 +2257,8 @@ fn transitive_closure<T: Eq + Hash + Clone>(
     closure
 }
 
+/// Evaluates the transitive closure of with starting from input
+/// i.e. the fixed point of "i -> i ⨝_{i[1] = with[0]} with" containing input
 fn transitive_closure_pair<K: Eq + Hash + Clone, V: Eq + Hash + Clone>(
     input: impl IntoIterator<Item = (K, V)>,
     with: &Multimap<V, V>,
@@ -2253,6 +2288,7 @@ fn transitive_closure_pair<K: Eq + Hash + Clone, V: Eq + Hash + Clone>(
     closure
 }
 
+/// Evaluates σ_{left[0], left[1], right[1]}(left ⨝_{left[0] = right[0]} right)
 fn join_pairs<'a, K: Eq + Hash + Clone, V1: Clone + 'a, V2: Clone + Eq>(
     left: impl Iterator<Item = (K, V1)> + 'a,
     right: &'a Multimap<K, V2>,
@@ -2264,6 +2300,7 @@ fn join_pairs<'a, K: Eq + Hash + Clone, V1: Clone + 'a, V2: Clone + Eq>(
         })
 }
 
+/// Writes a .nt file
 struct NTriplesWriter {
     inner: BufWriter<GzEncoder<File>>,
 }
@@ -2310,6 +2347,7 @@ fn write_ntriples(
     writer.finish()
 }
 
+/// Utility to store and print statistics about the build
 #[derive(Default)]
 struct Stats {
     inner: Mutex<BTreeMap<&'static str, BTreeMap<String, usize>>>,
@@ -2320,6 +2358,7 @@ impl Stats {
         self.set_local(key, "*", value);
     }
 
+    /// add a new value for a given (key, entry). If a value already exits the existing value is overrided
     fn set_local(&self, key: &'static str, entry: impl ToString, value: usize) {
         self.inner
             .lock()
@@ -2330,6 +2369,7 @@ impl Stats {
             .or_insert(value);
     }
 
+    /// add a new value for a given (key, entry). If a value already exits the sum of the two values is saved
     fn add_local(&self, key: &'static str, entry: impl ToString, value: usize) {
         self.inner
             .lock()
@@ -2341,6 +2381,7 @@ impl Stats {
             .or_insert(value);
     }
 
+    /// Write the stats as a TSV file
     fn write(&self, path: impl AsRef<Path>) {
         use std::io::Write;
 
@@ -2357,6 +2398,7 @@ impl Stats {
     }
 }
 
+/// escapes the path of an IRI (the /foo/bar part of http://example.com/foo/bar?query)
 fn encode_iri_path(path: &str, output: &mut String) {
     // See https://tools.ietf.org/html/rfc3987#section-2.2 rule ipchar
     path.chars().for_each(|c| match c {
