@@ -30,8 +30,7 @@ impl PartitionedStatements {
         options.set_allow_mmap_writes(true);
         options.set_compaction_style(DBCompactionStyle::Universal);
         options.set_compression_type(DBCompressionType::Lz4);
-        options.set_max_background_flushes(8);
-        options.set_max_background_compactions(16);
+        options.set_max_background_jobs(16);
         Self {
             db: DB::open(&options, path).unwrap(),
         }
