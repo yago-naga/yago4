@@ -50,6 +50,13 @@ const WD_BAD_CLASSES: [YagoTerm; 6] = [
     YagoTerm::WikidataItem(18340514), //article about events in a specific year or time period
 ];
 
+/// Wikidata items to always include in YAGO
+#[allow(clippy::unreadable_literal)]
+const MANDATORY_WD_ITEMS: [YagoTerm; 2] = [
+    YagoTerm::WikidataItem(6581097), //Male
+    YagoTerm::WikidataItem(6581072), //Female
+];
+
 /// The minimal number of instance threshold to consider classes for inclusion in YAGO
 const MIN_NUMBER_OF_INSTANCES: usize = 10;
 
@@ -253,7 +260,7 @@ fn wikidata_to_yago_uris_mapping(
         wikidata_items_with_wikipedia_article.len(),
     );
 
-    let wikidata_items_to_keep: HashSet<YagoTerm> = match size {
+    let mut wikidata_items_to_keep: HashSet<YagoTerm> = match size {
         YagoSize::Full => {
             println!("Considering all Wikidata items");
             wikidata_items
@@ -270,6 +277,9 @@ fn wikidata_to_yago_uris_mapping(
                 .collect()
         }
     };
+    for item in MANDATORY_WD_ITEMS.iter() {
+        wikidata_items_to_keep.insert(item.clone());
+    }
 
     let from_schema_mapping: HashMap<YagoTerm, YagoTerm> = schema
         .node_shapes()
