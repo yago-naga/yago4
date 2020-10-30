@@ -1,7 +1,28 @@
 [package]
-name = "yago4"
-version = "0.0.0"
+name = "yago"
+version = "4.0.0"
 edition = "2018"
+authors = ["Thomas Pellissier Tanon <thomas@pellissier-tanon.fr>",]
+description = "RDFS knowledge base, collection of facts based on Wikidata"
+repository = "https://github.com/yago-naga/yago4"
+documentation = "https://docs.rs/yago/"
+homepage = "https://yago-knowledge.org"
+readme = "README.md"
+keywords = ["knowledge", "base", "RDFS", ]
+categories = ["command-line-utilities", "science",]
+license = "GPL-3.0-or-later"
+
+include = [
+    "/src/**/*",
+    "Cargo.toml",
+    "LICENSE.md",
+    "README.md",
+    "rustfmt.toml",
+    "CHANGELOG.md",
+]
+
+[badges]
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 clap = "2"
@@ -14,7 +35,17 @@ rocksdb = "0.15"
 percent-encoding = "2"
 regex = "1"
 url = "2"
-crossbeam = "0.7"
+crossbeam = "0.8"
+
+[[bin]]
+name = "yago4"
+path = "src/main.rs"  
+edition = "2018"
 
 [profile.release]
 lto = true
+codegen-units = 1
+
+[profile.bench]
+lto = true
+codegen-units = 1

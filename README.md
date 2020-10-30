@@ -1,20 +1,25 @@
-YAGO 4 pipeline
-===============
+YAGO 4 (Pipeline)
+=================
 
-[![actions status](https://github.com/yago-naga/yago4/workflows/build/badge.svg)](https://github.com/yago-naga/yago4/actions)
-
-This is the pipeline to run YAGO 4.
-
-It allows to build YAGO 4 from a Wikidata dump.
-
-This pipeline is described in details in [the "YAGO 4: A Reason-able Knowledge Base" paper](https://suchanek.name/work/publications/eswc-2020-yago.pdf).
+[![actions status][1]][2] [![crates.io version][3]][4] [![docs.rs][5]][6] [![dependency status][7]][8] ![GNU GPLv3][gpl-logo]
 
 
+## What is YAGO?
 
-## How to run.
-To install and compile it you need to have installed Clang,  [Rust and Cargo](https://www.rust-lang.org/tools/install).
-* Ubuntu/Debian: `apt-get install cargo clang`.
-* Arch: `pacman -S rust clang`.
+YAGO 4 is a RDFS knowledge base. It is a collection of facts - based on Wikidata - each of which consists of a subject, a predicate, and an object — as in `yago:Elvis_Presley rdf:type schema:Person`.
+
+YAGO puts each entity into at least one class. The classes form a taxonomy, where the higher classes are taken from schema.org (and bioschemas.org), and the lower classes are a selection of classes from Wikidata. The highest class is `schema:Thing`.
+
+This is the pipeline to run YAGO 4. It allows to build YAGO 4 from a Wikidata dump. This pipeline is described in details in [the "YAGO 4: A Reason-able Knowledge Base" paper](https://suchanek.name/work/publications/eswc-2020-yago.pdf).
+
+
+## How to run
+To install and compile it you need to have installed Clang, [Rust and Cargo](https://www.rust-lang.org/tools/install).
+
+* Ubuntu/Debian: `apt-get install cargo clang`
+* Arch: `pacman -S rust clang`
+* Windows: `cargo install yago`
+* General: `cargo install yago`
 
 Then you need to download a full Wikidata dump in the N-Triples format compressed using GZip. The latest is available at
 https://dumps.wikimedia.org/other/wikibase/wikidatawiki/latest-all.nt.gz
@@ -92,3 +97,13 @@ If you use this software for an academic publication, please cite:
   doi       = {10.1007/978-3-030-49461-2_34}
 }
 ```
+
+[1]: https://github.com/yago-naga/yago4/workflows/build/badge.svg
+[2]: https://github.com/yago-naga/yago4/actions
+[3]: https://img.shields.io/crates/v/yago.svg?style=flat-square
+[4]: https://crates.io/crates/yago
+[5]: https://docs.rs/yago/badge.svg
+[6]: https://docs.rs/yago/latest/
+[7]: https://deps.rs/repo/github/yago-naga/yago4/status.svg
+[8]: https://deps.rs/repo/github/yago-naga/yago4
+[gpl-logo]: https://img.shields.io/github/license/yago-naga/yago4

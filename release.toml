@@ -1,0 +1,8 @@
+no-dev-version = true
+#upload-doc = true
+pre-release-commit-message = "Release {{crate_name}} {{version}} / {{date}}"
+pre-release-replacements = [
+  {file="CHANGELOG.md", search="Unreleased", replace="{{version}}"},
+  {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}"},
+  {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n\n## [Unreleased] - ReleaseDate"},
+]
