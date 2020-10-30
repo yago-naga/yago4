@@ -1,6 +1,4 @@
-use failure::_core::hash::Hash;
-use std::collections::HashMap;
-use std::iter::FromIterator;
+use std::{collections::HashMap, hash::Hash, iter::FromIterator};
 
 /// A multimap data structure that associate to each key a set of values
 /// The methods are similar to the Rust std::collections::HashMap
