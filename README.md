@@ -1,15 +1,11 @@
 YAGO 4 pipeline
 ===============
 
-[![actions status](https://github.com/yago-naga/yago4/workflows/build/badge.svg)](https://github.com/yago-naga/yago4/actions)
+<img src="https://yago-knowledge.org/assets/images/yago-logos/yago-logo.svg" align="right" height="100"> YAGO is a large knowledge base. In this version (4.0), YAGO combines the ontology of Schema.org with the data from Wikidata. This GitHub repository contains the source code that generates YAGO from Wikidata. 
 
-This is the pipeline to run YAGO 4.
+This repository of use only for people who want to build YAGO themselves. If you are mainly interested in using YAGO, please see the [Web page of YAGO](https://yago-knowledge.org).
 
-It allows to build YAGO 4 from a Wikidata dump.
-
-This pipeline is described in details in [the "YAGO 4: A Reason-able Knowledge Base" paper](https://suchanek.name/work/publications/eswc-2020-yago.pdf).
-
-
+Note that this version of YAGO has been superseded by a [newer version](https://yago-knowledge.org/downloads), with different data and different code.
 
 ## How to run.
 To install and compile it you need to have installed Clang,  [Rust and Cargo](https://www.rust-lang.org/tools/install).
@@ -77,7 +73,7 @@ You should have received a copy of the GNU General Public License along with thi
 
 ## Citation
 
-If you use this software for an academic publication, please cite:
+If you use this software for an academic publication, please cite [our paper](https://suchanek.name/work/publications/eswc-2020-yago.pdf):
 ```
 @inproceedings{DBLP:conf/esws/TanonWS20,
   author    = {Pellissier Tanon, Thomas and Weikum, Gerhard and Suchanek, Fabian M.},
